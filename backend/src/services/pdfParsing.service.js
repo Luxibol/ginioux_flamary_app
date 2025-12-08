@@ -1,3 +1,10 @@
+/**
+ * Convertit une date au format français JJ/MM/AAAA
+ * en chaîne au format ISO AAAA-MM-JJ.
+ *
+ * @param {string} frDate - Date au format JJ/MM/AAAA.
+ * @returns {string|null} Date au format AAAA-MM-JJ, ou null si le format est invalide.
+ */
 function toIsoDate(frDate) {
   const m = frDate.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
   if (!m) return null;
@@ -6,7 +13,11 @@ function toIsoDate(frDate) {
 }
 
 /**
- * Retourne true si ce libellé doit être ignoré (transport, REP, etc.)
+ * Indique si un libellé de produit doit être ignoré
+ * (ex : lignes de transport, lignes de REP, etc.).
+ *
+ * @param {string} label - Libellé de produit tel que lu dans le PDF.
+ * @returns {boolean} true si le libellé doit être exclu, false sinon.
  */
 function shouldIgnoreLabel(label) {
   if (!label) return true;
@@ -20,12 +31,31 @@ function shouldIgnoreLabel(label) {
 }
 
 /**
- * Parse le texte brut d'un PDF d'accusé de réception
- * et retourne une structure de commande exploitable.
- * - arc
- * - clientName
- * - orderDate
- * - products[] = { pdfLabel, quantity }
+ * Analyse le texte brut d'un PDF d'accusé de réception et en extrait
+ * les informations nécessaires à la création d'une commande.
+ *
+ * Entrée : texte complet retourné par pdf-parse (data.text).
+ *
+ * Sortie : un objet de la forme :
+ * {
+ *   arc: string|null,
+ *   clientName: string|null,
+ *   orderDate: string|null,              // "YYYY-MM-DD"
+ *   products: Array<{ pdfLabel: string, quantity: number }>
+ * }
+ *
+ * - arc : numéro d'ARC extrait de l'entête "ACCUSE DE RECEPTION ... n°"
+ * - clientName : nom du client (ligne située juste avant le code postal)
+ * - orderDate : date de commande convertie au format ISO
+ * - products : lignes produits (libellé tel que dans le PDF + quantité)
+ *
+ * @param {string} text - Contenu texte complet du PDF.
+ * @returns {{
+ *   arc: string|null,
+ *   clientName: string|null,
+ *   orderDate: string|null,
+ *   products: Array<{ pdfLabel: string, quantity: number }>
+ * }} Objet représentant la commande extraite.
  */
 function parseOrderFromPdfText(text) {
   const result = {
