@@ -1,10 +1,14 @@
+import AppLayout from "./components/layout/AppLayout.jsx";
+
 function App() {
   return (
-    <div className="min-h-screen bg-slate-100 flex items-center justify-center">
-      <h1 className="text-xl font-semibold">
-        Frontend initialisé – layout à venir
-      </h1>
-    </div>
+    <AppLayout>
+      <div className="p-6">
+        <h1 className="gf-h1">
+          Page en construction
+        </h1>
+      </div>
+    </AppLayout>
   );
 }
 
