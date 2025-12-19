@@ -1,7 +1,8 @@
+import { Outlet } from "react-router-dom";
 import Header from "./Header.jsx";
 import Sidebar from "./Sidebar.jsx";
 
-function AppLayout({ children }) {
+function AppLayout() {
   return (
     <div className="min-h-dvh bg-gf-bg text-gf-text overflow-hidden">
       <Header />
@@ -10,8 +11,8 @@ function AppLayout({ children }) {
         <Sidebar />
 
         <main className="flex-1 min-h-0 overflow-y-auto p-6">
-          <div className="min-h-full rounded-2xl border border-gf-border bg-gf-surface shadow-sm">
-            {children}
+          <div className="min-h-full rounded-2xl border border-gf-border bg-gf-surface shadow-sm p-6">
+            <Outlet />
           </div>
         </main>
       </div>
