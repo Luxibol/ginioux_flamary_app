@@ -1,4 +1,5 @@
 const { pool } = require("../config/db");
+const productsRepository = require("./products.repository");
 
 /**
  * Retourne la commande si un ARC existe déjà, sinon null.
@@ -91,7 +92,76 @@ async function createOrderWithLines(orderData, orderProducts) {
   }
 }
 
+async function createOrderFromPreview(
+  preview,
+  { createdByUserId = null } = {}
+) {
+  // preview = { arc, clientName, orderDate, products:[{pdfLabel, quantity}] }
+
+  if (!preview?.arc) {
+    const err = new Error("ARC manquant dans le preview");
+    err.code = 422;
+    throw err;
+  }
+
+  const existing = await findOrderByArc(preview.arc);
+  if (existing) {
+    return {
+      action: "skipped",
+      existingOrderId: existing.id,
+      arc: preview.arc,
+    };
+  }
+
+  const labels = (preview.products || [])
+    .map((p) => p.pdfLabel)
+    .filter(Boolean);
+  const products = await productsRepository.getProductsByPdfLabels(labels);
+
+  // Map pdf_label_exact -> productId
+  const map = new Map(products.map((p) => [p.pdf_label_exact, p.id]));
+
+  const missingLabels = [];
+  const orderProducts = [];
+
+  for (const p of preview.products || []) {
+    const productId = map.get(p.pdfLabel);
+    if (!productId) {
+      missingLabels.push(p.pdfLabel);
+      continue;
+    }
+    orderProducts.push({
+      productId,
+      quantity: p.quantity,
+    });
+  }
+
+  if (missingLabels.length > 0) {
+    const err = new Error(
+      "Produits introuvables en base pour certains libellés PDF."
+    );
+    err.code = 422;
+    err.missingLabels = missingLabels;
+    throw err;
+  }
+
+  const orderData = {
+    arc: preview.arc,
+    clientName: preview.clientName ?? null,
+    orderDate: preview.orderDate ?? null, // déjà ISO
+    pickupDate: null, // pas encore dans parsing
+    priority: "NORMAL", // On pourras le rendre modifiable depuis la modale
+    productionStatus: "A_PROD",
+    expeditionStatus: "NON_EXPEDIEE",
+    createdByUserId,
+  };
+
+  const orderId = await createOrderWithLines(orderData, orderProducts);
+  return { action: "created", orderId, arc: preview.arc };
+}
+
 module.exports = {
   findOrderByArc,
   createOrderWithLines,
+  createOrderFromPreview,
 };
