@@ -1,5 +1,16 @@
+/**
+ * Sidebar (navigation latérale) du layout "Bureau".
+ * - Définit les entrées du menu (routes + label + icône)
+ * - Utilise <NavLink> pour gérer l'état actif (styles + barre orange à droite)
+ */
 import { NavLink } from "react-router-dom";
-import { LayoutDashboard, ClipboardList, Truck, Paperclip, History } from "lucide-react";
+import {
+  LayoutDashboard,
+  ClipboardList,
+  Truck,
+  Paperclip,
+  History,
+} from "lucide-react";
 
 const menuItems = [
   { to: "/bureau", label: "Tableau de bord", icon: LayoutDashboard, end: true },
@@ -27,7 +38,9 @@ function Sidebar() {
                       "relative w-full h-11 px-3 rounded-xl text-left",
                       "flex items-center gap-3",
                       "text-sm hover:bg-gf-orange/10",
-                      isActive ? "bg-gf-orange/15 text-gf-orange font-medium" : "text-gf-text",
+                      isActive
+                        ? "bg-gf-orange/15 text-gf-orange font-medium"
+                        : "text-gf-text",
                     ].join(" ")
                   }
                 >

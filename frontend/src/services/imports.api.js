@@ -1,39 +1,57 @@
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "";
+/**
+ * API "imports PDF" :
+ * - previewImport : upload PDF -> preview + importId
+ * - confirmImport : valide la preview -> création commande
+ * - cancelImport : annule le preview côté serveur (nettoyage)
+ */
+import { apiFetch } from "./apiClient";
 
+/**
+ * Prévisualise l'import d'un PDF (parsing) sans écriture en base.
+ * ⚠️ Ne pas fixer Content-Type : le navigateur gère le boundary multipart/form-data.
+ * @param {File} file PDF à analyser
+ * @returns {Promise<any>}
+ */
 export async function previewImport(file) {
   const fd = new FormData();
   fd.append("file", file);
 
-  const res = await fetch(`${API_BASE}/pdf/preview`, {
+  return apiFetch("/pdf/preview", {
     method: "POST",
     body: fd,
   });
-
-  const data = await res.json().catch(() => ({}));
-
-  if (!res.ok) {
-    const err = new Error(data.error || "Erreur preview");
-    err.status = res.status;
-    err.data = data; // <= contient missingLabels
-    throw err;
-  }
-
-  return data;
 }
 
+/**
+ * Confirme l'import d'une preview (écriture en base).
+ * Cette fonction encapsule l'erreur pour renvoyer un format stable à l'UI : { ok, status, data }.
+ * @param {string} importId Identifiant de preview
+ * @param {{ preview?: object, internalComment?: string }} payload Données envoyées au backend
+ * @returns {Promise<{ok:boolean, status:number, data:any}>}
+ */
 export async function confirmImport(importId, payload) {
-  const res = await fetch(`${API_BASE}/pdf/${importId}/confirm`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload ?? {}),
-  });
+  try {
+    const data = await apiFetch(`/pdf/${importId}/confirm`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload ?? {}),
+    });
 
-  const data = await res.json().catch(() => ({}));
-
-  // On laisse le front décider selon le status
-  return { ok: res.ok, status: res.status, data };
+    return { ok: true, status: 200, data };
+  } catch (e) {
+    return {
+      ok: false,
+      status: e.status || 500,
+      data: e.data || { error: e.message || "Erreur confirm" },
+    };
+  }
 }
 
+/**
+ * Annule une preview (nettoyage côté serveur) si l'utilisateur ferme la modale.
+ * @param {string} importId Identifiant de preview
+ * @returns {Promise<any>}
+ */
 export async function cancelImport(importId) {
-  await fetch(`${API_BASE}/pdf/${importId}`, { method: "DELETE" });
+  return apiFetch(`/pdf/${importId}`, { method: "DELETE" });
 }

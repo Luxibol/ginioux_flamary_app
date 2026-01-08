@@ -1,3 +1,8 @@
+/**
+ * Routes de santé (health checks)
+ * - GET /health : vérifie que l'API répond
+ * - GET /health/db : vérifie la connectivité à la base de données
+ */
 const express = require("express");
 const { testConnection } = require("../config/db");
 

@@ -70,8 +70,9 @@ function parseOrderFromPdfText(text) {
   }
 
   const normalized = text.replace(/\r\n/g, "\n");
+  // pdf-parse renvoie parfois des retours Windows \r\n : on uniformise pour simplifier les regex et le split.
 
-  // --- ARC ---
+  // Extraction ARC : on cherche d'abord le bloc "ACCUSE DE RECEPTION ... n°", sinon fallback sur un "n° 123456" générique.
   const arcMatch =
     normalized.match(/ACCUSE DE RECEPTION[\s\S]*?n[°º]?\s*([0-9]{6,})/i) ||
     normalized.match(/\bn[°º]?\s*([0-9]{6,})/i);
@@ -80,7 +81,7 @@ function parseOrderFromPdfText(text) {
     result.arc = arcMatch[1];
   }
 
-  // --- Date de commande ---
+  // Extraction date : "COMMANDE DU JJ/MM/AAAA" (fallback sur "du JJ/MM/AAAA").
   const dateMatch =
     normalized.match(/COMMANDE DU\s+(\d{2}\/\d{2}\/\d{4})/i) ||
     normalized.match(/\bdu\s+(\d{2}\/\d{2}\/\d{4})/i);
@@ -89,13 +90,13 @@ function parseOrderFromPdfText(text) {
     result.orderDate = toIsoDate(dateMatch[1]);
   }
 
-  // --- Lignes du texte ---
+  // On transforme le texte en tableau de lignes propres (trim) pour parcourir plus facilement.
   const lines = normalized
     .split("\n")
     .map((l) => l.trim())
     .filter((l) => l.length > 0);
 
-  // --- Nom client (ligne avant le CP/ville) ---
+  // Heuristique nom client : on repère la ligne "CP + ville" (ex: 15000 AURILLAC) et on prend la ligne juste avant.
   for (let i = 1; i < lines.length; i++) {
     if (/\d{5}\s*\S+/i.test(lines[i])) {
       result.clientName = lines[i - 1];
@@ -103,9 +104,11 @@ function parseOrderFromPdfText(text) {
     }
   }
 
-  // --- Produits ---
-  //
-  // Pattern quantité + montants sur une seule ligne, ex : "6,00445,8074,30"
+  // Heuristique lignes produits : dans ce PDF, une ligne "quantité + 2 montants"
+  // est suivie de la ligne libellé produit, puis d'une ligne souvent égale à "1".
+  // On détecte la ligne quantité via regex, puis on lit le libellé juste après.
+
+  // Pattern : "quantité + 2 montants" sur la même ligne, ex : "6,00 445,80 74,30"
   const qtyLineRegex = /^(\d+,\d{2})\s*\d+,\d{2}\s*\d+,\d{2}$/;
 
   for (let i = 0; i < lines.length; i++) {
@@ -113,15 +116,15 @@ function parseOrderFromPdfText(text) {
     const m = line.match(qtyLineRegex);
     if (!m) continue;
 
-    const quantityStr = m[1]; // "6,00"
+    const quantityStr = m[1];
     const quantity = parseFloat(quantityStr.replace(",", "."));
 
     const labelLine = lines[i + 1] || "";
     const pdfLabel = labelLine.trim();
 
-    // Filtre les libellés qu'on ne veut pas garder
+    // On ignore certaines lignes (transport/REP...) mais on avance quand même l'index
+    // pour sauter le libellé + la ligne suivante et rester synchronisé sur le pattern.
     if (!pdfLabel || shouldIgnoreLabel(pdfLabel)) {
-      // on saute quand même les deux lignes suivantes pour rester aligné
       i += 2;
       continue;
     }
@@ -131,7 +134,7 @@ function parseOrderFromPdfText(text) {
       quantity,
     });
 
-    // On saute la ligne suivante (libellé) + la suivante (le "1")
+    // On saute : ligne libellé + ligne suivante (souvent "1") pour se repositionner sur la prochaine quantité.
     i += 2;
   }
 

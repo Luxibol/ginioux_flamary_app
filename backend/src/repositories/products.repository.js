@@ -1,17 +1,20 @@
+/**
+ * Repository produits : accès BDD au catalogue produits.
+ * Utilisé pour résoudre les libellés PDF exacts et pour l'autocomplete.
+ */
 const { pool } = require("../config/db");
 
 /**
- * Récupère les produits actifs dont le libellé PDF exact est dans la liste.
- *
- * @param {string[]} labels - Liste de libellés PDF (pdfLabel) venant du parsing.
- * @returns {Promise<Array>} Tableau d'objets produits.
+ * Recherche de produits par libellé PDF exact (LIKE).
+ * @param {string} q Texte recherché.
+ * @param {number} limit Nombre max de résultats (borné).
  */
-
 async function getProductsByPdfLabels(labels) {
-  if (!labels || labels.length === 0) return [];
+  const norm = (s) => String(s ?? "").trim();
+  if (!Array.isArray(labels) || labels.length === 0) return [];
 
-  // On déduplique pour éviter un IN trop long
-  const unique = Array.from(new Set(labels));
+  const unique = Array.from(new Set(labels.map(norm).filter(Boolean)));
+  if (unique.length === 0) return [];
 
   const placeholders = unique.map(() => "?").join(", ");
   const sql = `
@@ -22,9 +25,31 @@ async function getProductsByPdfLabels(labels) {
   `;
 
   const [rows] = await pool.query(sql, unique);
-  return rows; // tableau d'objets produits
+  return rows;
+}
+
+async function searchProducts(q, limit = 10) {
+  const like = `%${q}%`;
+  const lim = Math.min(Math.max(parseInt(limit, 10) || 10, 1), 20);
+
+  const [rows] = await pool.query(
+    `
+    SELECT
+      id,
+      pdf_label_exact,
+      weight_per_unit_kg
+    FROM products_catalog
+    WHERE pdf_label_exact LIKE ?
+    ORDER BY pdf_label_exact ASC
+    LIMIT ?
+    `,
+    [like, lim]
+  );
+
+  return rows;
 }
 
 module.exports = {
   getProductsByPdfLabels,
+  searchProducts,
 };
