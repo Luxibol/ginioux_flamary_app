@@ -1,4 +1,12 @@
-// src/routes/pdf.routes.js
+/**
+ * Routes d'import PDF
+ * - /pdf/preview : analyse le PDF et renvoie une prévisualisation (aucune écriture en base)
+ * - /pdf/:importId/confirm : valide la prévisualisation et crée la commande en base
+ * - /pdf/:importId (DELETE) : annule une prévisualisation
+ *
+ * Note : les prévisualisations sont stockées en mémoire (Map) avec TTL.
+ */
+
 const express = require("express");
 const multer = require("multer");
 const pdfParse = require("pdf-parse");
@@ -11,6 +19,97 @@ const router = express.Router();
 
 const PREVIEW_TTL_MS = 15 * 60 * 1000; // 15 minutes
 const previewStore = new Map();
+
+const norm = (s) => String(s ?? "").trim();
+
+const ALLOWED_PRIORITIES = ["URGENT", "INTERMEDIAIRE", "NORMAL"];
+
+function isIsoDate(v) {
+  return typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v);
+}
+
+function asInt(v) {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return null;
+  return Math.trunc(n);
+}
+
+/**
+ * Valide et normalise la prévisualisation envoyée par le front.
+ * Objectif : éviter d'écrire en base des données mal formées ou incohérentes.
+ * - ARC obligatoire
+ * - orderDate au format YYYY-MM-DD
+ * - priorité dans une whitelist
+ * - products : tableau, pdfLabel obligatoire, quantity entier >= 0 (0 ignoré)
+ */
+function sanitizePreview(input) {
+  const src = input || {};
+
+  const arc = norm(src.arc);
+  if (!arc) return { ok: false, error: "ARC invalide" };
+
+  const orderDate = src.orderDate;
+  if (!isIsoDate(orderDate)) {
+    return { ok: false, error: "orderDate invalide (YYYY-MM-DD attendu)" };
+  }
+
+  const clientName =
+    src.clientName !== undefined ? norm(src.clientName) || null : null;
+
+  let priority = "NORMAL";
+  if (
+    src.priority !== undefined &&
+    src.priority !== null &&
+    src.priority !== ""
+  ) {
+    const p = String(src.priority).toUpperCase();
+    if (!ALLOWED_PRIORITIES.includes(p))
+      return { ok: false, error: "Priorité invalide" };
+    priority = p;
+  }
+
+  if (!Array.isArray(src.products)) {
+    return { ok: false, error: "products doit être un tableau" };
+  }
+
+  const products = src.products.map((p) => ({
+    pdfLabel: norm(p.pdfLabel),
+    quantity: asInt(p.quantity),
+  }));
+
+  for (const p of products) {
+    if (!p.pdfLabel)
+      return { ok: false, error: "pdfLabel manquant sur une ligne" };
+    if (p.quantity === null || p.quantity < 0) {
+      return { ok: false, error: "Quantité invalide (entier >= 0 attendu)" };
+    }
+  }
+
+  // On retire les lignes à quantité 0 (équivalent à "supprimé" côté import)
+  const cleanedProducts = products.filter((p) => p.quantity > 0);
+  if (cleanedProducts.length === 0) {
+    return {
+      ok: false,
+      error: "Au moins une ligne produit avec quantité > 0 est requise",
+    };
+  }
+
+  return {
+    ok: true,
+    value: { arc, clientName, orderDate, priority, products: cleanedProducts },
+  };
+}
+
+// Nettoyage périodique des previews expirées (évite que la Map grossisse indéfiniment)
+function cleanupExpiredPreviews() {
+  const now = Date.now();
+  for (const [id, item] of previewStore.entries()) {
+    if (now > item.expiresAt) previewStore.delete(id);
+  }
+}
+
+// Toutes les 60s : purge des previews expirées (n'empêche pas le process de se fermer)
+setInterval(cleanupExpiredPreviews, 60 * 1000).unref?.();
 
 function newImportId() {
   if (crypto.randomUUID) return crypto.randomUUID();
@@ -46,7 +145,8 @@ const upload = multer({
 /**
  * POST /pdf/preview
  * form-data: file (PDF)
- * -> retourne importId + preview (aucune écriture BDD)
+ * Retour : importId + preview + meta
+ * Important : aucune écriture en base ici (preview uniquement).
  */
 router.post("/preview", upload.single("file"), async (req, res) => {
   try {
@@ -62,22 +162,23 @@ router.post("/preview", upload.single("file"), async (req, res) => {
 
     const preview = parseOrderFromPdfText(text);
     const labels = (preview.products || [])
-      .map((p) => p.pdfLabel)
+      .map((p) => norm(p.pdfLabel))
       .filter(Boolean);
-    const products = await productsRepository.getProductsByPdfLabels(labels);
-    const found = new Set(products.map((p) => p.pdf_label_exact));
 
-    const missingLabels = labels.filter((l) => !found.has(l));
+    const products = await productsRepository.getProductsByPdfLabels(labels);
+    const found = new Set(products.map((p) => norm(p.pdf_label_exact)));
+
+    const missingLabels = labels.filter((l) => !found.has(norm(l)));
 
     if (missingLabels.length > 0) {
       return res.status(422).json({
         error: "Produits introuvables en base pour certains libellés PDF.",
         missingLabels,
-        preview, // voir ce que le PDF contient
+        preview,
       });
     }
 
-    // Preview "vide" => parsing impossible
+    // Si le parsing ne remonte pas d'ARC, on considère le PDF non exploitable
     if (!preview || !preview.arc) {
       return res.status(422).json({
         error: "Parsing impossible (ARC introuvable).",
@@ -85,7 +186,7 @@ router.post("/preview", upload.single("file"), async (req, res) => {
       });
     }
 
-    // Dédoublonnage: on check l'ARC maintenant pour afficher un warning côté front
+    // Détection de doublon : on avertit le front si une commande avec le même ARC existe déjà
     const existing = await ordersRepository.findOrderByArc(preview.arc);
 
     const importId = storePreview({
@@ -124,8 +225,9 @@ router.post("/preview", upload.single("file"), async (req, res) => {
 
 /**
  * POST /pdf/:importId/confirm
- * body JSON: { preview, internalComment }
- * -> écrit en BDD UNIQUEMENT ici
+ * body: { preview, internalComment }
+ * Écrit en base uniquement ici.
+ * - preview est entièrement modifiable côté front, mais re-validé côté backend (sanitizePreview).
  */
 router.post("/:importId/confirm", async (req, res) => {
   try {
@@ -136,19 +238,22 @@ router.post("/:importId/confirm", async (req, res) => {
       return res.status(404).json({ error: "Preview introuvable ou expirée" });
     }
 
-    // On prend la preview envoyée par le front (modifiée) si présente, sinon celle stockée
-    const preview = req.body?.preview ?? stored.preview;
+    const incomingPreview = req.body?.preview;
+    const sanitized = sanitizePreview(incomingPreview);
+
+    if (!sanitized.ok) {
+      return res.status(400).json({ error: sanitized.error });
+    }
+
+    const preview = sanitized.value;
     const internalComment = req.body?.internalComment ?? null;
 
-    // IMPORTANT: ici seulement on écrit en BDD
     const result = await ordersRepository.createOrderFromPreview(preview, {
-      createdByUserId: null, // plus tard mettre req.user.id
+      createdByUserId: null,
     });
 
-    // Nettoyage du preview
     previewStore.delete(importId);
 
-    // Si doublon => skipped
     if (result.action === "skipped") {
       return res.status(409).json({
         status: "confirmed",
@@ -164,7 +269,7 @@ router.post("/:importId/confirm", async (req, res) => {
       action: "created",
       orderId: result.orderId,
       arc: result.arc,
-      internalCommentSaved: Boolean(internalComment), // (utilisé plus tard)
+      internalCommentSaved: Boolean(internalComment), // internalComment : prévu pour plus tard (ex: table comments), non persisté actuellement
     });
   } catch (err) {
     console.error("Erreur confirm import:", err);
@@ -177,7 +282,7 @@ router.post("/:importId/confirm", async (req, res) => {
       });
     }
 
-    res
+    return res
       .status(500)
       .json({ error: "Erreur lors de la validation", details: err.message });
   }
@@ -185,7 +290,7 @@ router.post("/:importId/confirm", async (req, res) => {
 
 /**
  * DELETE /pdf/:importId
- * -> annule une preview (si l’utilisateur ferme la modale)
+ * Annule une prévisualisation (ex: fermeture de la modale côté front).
  */
 router.delete("/:importId", (req, res) => {
   previewStore.delete(req.params.importId);

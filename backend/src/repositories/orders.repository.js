@@ -1,3 +1,7 @@
+/**
+ * Repository commandes : accès BDD aux commandes et à leurs lignes.
+ * Inclut des opérations transactionnelles (création, suppression, mise à jour avec synchronisation des lignes).
+ */
 const { pool } = require("../config/db");
 const productsRepository = require("./products.repository");
 
@@ -20,17 +24,16 @@ async function findOrderByArc(arc) {
  * @param {object} orderData - Données de la commande à créer.
  * @param {string} orderData.arc
  * @param {string} orderData.clientName
- * @param {string} orderData.orderDate       - Date de commande au format YYYY-MM-DD.
- * @param {string|null} orderData.pickupDate - Date d'enlèvement au format YYYY-MM-DD ou null.
- * @param {string} orderData.priority        - "URGENT" | "INTERMEDIAIRE" | "NORMAL".
+ * @param {string} orderData.orderDate       - Date de commande
+ * @param {string|null} orderData.pickupDate - Date d'enlèvement
+ * @param {string} orderData.priority
  * @param {string} orderData.productionStatus
  * @param {string} orderData.expeditionStatus
  * @param {number|null} orderData.createdByUserId
  * @param {Array<{productId: number, quantity: number}>} orderProducts - Lignes produits de la commande.
- *
+ * Transaction : création de la commande + insertion des lignes (order_products).
  * @returns {Promise<number>} L'id de la commande créée.
  */
-
 async function createOrderWithLines(orderData, orderProducts) {
   const connection = await pool.getConnection();
 
@@ -54,13 +57,13 @@ async function createOrderWithLines(orderData, orderProducts) {
     const [orderResult] = await connection.query(insertOrderSql, [
       orderData.arc,
       orderData.clientName,
-      orderData.orderDate, // "YYYY-MM-DD"
+      orderData.orderDate,
       orderData.pickupDate || null,
       orderData.priority, // "URGENT" | "INTERMEDIAIRE" | "NORMAL"
-      orderData.productionStatus, // ex : "A_PROD"
-      orderData.expeditionStatus, // ex : "NON_EXPEDIEE"
-      0, // is_archived (0 = non archivée par défaut)
-      orderData.createdByUserId || null, // created_by (peut être null pour l'instant)
+      orderData.productionStatus,
+      orderData.expeditionStatus,
+      0,
+      orderData.createdByUserId || null,
     ]);
 
     const orderId = orderResult.insertId;
@@ -69,11 +72,9 @@ async function createOrderWithLines(orderData, orderProducts) {
       const values = orderProducts.map((p) => [
         orderId,
         p.productId,
-        p.quantity,
+        Math.trunc(Number(p.quantity ?? 0)),
       ]);
 
-      // INSERT dans order_products : (order_id, product_id, quantity_ordered)
-      // Les colonnes de timestamps sont gérées par la BDD (valeurs par défaut).
       const insertLinesSql = `
         INSERT INTO order_products (order_id, product_id, quantity_ordered)
         VALUES ?
@@ -92,48 +93,68 @@ async function createOrderWithLines(orderData, orderProducts) {
   }
 }
 
+/**
+ * Crée une commande à partir d'une prévisualisation (import PDF).
+ * - Valide ARC / date / quantités
+ * - Résout les produits via le libellé PDF exact (products_catalog)
+ * - Refuse si des libellés sont inconnus (422) ou si l'ARC existe déjà (skipped)
+ */
 async function createOrderFromPreview(
   preview,
   { createdByUserId = null } = {}
 ) {
-  // preview = { arc, clientName, orderDate, products:[{pdfLabel, quantity}] }
+  const norm = (s) => String(s ?? "").trim();
 
-  if (!preview?.arc) {
+  if (!preview?.arc || !norm(preview.arc)) {
     const err = new Error("ARC manquant dans le preview");
     err.code = 422;
     throw err;
   }
 
-  const existing = await findOrderByArc(preview.arc);
+  const arc = norm(preview.arc);
+
+  const existing = await findOrderByArc(arc);
   if (existing) {
     return {
       action: "skipped",
       existingOrderId: existing.id,
-      arc: preview.arc,
+      arc,
     };
   }
 
-  const labels = (preview.products || [])
-    .map((p) => p.pdfLabel)
-    .filter(Boolean);
+  if (!preview?.orderDate) {
+    const err = new Error("Date de commande manquante dans le preview.");
+    err.code = 422;
+    throw err;
+  }
+
+  const productsList = Array.isArray(preview.products) ? preview.products : [];
+
+  const labels = productsList.map((p) => norm(p.pdfLabel)).filter(Boolean);
   const products = await productsRepository.getProductsByPdfLabels(labels);
 
-  // Map pdf_label_exact -> productId
-  const map = new Map(products.map((p) => [p.pdf_label_exact, p.id]));
+  const map = new Map(products.map((p) => [norm(p.pdf_label_exact), p.id]));
 
   const missingLabels = [];
   const orderProducts = [];
 
-  for (const p of preview.products || []) {
-    const productId = map.get(p.pdfLabel);
+  for (const p of productsList) {
+    const label = norm(p.pdfLabel);
+    const productId = map.get(label);
+
     if (!productId) {
-      missingLabels.push(p.pdfLabel);
+      if (label) missingLabels.push(label);
       continue;
     }
-    orderProducts.push({
-      productId,
-      quantity: p.quantity,
-    });
+
+    const qty = Math.trunc(Number(p.quantity ?? 0));
+    if (!Number.isFinite(qty) || qty < 0) {
+      const err = new Error("Quantité invalide dans le preview.");
+      err.code = 422;
+      throw err;
+    }
+
+    orderProducts.push({ productId, quantity: qty });
   }
 
   if (missingLabels.length > 0) {
@@ -146,22 +167,346 @@ async function createOrderFromPreview(
   }
 
   const orderData = {
-    arc: preview.arc,
+    arc,
     clientName: preview.clientName ?? null,
-    orderDate: preview.orderDate ?? null, // déjà ISO
-    pickupDate: null, // pas encore dans parsing
-    priority: "NORMAL", // On pourras le rendre modifiable depuis la modale
+    orderDate: preview.orderDate, // ISO attendu
+    pickupDate: null,
+    priority: preview.priority || "NORMAL",
     productionStatus: "A_PROD",
     expeditionStatus: "NON_EXPEDIEE",
     createdByUserId,
   };
 
   const orderId = await createOrderWithLines(orderData, orderProducts);
-  return { action: "created", orderId, arc: preview.arc };
+  return { action: "created", orderId, arc };
+}
+
+// Filtre d'état "métier" calculé à partir des statuts production/expédition.
+async function findActiveOrders({
+  q = null,
+  priority = null,
+  state = null,
+  limit = 50,
+  offset = 0,
+} = {}) {
+  const where = ["o.is_archived = 0"];
+  const params = [];
+
+  if (q) {
+    where.push("(o.arc LIKE ? OR o.client_name LIKE ?)");
+    params.push(`%${q}%`, `%${q}%`);
+  }
+
+  if (priority) {
+    where.push("o.priority = ?");
+    params.push(priority);
+  }
+
+  if (state === "PARTIELLEMENT_EXPEDIEE") {
+    where.push("o.expedition_status = 'EXP_PARTIELLE'");
+  } else if (state === "EXPEDIEE") {
+    where.push("o.expedition_status = 'EXP_COMPLETE'");
+  } else if (state === "PRETE_A_EXPEDIER") {
+    where.push(
+      "o.production_status = 'PROD_COMPLETE' AND o.expedition_status = 'NON_EXPEDIEE'"
+    );
+  } else if (state === "EN_PREPARATION") {
+    where.push(
+      "o.expedition_status = 'NON_EXPEDIEE' AND o.production_status IN ('A_PROD', 'PROD_PARTIELLE')"
+    );
+  }
+
+  const sql = `
+    SELECT
+      o.id,
+      o.arc,
+      o.client_name,
+      o.order_date,
+      o.pickup_date,
+      o.priority,
+      o.production_status,
+      o.expedition_status,
+      o.created_at,
+      CASE
+        WHEN o.expedition_status = 'EXP_PARTIELLE' THEN 'Partiellement expédiée'
+        WHEN o.expedition_status = 'EXP_COMPLETE' THEN 'Expédiée'
+        WHEN o.production_status IN ('A_PROD', 'PROD_PARTIELLE') THEN 'En préparation'
+        WHEN o.production_status = 'PROD_COMPLETE' AND o.expedition_status = 'NON_EXPEDIEE' THEN 'Prête à expédier'
+        ELSE '—'
+      END AS order_state_label,
+      CASE
+        WHEN o.expedition_status = 'EXP_PARTIELLE' THEN 'PARTIELLEMENT_EXPEDIEE'
+        WHEN o.expedition_status = 'EXP_COMPLETE' THEN 'EXPEDIEE'
+        WHEN o.production_status IN ('A_PROD', 'PROD_PARTIELLE') THEN 'EN_PREPARATION'
+        WHEN o.production_status = 'PROD_COMPLETE' AND o.expedition_status = 'NON_EXPEDIEE' THEN 'PRETE_A_EXPEDIER'
+        ELSE 'UNKNOWN'
+      END AS order_state
+    FROM orders o
+    WHERE ${where.join(" AND ")}
+    ORDER BY o.created_at DESC
+    LIMIT ? OFFSET ?
+  `;
+
+  params.push(limit, offset);
+
+  const [rows] = await pool.query(sql, params);
+  return rows;
+}
+
+async function findOrderById(id) {
+  const [rows] = await pool.query(
+    `
+    SELECT
+      id,
+      arc,
+      client_name,
+      order_date,
+      pickup_date,
+      priority,
+      production_status,
+      expedition_status,
+      is_archived,
+      created_by,
+      created_at,
+      updated_at
+    FROM orders
+    WHERE id = ?
+    LIMIT 1
+    `,
+    [id]
+  );
+
+  return rows[0] || null;
+}
+
+async function findOrderLinesByOrderId(orderId) {
+  const [rows] = await pool.query(
+    `
+    SELECT
+      op.id,
+      op.order_id,
+      op.product_id,
+      COALESCE(NULLIF(op.product_label_pdf, ''), pc.pdf_label_exact) AS label,
+      pc.weight_per_unit_kg,
+      op.quantity_ordered,
+      op.quantity_ready,
+      op.quantity_shipped
+    FROM order_products op
+    JOIN products_catalog pc ON pc.id = op.product_id
+    WHERE op.order_id = ?
+    ORDER BY op.id ASC
+    `,
+    [orderId]
+  );
+
+  return rows;
+}
+
+async function updateOrderMetaById(id, { priority, pickupDate, orderDate }) {
+  const sets = [];
+  const params = [];
+
+  if (priority !== undefined) {
+    sets.push("priority = ?");
+    params.push(priority);
+  }
+
+  if (pickupDate !== undefined) {
+    sets.push("pickup_date = ?");
+    params.push(pickupDate);
+  }
+
+  if (orderDate !== undefined) {
+    sets.push("order_date = ?");
+    params.push(orderDate);
+  }
+
+  if (sets.length === 0) return false;
+
+  const sql = `
+    UPDATE orders
+    SET ${sets.join(", ")}
+    WHERE id = ?
+    LIMIT 1
+  `;
+
+  params.push(id);
+
+  const [result] = await pool.query(sql, params);
+  return result.affectedRows > 0;
+}
+
+// Transaction : suppression des lignes puis de la commande (évite les orphelins).
+async function deleteOrderById(orderId) {
+  const connection = await pool.getConnection();
+
+  try {
+    await connection.beginTransaction();
+
+    await connection.query("DELETE FROM order_products WHERE order_id = ?", [
+      orderId,
+    ]);
+
+    const [result] = await connection.query(
+      "DELETE FROM orders WHERE id = ? LIMIT 1",
+      [orderId]
+    );
+
+    await connection.commit();
+    return result.affectedRows > 0;
+  } catch (err) {
+    await connection.rollback();
+    throw err;
+  } finally {
+    connection.release();
+  }
+}
+
+/**
+ * Met à jour une commande et synchronise ses lignes dans une transaction.
+ * Stratégie : le payload `lines` représente l'état attendu :
+ * - lignes absentes => supprimées (si autorisé)
+ * - lignes avec id => mises à jour
+ * - lignes sans id => insérées
+ */
+async function updateOrderAndLinesById(orderId, patch = {}, lines = null) {
+  const connection = await pool.getConnection();
+
+  try {
+    await connection.beginTransaction();
+
+    const [orderRows] = await connection.query(
+      "SELECT id FROM orders WHERE id = ? LIMIT 1",
+      [orderId]
+    );
+    if (orderRows.length === 0) throw new Error("Commande introuvable");
+
+    const sets = [];
+    const params = [];
+
+    if (patch.arc !== undefined) {
+      sets.push("arc = ?");
+      params.push(patch.arc);
+    }
+    if (patch.clientName !== undefined) {
+      sets.push("client_name = ?");
+      params.push(patch.clientName);
+    }
+    if (patch.orderDate !== undefined) {
+      sets.push("order_date = ?");
+      params.push(patch.orderDate);
+    }
+    if (patch.priority !== undefined) {
+      sets.push("priority = ?");
+      params.push(patch.priority);
+    }
+    if (patch.pickupDate !== undefined) {
+      sets.push("pickup_date = ?");
+      params.push(patch.pickupDate);
+    }
+
+    if (sets.length > 0) {
+      params.push(orderId);
+      const [r] = await connection.query(
+        `UPDATE orders SET ${sets.join(", ")} WHERE id = ? LIMIT 1`,
+        params
+      );
+      if (r.affectedRows === 0) throw new Error("Commande introuvable");
+    }
+
+    if (Array.isArray(lines)) {
+      const [existing] = await connection.query(
+        `SELECT id, product_id, quantity_ready, quantity_shipped
+         FROM order_products
+         WHERE order_id = ?`,
+        [orderId]
+      );
+
+      const existingById = new Map(existing.map((x) => [x.id, x]));
+      const incomingIds = new Set(lines.filter((l) => l.id).map((l) => l.id));
+
+      for (const ex of existing) {
+        if (!incomingIds.has(ex.id)) {
+          // Règle métier : interdiction de supprimer une ligne déjà en préparation / expédiée.
+          if (
+            Number(ex.quantity_ready) > 0 ||
+            Number(ex.quantity_shipped) > 0
+          ) {
+            throw new Error(
+              "Impossible de supprimer une ligne déjà en préparation/expédiée."
+            );
+          }
+
+          const [del] = await connection.query(
+            `DELETE FROM order_products WHERE id = ? AND order_id = ? LIMIT 1`,
+            [ex.id, orderId]
+          );
+          if (del.affectedRows === 0)
+            throw new Error("Suppression ligne impossible");
+        }
+      }
+
+      for (const l of lines) {
+        if (l.id) {
+          const ex = existingById.get(l.id);
+          if (!ex) throw new Error("Ligne inconnue (id invalide).");
+
+          const ready = Number(ex.quantity_ready || 0);
+          const shipped = Number(ex.quantity_shipped || 0);
+
+          if (l.quantity < ready || l.quantity < shipped) {
+            throw new Error(
+              "Quantité commandée ne peut pas être < quantité prête/expédiée."
+            );
+          }
+
+          // Règle métier : produit non modifiable si la ligne a déjà du "ready" ou "shipped".
+          if (
+            Number(ex.product_id) !== Number(l.productId) &&
+            (ready > 0 || shipped > 0)
+          ) {
+            throw new Error(
+              "Impossible de remplacer un produit sur une ligne déjà en préparation/expédiée."
+            );
+          }
+
+          const [up] = await connection.query(
+            `UPDATE order_products
+             SET product_id = ?, quantity_ordered = ?
+             WHERE id = ? AND order_id = ?
+             LIMIT 1`,
+            [l.productId, l.quantity, l.id, orderId]
+          );
+          if (up.affectedRows === 0)
+            throw new Error("Mise à jour ligne impossible");
+        } else {
+          await connection.query(
+            `INSERT INTO order_products (order_id, product_id, quantity_ordered)
+             VALUES (?, ?, ?)`,
+            [orderId, l.productId, l.quantity]
+          );
+        }
+      }
+    }
+
+    await connection.commit();
+    return true;
+  } catch (err) {
+    await connection.rollback();
+    throw err;
+  } finally {
+    connection.release();
+  }
 }
 
 module.exports = {
   findOrderByArc,
+  findActiveOrders,
+  findOrderById,
+  findOrderLinesByOrderId,
   createOrderWithLines,
   createOrderFromPreview,
+  updateOrderMetaById,
+  deleteOrderById,
+  updateOrderAndLinesById,
 };
