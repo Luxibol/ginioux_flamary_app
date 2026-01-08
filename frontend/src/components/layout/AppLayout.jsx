@@ -1,3 +1,9 @@
+/**
+ * Layout global de l’application.
+ * - Affiche le Header + Sidebar
+ * - Réserve une zone centrale pour les pages via <Outlet />
+ * - Gère la hauteur “plein écran” + scroll uniquement dans le contenu (<main>)
+ */
 import { Outlet } from "react-router-dom";
 import Header from "./Header.jsx";
 import Sidebar from "./Sidebar.jsx";
