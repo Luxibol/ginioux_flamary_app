@@ -18,6 +18,9 @@ import DashboardProductionPage from "./pages/production/DashboardProductionPage.
 import ProductionOrdersPage from "./pages/production/ProductionOrdersPage.jsx";
 import ProductionShipmentsPage from "./pages/production/ProductionShipmentsPage.jsx";
 
+import AdminDashboardPage from "./pages/admin/AdminDashboardPage.jsx";
+import AdminManagementPage from "./pages/admin/AdminManagementPage.jsx";
+
 export const router = createBrowserRouter([
   {
     element: <AppLayout />,
@@ -42,6 +45,14 @@ export const router = createBrowserRouter([
           { index: true, element: <DashboardProductionPage /> },
           { path: "commandes", element: <ProductionOrdersPage /> },
           { path: "expeditions", element: <ProductionShipmentsPage /> },
+        ],
+      },
+
+      {
+        path: "/admin",
+        children: [
+          { index: true, element: <AdminDashboardPage /> },
+          { path: "gestion", element: <AdminManagementPage /> },
         ],
       },
     ],
