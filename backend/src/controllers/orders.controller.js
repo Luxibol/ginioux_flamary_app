@@ -60,4 +60,32 @@ async function getActiveOrders(req, res) {
   }
 }
 
-module.exports = { getActiveOrders };
+/**
+ * POST /orders/:id/production-validate
+ * Valide la production d'une commande (si PROD_COMPLETE).
+ */
+async function postProductionValidate(req, res) {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id)) {
+      return res.status(400).json({ error: "ID invalide" });
+    }
+
+    const ok = await ordersRepository.validateProduction(id);
+    if (!ok) {
+      // soit commande inexistante, soit pas PROD_COMPLETE, soit déjà validée
+      return res.status(400).json({
+        error:
+          "Validation impossible (commande inexistante, non complète ou déjà validée).",
+      });
+    }
+
+    const order = await ordersRepository.findOrderById(id);
+    return res.json({ status: "validated", order });
+  } catch (err) {
+    console.error("POST /orders/:id/production-validate error:", err);
+    return res.status(500).json({ error: "Erreur validation production." });
+  }
+}
+
+module.exports = { getActiveOrders, postProductionValidate };
