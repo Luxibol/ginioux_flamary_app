@@ -56,6 +56,16 @@ function sanitizePreview(input) {
   const clientName =
     src.clientName !== undefined ? norm(src.clientName) || null : null;
 
+  // pickupDate : optionnelle, null ou ISO YYYY-MM-DD
+  let pickupDate = null;
+  if (src.pickupDate !== undefined) {
+    const v = src.pickupDate;
+    if (v === null || v === "") pickupDate = null;
+    else if (!isIsoDate(v)) {
+      return { ok: false, error: "pickupDate invalide (YYYY-MM-DD attendu)" };
+    } else pickupDate = v;
+  }
+
   let priority = "NORMAL";
   if (
     src.priority !== undefined &&
@@ -96,7 +106,14 @@ function sanitizePreview(input) {
 
   return {
     ok: true,
-    value: { arc, clientName, orderDate, priority, products: cleanedProducts },
+    value: {
+      arc,
+      clientName,
+      orderDate,
+      pickupDate,
+      priority,
+      products: cleanedProducts,
+    },
   };
 }
 

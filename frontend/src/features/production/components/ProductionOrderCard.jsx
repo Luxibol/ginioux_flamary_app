@@ -38,16 +38,26 @@ function ProductionOrderCard({
   onMarkAllReady,
   onFinishProduction,
   onAddComment,
+  statusLabelOverride = null,
+  statusKeyOverride = null,
+  // optionnels
+  stepperLabel = "Prêts",
+  markAllLabel = "Tout marquer prêt",
+  markAllDisabled = false,
+  primaryLabel = "Production terminée",
+  primaryDisabled = null,
+  onPrimaryAction = null,
 }) {
   const [commentsOpen, setCommentsOpen] = useState(false);
 
-  const unreadCount = order.unreadCount ?? 0;
-  const hasComments = (order.comments?.length ?? 0) > 0;
+  const unreadCount = order?.unreadCount ?? 0;
+  const commentsCount = order?.comments?.length ?? 0;
+  const hasComments = commentsCount > 0;
 
   const commentsRef = useRef(null);
 
   function openCardAndScrollToComments() {
-    if (!expanded) onToggle();
+    if (!expanded) onToggle?.();
     setCommentsOpen(true);
 
     requestAnimationFrame(() => {
@@ -58,13 +68,19 @@ function ProductionOrderCard({
     });
   }
 
-  const groups = useMemo(() => order.groups ?? [], [order.groups]);
+  const groups = useMemo(() => order?.groups ?? [], [order?.groups]);
+  const statusKey = statusKeyOverride ?? order?.status;
 
   const allReady = useMemo(() => {
     return groups.every((g) =>
-      g.lines.every((l) => (readyByLineId[l.id] ?? 0) >= l.total)
+      g.lines.every((l) => (readyByLineId?.[l.id] ?? 0) >= l.total)
     );
   }, [groups, readyByLineId]);
+
+  const effectivePrimaryDisabled =
+    primaryDisabled !== null ? primaryDisabled : !allReady;
+
+  const effectivePrimaryAction = onPrimaryAction ?? onFinishProduction;
 
   return (
     <section className="rounded-2xl border border-gf-border bg-gf-surface shadow-sm overflow-hidden">
@@ -74,39 +90,43 @@ function ProductionOrderCard({
         tabIndex={0}
         onClick={onToggle}
         onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") onToggle();
+          if (e.key === "Enter") onToggle?.();
+          if (e.key === " ") {
+            e.preventDefault();
+            onToggle?.();
+          }
         }}
         className="w-full text-left px-4 py-3 flex items-start gap-3"
       >
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between gap-2">
-            <h2 className="font-semibold text-sm truncate">{order.company}</h2>
+            <h2 className="font-semibold text-sm truncate">{order?.company}</h2>
 
             <div className="flex items-center gap-2 shrink-0">
               <span className="inline-flex items-center gap-2 text-xs text-gf-text">
                 <span
                   className={[
                     "h-2.5 w-2.5 rounded-full",
-                    dotClassByStatus(order.status),
+                    dotClassByStatus(statusKey),
                   ].join(" ")}
                 />
-                {labelByStatus(order.status)}
+                {statusLabelOverride ?? labelByStatus(statusKey)}
               </span>
             </div>
           </div>
 
           <div className="mt-1 text-xs text-gf-text">
-            N° ARC <span className="text-gf-muted">{order.arc}</span>
+            N° ARC <span className="text-gf-muted">{order?.arc}</span>
           </div>
 
           <div className="mt-0.5 text-xs text-gf-muted flex items-center gap-2 flex-wrap">
-            <span>Enlèvement : {order.pickupDate}</span>
-            <span className={priorityClass(order.priority)}>
-              - {order.priorityLabel}
+            <span>Enlèvement : {order?.pickupDate ?? "—"}</span>
+            <span className={priorityClass(order?.priority)}>
+              - {order?.priorityLabel}
             </span>
           </div>
 
-          <div className="mt-0.5 text-xs text-gf-muted">{order.summary}</div>
+          <div className="mt-0.5 text-xs text-gf-muted">{order?.summary}</div>
         </div>
 
         <div className="flex items-center gap-2 shrink-0 pt-1">
@@ -150,7 +170,7 @@ function ProductionOrderCard({
 
               <div className="mt-2 space-y-3">
                 {group.lines.map((line) => {
-                  const value = readyByLineId[line.id] ?? 0;
+                  const value = readyByLineId?.[line.id] ?? 0;
 
                   return (
                     <div key={line.id} className="space-y-1">
@@ -164,10 +184,11 @@ function ProductionOrderCard({
                         </div>
 
                         <QtyStepper
+                          label={stepperLabel}
                           value={value}
-                          min={0}
-                          max={line.total}
-                          onChange={(next) => onChangeReady(line.id, next)}
+                          min={line.min ?? 0}
+                          max={line.max ?? line.total}
+                          onChange={(next) => onChangeReady?.(line.id, next)}
                         />
                       </div>
                     </div>
@@ -181,9 +202,15 @@ function ProductionOrderCard({
           <button
             type="button"
             onClick={onMarkAllReady}
-            className="w-full h-10 rounded-xl border border-gf-orange text-gf-orange text-sm hover:bg-gf-orange/10"
+            disabled={markAllDisabled}
+            className={[
+              "w-full h-10 rounded-xl border text-sm",
+              !markAllDisabled
+                ? "border-gf-orange text-gf-orange hover:bg-gf-orange/10"
+                : "border-gf-orange/40 text-gf-orange/40 cursor-not-allowed",
+            ].join(" ")}
           >
-            Tout marquer prêt
+            {markAllLabel}
           </button>
 
           {/* Commentaires repliables */}
@@ -194,7 +221,7 @@ function ProductionOrderCard({
               className="w-full flex items-center justify-between gap-2"
             >
               <div className="text-sm font-semibold">
-                Commentaires ({order.comments.length})
+                Commentaires ({commentsCount})
               </div>
 
               {commentsOpen ? (
@@ -207,7 +234,7 @@ function ProductionOrderCard({
             {commentsOpen && (
               <>
                 <div className="mt-2 space-y-2">
-                  {order.comments.map((c) => (
+                  {(order?.comments ?? []).map((c) => (
                     <div
                       key={c.id}
                       className="rounded-xl bg-gray-600 text-white px-3 py-2 text-xs"
@@ -236,16 +263,16 @@ function ProductionOrderCard({
 
           <button
             type="button"
-            disabled={!allReady}
-            onClick={onFinishProduction}
+            disabled={effectivePrimaryDisabled}
+            onClick={effectivePrimaryAction}
             className={[
               "w-full h-11 rounded-xl text-sm font-medium",
-              allReady
+              !effectivePrimaryDisabled
                 ? "bg-gf-orange text-white hover:opacity-95"
                 : "bg-gf-orange/40 text-white cursor-not-allowed",
             ].join(" ")}
           >
-            Production terminée
+            {primaryLabel}
           </button>
         </div>
       )}

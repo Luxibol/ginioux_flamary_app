@@ -19,17 +19,28 @@ const productionController = require("../controllers/production.controller");
 const router = express.Router();
 
 router.get("/production", productionController.getProductionOrders);
+
+// Production - Expéditions à charger
+router.get("/shipments", productionController.getProductionShipments);
+router.patch(
+  "/:orderId/lines/:lineId/loaded",
+  productionController.patchOrderLineLoaded
+);
+router.post("/:orderId/shipments/depart", productionController.postDepartTruck);
+
 router.patch(
   "/:orderId/lines/:lineId/ready",
   productionController.patchOrderLineReady
 );
 router.get("/active", ordersController.getActiveOrders);
-router.get("/:id", orderDetailsController.getOrderDetails);
-router.patch("/:id", ordersUpdateController.patchOrderMeta);
-router.delete("/:id", ordersDeleteController.deleteOrder);
+
 router.post(
   "/:id/production-validate",
   ordersController.postProductionValidate
 );
+
+router.get("/:id", orderDetailsController.getOrderDetails);
+router.patch("/:id", ordersUpdateController.patchOrderMeta);
+router.delete("/:id", ordersDeleteController.deleteOrder);
 
 module.exports = router;
