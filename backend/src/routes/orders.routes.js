@@ -16,6 +16,7 @@ const ordersUpdateController = require("../controllers/ordersUpdate.controller")
 const ordersDeleteController = require("../controllers/ordersDelete.controller");
 const productionController = require("../controllers/production.controller");
 const shipmentsBureauController = require("../controllers/shipmentsBureau.controller");
+const historyController = require("../controllers/history.controller");
 
 const router = express.Router();
 
@@ -46,6 +47,10 @@ router.post(
   "/:orderId/shipments/ack",
   shipmentsBureauController.postAckForOrder
 );
+
+// Bureau - Historique (commandes archivées)
+router.get("/archived", historyController.getArchivedOrders);
+router.get("/:id/history", historyController.getArchivedOrderHistory);
 
 router.get("/:id", orderDetailsController.getOrderDetails);
 router.patch("/:id", ordersUpdateController.patchOrderMeta);
