@@ -1,3 +1,5 @@
-export default function Shipments() {
-  return <h1 className="gf-h1">Expédititons (Bureau)</h1>;
+import ShipmentsBureau from "../../features/orders/pages/ShipmentsBureau.jsx";
+
+export default function ShipmentsPage() {
+  return <ShipmentsBureau />;
 }
