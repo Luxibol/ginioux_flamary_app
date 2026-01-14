@@ -15,6 +15,7 @@ const orderDetailsController = require("../controllers/orderDetails.controller")
 const ordersUpdateController = require("../controllers/ordersUpdate.controller");
 const ordersDeleteController = require("../controllers/ordersDelete.controller");
 const productionController = require("../controllers/production.controller");
+const shipmentsBureauController = require("../controllers/shipmentsBureau.controller");
 
 const router = express.Router();
 
@@ -37,6 +38,13 @@ router.get("/active", ordersController.getActiveOrders);
 router.post(
   "/:id/production-validate",
   ordersController.postProductionValidate
+);
+
+// Bureau - Expéditions (à accuser réception)
+router.get("/bureau/shipments/pending", shipmentsBureauController.getPending);
+router.post(
+  "/:orderId/shipments/ack",
+  shipmentsBureauController.postAckForOrder
 );
 
 router.get("/:id", orderDetailsController.getOrderDetails);
