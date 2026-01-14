@@ -157,6 +157,8 @@ export default function OrderModal({
         arc: form.arc,
         clientName: form.clientName,
         orderDate: form.orderDate,
+        pickupDate: form.pickupDate,
+        priority: form.priority,
         products: linesClean.map((l) => ({
           pdfLabel: l.label,
           quantity: l.quantity,

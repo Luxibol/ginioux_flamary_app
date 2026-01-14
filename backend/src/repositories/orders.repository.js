@@ -19,6 +19,28 @@ async function findOrderByArc(arc) {
 }
 
 /**
+ * Valide la production d'une commande.
+ * Règle : seulement si la commande est PROD_COMPLETE et non déjà validée.
+ *
+ * @param {number} orderId
+ * @returns {Promise<boolean>} true si une ligne a été modifiée, sinon false
+ */
+async function validateProduction(orderId) {
+  const [r] = await pool.query(
+    `
+    UPDATE orders
+    SET production_validated_at = NOW()
+    WHERE id = ?
+      AND production_status = 'PROD_COMPLETE'
+      AND production_validated_at IS NULL
+    LIMIT 1
+    `,
+    [orderId]
+  );
+  return r.affectedRows > 0;
+}
+
+/**
  * Crée une commande + ses lignes dans une transaction.
  *
  * @param {object} orderData - Données de la commande à créer.
@@ -73,12 +95,14 @@ async function createOrderWithLines(orderData, orderProducts) {
         orderId,
         p.productId,
         Math.trunc(Number(p.quantity ?? 0)),
+        0,
+        0,
       ]);
 
       const insertLinesSql = `
-        INSERT INTO order_products (order_id, product_id, quantity_ordered)
+        INSERT INTO order_products (order_id, product_id, quantity_ordered, quantity_ready, quantity_shipped)
         VALUES ?
-      `;
+        `;
 
       await connection.query(insertLinesSql, [values]);
     }
@@ -170,7 +194,7 @@ async function createOrderFromPreview(
     arc,
     clientName: preview.clientName ?? null,
     orderDate: preview.orderDate, // ISO attendu
-    pickupDate: null,
+    pickupDate: preview.pickupDate ?? null,
     priority: preview.priority || "NORMAL",
     productionStatus: "A_PROD",
     expeditionStatus: "NON_EXPEDIEE",
@@ -287,10 +311,12 @@ async function findOrderLinesByOrderId(orderId) {
       op.order_id,
       op.product_id,
       COALESCE(NULLIF(op.product_label_pdf, ''), pc.pdf_label_exact) AS label,
+      pc.category,
       pc.weight_per_unit_kg,
       op.quantity_ordered,
       op.quantity_ready,
-      op.quantity_shipped
+      op.quantity_shipped,
+      op.quantity_loaded
     FROM order_products op
     JOIN products_catalog pc ON pc.id = op.product_id
     WHERE op.order_id = ?
@@ -425,9 +451,9 @@ async function updateOrderAndLinesById(orderId, patch = {}, lines = null) {
       const existingById = new Map(existing.map((x) => [x.id, x]));
       const incomingIds = new Set(lines.filter((l) => l.id).map((l) => l.id));
 
+      // 1) Suppressions (lignes absentes du payload)
       for (const ex of existing) {
         if (!incomingIds.has(ex.id)) {
-          // Règle métier : interdiction de supprimer une ligne déjà en préparation / expédiée.
           if (
             Number(ex.quantity_ready) > 0 ||
             Number(ex.quantity_shipped) > 0
@@ -446,6 +472,7 @@ async function updateOrderAndLinesById(orderId, patch = {}, lines = null) {
         }
       }
 
+      // 2) Updates + Inserts
       for (const l of lines) {
         if (l.id) {
           const ex = existingById.get(l.id);
@@ -460,7 +487,6 @@ async function updateOrderAndLinesById(orderId, patch = {}, lines = null) {
             );
           }
 
-          // Règle métier : produit non modifiable si la ligne a déjà du "ready" ou "shipped".
           if (
             Number(ex.product_id) !== Number(l.productId) &&
             (ready > 0 || shipped > 0)
@@ -481,16 +507,485 @@ async function updateOrderAndLinesById(orderId, patch = {}, lines = null) {
             throw new Error("Mise à jour ligne impossible");
         } else {
           await connection.query(
-            `INSERT INTO order_products (order_id, product_id, quantity_ordered)
-             VALUES (?, ?, ?)`,
+            `INSERT INTO order_products (order_id, product_id, quantity_ordered, quantity_ready, quantity_shipped)
+             VALUES (?, ?, ?, 0, 0)`,
             [orderId, l.productId, l.quantity]
           );
         }
       }
+
+      await connection.query(
+        `UPDATE orders
+        SET production_validated_at = NULL
+        WHERE id = ? LIMIT 1`,
+        [orderId]
+      );
+
+      // 3) Recalcul statut production APRÈS sync complète
+      await recalcAndUpdateProductionStatus(connection, orderId);
     }
 
     await connection.commit();
     return true;
+  } catch (err) {
+    await connection.rollback();
+    throw err;
+  } finally {
+    connection.release();
+  }
+}
+
+/**
+ * Liste des commandes à produire (Production).
+ * Filtre : production_status IN ('A_PROD','PROD_PARTIELLE') + is_archived = 0
+ * @param {{q?:string|null, limit?:number, offset?:number}} filters
+ * @returns {Promise<object[]>}
+ */
+async function findProductionOrders({ q = null, limit = 50, offset = 0 } = {}) {
+  const where = [
+    "o.is_archived = 0",
+    `(
+      o.production_status IN ('A_PROD','PROD_PARTIELLE')
+      OR (o.production_status = 'PROD_COMPLETE' AND o.production_validated_at IS NULL)
+    )`,
+  ];
+  const params = [];
+
+  if (q) {
+    where.push("(o.arc LIKE ? OR o.client_name LIKE ?)");
+    params.push(`%${q}%`, `%${q}%`);
+  }
+
+  const sql = `
+    SELECT
+      o.id,
+      o.arc,
+      o.client_name,
+      o.order_date,
+      o.pickup_date,
+      o.priority,
+      o.production_status,
+      o.expedition_status,
+      o.created_at,
+      o.production_validated_at
+    FROM orders o
+    WHERE ${where.join(" AND ")}
+    ORDER BY
+      CASE o.priority
+        WHEN 'URGENT' THEN 1
+        WHEN 'INTERMEDIAIRE' THEN 2
+        WHEN 'NORMAL' THEN 3
+        ELSE 99
+      END ASC,
+        (o.pickup_date IS NULL) ASC,
+        o.pickup_date ASC,
+        o.created_at DESC
+      LIMIT ? OFFSET ?
+  `;
+
+  params.push(limit, offset);
+
+  const [rows] = await pool.query(sql, params);
+  return rows;
+}
+
+/**
+ * Recalcule le production_status d'une commande à partir des lignes (ready vs ordered)
+ * et met à jour orders.production_status.
+ *
+ * @param {import("mysql2/promise").PoolConnection} connection
+ * @param {number} orderId
+ * @returns {Promise<"A_PROD"|"PROD_PARTIELLE"|"PROD_COMPLETE">}
+ */
+async function recalcAndUpdateProductionStatus(connection, orderId) {
+  const [aggRows] = await connection.query(
+    `
+    SELECT
+      SUM(
+        CASE
+          WHEN COALESCE(quantity_ready, 0) >= COALESCE(quantity_ordered, 0)
+          THEN 1 ELSE 0
+        END
+      ) AS ready_lines,
+      COUNT(*) AS total_lines,
+      SUM(COALESCE(quantity_ready, 0)) AS sum_ready
+    FROM order_products
+    WHERE order_id = ?
+    `,
+    [orderId]
+  );
+
+  const { ready_lines = 0, total_lines = 0, sum_ready = 0 } = aggRows[0] || {};
+
+  let productionStatus = "A_PROD";
+  if (Number(total_lines) > 0 && Number(ready_lines) === Number(total_lines)) {
+    productionStatus = "PROD_COMPLETE";
+  } else if (Number(sum_ready) > 0) {
+    productionStatus = "PROD_PARTIELLE";
+  }
+
+  await connection.query(
+    `UPDATE orders SET production_status = ? WHERE id = ? LIMIT 1`,
+    [productionStatus, orderId]
+  );
+
+  return productionStatus;
+}
+
+function clampInt(n, min, max) {
+  const v = Number(n);
+  if (!Number.isFinite(v)) return min;
+  return Math.min(Math.max(Math.trunc(v), min), max);
+}
+
+/**
+ * Met à jour la quantité prête d'une ligne (order_products.quantity_ready),
+ * invalide la validation de production, puis recalcule orders.production_status.
+ */
+async function updateOrderLineReady(orderId, lineId, readyQty) {
+  const connection = await pool.getConnection();
+
+  try {
+    await connection.beginTransaction();
+
+    // 1) Vérifie la ligne et récupère la quantité commandée
+    const [lineRows] = await connection.query(
+      `
+      SELECT quantity_ordered
+      FROM order_products
+      WHERE id = ? AND order_id = ?
+      LIMIT 1
+      `,
+      [lineId, orderId]
+    );
+
+    if (lineRows.length === 0) {
+      await connection.rollback();
+      return { notFound: true };
+    }
+
+    const ordered = Number(lineRows[0].quantity_ordered || 0);
+    const shipped = Number(lineRows[0].quantity_shipped || 0);
+    const nextReady = clampInt(readyQty, shipped, ordered);
+
+    // 2) Update quantity_ready
+    await connection.query(
+      `
+      UPDATE order_products
+      SET quantity_ready = ?
+      WHERE id = ? AND order_id = ?
+      LIMIT 1
+      `,
+      [nextReady, lineId, orderId]
+    );
+
+    // 3) Toucher au ready invalide une validation précédente
+    await connection.query(
+      `UPDATE orders SET production_validated_at = NULL WHERE id = ? LIMIT 1`,
+      [orderId]
+    );
+
+    // 4) Recalc statut production
+    const productionStatus = await recalcAndUpdateProductionStatus(
+      connection,
+      orderId
+    );
+
+    // 5) Commit (sinon rien n'est persisté)
+    await connection.commit();
+
+    // 6) Retourne order + lines (utile côté front)
+    const order = await findOrderById(orderId);
+    const lines = await findOrderLinesByOrderId(orderId);
+
+    return { status: "updated", productionStatus, order, lines };
+  } catch (err) {
+    await connection.rollback();
+    throw err;
+  } finally {
+    connection.release();
+  }
+}
+
+/**
+ * Recalcule expedition_status à partir des shipped vs ordered
+ * et met à jour orders.expedition_status.
+ */
+async function recalcAndUpdateExpeditionStatus(connection, orderId) {
+  const [aggRows] = await connection.query(
+    `
+    SELECT
+      SUM(COALESCE(quantity_ordered, 0)) AS sum_ordered,
+      SUM(COALESCE(quantity_shipped, 0)) AS sum_shipped
+    FROM order_products
+    WHERE order_id = ?
+    `,
+    [orderId]
+  );
+
+  const { sum_ordered = 0, sum_shipped = 0 } = aggRows[0] || {};
+
+  let expeditionStatus = "NON_EXPEDIEE";
+  if (Number(sum_shipped) > 0 && Number(sum_shipped) < Number(sum_ordered)) {
+    expeditionStatus = "EXP_PARTIELLE";
+  } else if (
+    Number(sum_ordered) > 0 &&
+    Number(sum_shipped) === Number(sum_ordered)
+  ) {
+    expeditionStatus = "EXP_COMPLETE";
+  }
+
+  await connection.query(
+    `UPDATE orders SET expedition_status = ? WHERE id = ? LIMIT 1`,
+    [expeditionStatus, orderId]
+  );
+
+  return expeditionStatus;
+}
+
+/**
+ * Liste production : Expéditions à charger.
+ * Règle : commande affichée si au moins une quantité est chargeable
+ * (ready > shipped sur au moins une ligne).
+ *
+ * Ajoute :
+ * - chargeable_total = Σ max(0, ready - shipped)
+ * - loaded_total     = Σ loaded
+ * - loading_status   = TODO | PARTIAL | COMPLETE
+ */
+async function findProductionShipments({
+  q = null,
+  limit = 50,
+  offset = 0,
+} = {}) {
+  const where = ["o.is_archived = 0"];
+  const params = [];
+
+  if (q) {
+    where.push("(o.arc LIKE ? OR o.client_name LIKE ?)");
+    params.push(`%${q}%`, `%${q}%`);
+  }
+
+  // ON AFFICHE si chargeable_total > 0 (au moins une ligne ready > shipped)
+  const sql = `
+    SELECT
+      o.id,
+      o.arc,
+      o.client_name,
+      o.order_date,
+      o.pickup_date,
+      o.priority,
+      o.production_status,
+      o.expedition_status,
+      o.created_at,
+
+      agg.chargeable_total,
+      agg.loaded_total,
+
+      CASE
+        WHEN agg.loaded_total <= 0 THEN 'TODO'
+        WHEN agg.chargeable_total > 0 AND agg.loaded_total >= agg.chargeable_total THEN 'COMPLETE'
+        ELSE 'PARTIAL'
+      END AS loading_status
+
+    FROM orders o
+    JOIN (
+      SELECT
+        op.order_id,
+        SUM(GREATEST(COALESCE(op.quantity_ready,0) - COALESCE(op.quantity_shipped,0), 0)) AS chargeable_total,
+        SUM(COALESCE(op.quantity_loaded,0)) AS loaded_total
+      FROM order_products op
+      GROUP BY op.order_id
+    ) agg ON agg.order_id = o.id
+
+    WHERE ${where.join(" AND ")}
+      AND agg.chargeable_total > 0
+
+    ORDER BY
+      CASE o.priority
+        WHEN 'URGENT' THEN 1
+        WHEN 'INTERMEDIAIRE' THEN 2
+        WHEN 'NORMAL' THEN 3
+        ELSE 99
+      END ASC,
+      (o.pickup_date IS NULL) ASC,
+      o.pickup_date ASC,
+      o.created_at DESC
+    LIMIT ? OFFSET ?
+  `;
+
+  params.push(limit, offset);
+
+  const [rows] = await pool.query(sql, params);
+  return rows;
+}
+
+/**
+ * Met à jour quantity_loaded d'une ligne (chargé camion).
+ * Borne : 0 <= loaded <= (ready - shipped)
+ */
+async function updateOrderLineLoaded(orderId, lineId, loadedQty) {
+  const connection = await pool.getConnection();
+
+  try {
+    await connection.beginTransaction();
+
+    // lock ligne
+    const [lineRows] = await connection.query(
+      `
+      SELECT quantity_ready, quantity_shipped
+      FROM order_products
+      WHERE id = ? AND order_id = ?
+      LIMIT 1
+      FOR UPDATE
+      `,
+      [lineId, orderId]
+    );
+
+    if (lineRows.length === 0) {
+      await connection.rollback();
+      return { notFound: true };
+    }
+
+    const ready = Number(lineRows[0].quantity_ready || 0);
+    const shipped = Number(lineRows[0].quantity_shipped || 0);
+
+    // max chargeable = ready - shipped
+    const maxLoadable = Math.max(0, Math.trunc(ready - shipped));
+    const nextLoaded = clampInt(loadedQty, 0, maxLoadable);
+
+    await connection.query(
+      `
+      UPDATE order_products
+      SET quantity_loaded = ?
+      WHERE id = ? AND order_id = ?
+      LIMIT 1
+      `,
+      [nextLoaded, lineId, orderId]
+    );
+
+    await connection.commit();
+
+    // refresh pour le front
+    const order = await findOrderById(orderId);
+    const lines = await findOrderLinesByOrderId(orderId);
+
+    return { status: "updated", order, lines };
+  } catch (err) {
+    await connection.rollback();
+    throw err;
+  } finally {
+    connection.release();
+  }
+}
+
+/**
+ * Départ camion : commit ce qui est loaded -> shipped, reset loaded,
+ * crée un shipment visible bureau.
+ */
+async function departTruck(orderId, { createdByUserId = null } = {}) {
+  const connection = await pool.getConnection();
+
+  try {
+    await connection.beginTransaction();
+
+    // lock commande
+    const [orderRows] = await connection.query(
+      `SELECT id FROM orders WHERE id = ? LIMIT 1 FOR UPDATE`,
+      [orderId]
+    );
+    if (orderRows.length === 0) {
+      await connection.rollback();
+      return { notFound: true };
+    }
+
+    // lock lignes
+    const [lines] = await connection.query(
+      `
+      SELECT
+        id,
+        product_id,
+        product_label_pdf,
+        quantity_ordered,
+        quantity_ready,
+        quantity_shipped,
+        quantity_loaded
+      FROM order_products
+      WHERE order_id = ?
+      ORDER BY id ASC
+      FOR UPDATE
+      `,
+      [orderId]
+    );
+
+    const loadedLines = lines.filter((l) => Number(l.quantity_loaded || 0) > 0);
+
+    if (loadedLines.length === 0) {
+      await connection.rollback();
+      const err = new Error(
+        "Aucune quantité chargée. Impossible de déclarer un départ camion."
+      );
+      err.code = 400;
+      throw err;
+    }
+
+    // 1) create shipment header
+    const [shipRes] = await connection.query(
+      `
+      INSERT INTO shipments (order_id, status, departed_at, created_by)
+      VALUES (?, 'IN_TRANSIT', NOW(), ?)
+      `,
+      [orderId, createdByUserId]
+    );
+    const shipmentId = shipRes.insertId;
+
+    // 2) create shipment lines
+    const shipLineValues = loadedLines.map((l) => [
+      shipmentId,
+      l.product_id,
+      String(l.product_label_pdf || ""),
+      Number(l.quantity_loaded || 0),
+    ]);
+
+    await connection.query(
+      `
+      INSERT INTO shipment_lines (shipment_id, product_id, product_label_pdf, quantity_loaded)
+      VALUES ?
+      `,
+      [shipLineValues]
+    );
+
+    // 3) commit loaded -> shipped, reset loaded
+    await connection.query(
+      `
+      UPDATE order_products
+      SET
+        quantity_shipped = quantity_shipped + quantity_loaded,
+        quantity_loaded = 0
+      WHERE order_id = ?
+        AND quantity_loaded > 0
+      `,
+      [orderId]
+    );
+
+    // 4) recalc expedition_status
+    const expeditionStatus = await recalcAndUpdateExpeditionStatus(
+      connection,
+      orderId
+    );
+
+    await connection.commit();
+
+    const order = await findOrderById(orderId);
+    const freshLines = await findOrderLinesByOrderId(orderId);
+
+    return {
+      status: "departed",
+      shipmentId,
+      expeditionStatus,
+      order,
+      lines: freshLines,
+    };
   } catch (err) {
     await connection.rollback();
     throw err;
@@ -509,4 +1004,10 @@ module.exports = {
   updateOrderMetaById,
   deleteOrderById,
   updateOrderAndLinesById,
+  findProductionOrders,
+  findProductionShipments,
+  updateOrderLineReady,
+  updateOrderLineLoaded,
+  departTruck,
+  validateProduction,
 };
