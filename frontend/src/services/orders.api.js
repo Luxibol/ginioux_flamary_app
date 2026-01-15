@@ -140,3 +140,7 @@ export async function patchOrderLineLoaded(orderId, lineId, loaded) {
 export async function postDepartTruck(orderId) {
   return apiFetch(`/orders/${orderId}/shipments/depart`, { method: "POST" });
 }
+
+export async function getOrderShipments(orderId) {
+  return apiFetch(`/orders/${orderId}/shipments`);
+}

@@ -17,6 +17,7 @@ const ordersDeleteController = require("../controllers/ordersDelete.controller")
 const productionController = require("../controllers/production.controller");
 const shipmentsBureauController = require("../controllers/shipmentsBureau.controller");
 const historyController = require("../controllers/history.controller");
+const orderShipmentsController = require("../controllers/orderShipments.controller");
 
 const router = express.Router();
 
@@ -35,6 +36,8 @@ router.patch(
   productionController.patchOrderLineReady
 );
 router.get("/active", ordersController.getActiveOrders);
+
+router.get("/:id/shipments", orderShipmentsController.getOrderShipments);
 
 router.post(
   "/:id/production-validate",
