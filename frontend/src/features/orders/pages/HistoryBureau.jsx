@@ -188,7 +188,7 @@ export default function HistoryBureau() {
                           }}
                         >
                           <div className="font-medium text-gf-title">{o.arc}</div>
-                          <div className="justify-self-start">{o.client_name}</div>
+                          <div className="justify-center">{o.client_name}</div>
                           <div>{formatDateFr(o.order_date)}</div>
                           <div>{formatDateTimeFr(o.last_departed_at)}</div>
 
