@@ -19,7 +19,9 @@ import ProductionOrdersPage from "./pages/production/ProductionOrdersPage.jsx";
 import ProductionShipmentsPage from "./pages/production/ProductionShipmentsPage.jsx";
 
 import AdminDashboardPage from "./pages/admin/AdminDashboardPage.jsx";
-import AdminManagementPage from "./pages/admin/AdminManagementPage.jsx";
+import AdminProductsPage from "./pages/admin/AdminProductsPage.jsx";
+import AdminEmployeesPage from "./pages/admin/AdminEmployeesPage.jsx";
+
 
 export const router = createBrowserRouter([
   {
@@ -36,6 +38,8 @@ export const router = createBrowserRouter([
           { path: "expeditions", element: <ShipmentsPage /> },
           { path: "import", element: <ImportPdfPage /> },
           { path: "historique", element: <HistoryPage /> },
+          { path: "admin/produits", element: <AdminProductsPage /> },
+          { path: "admin/employes", element: <AdminEmployeesPage /> },
         ],
       },
 
