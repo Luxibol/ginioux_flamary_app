@@ -10,6 +10,8 @@ import {
   Truck,
   Paperclip,
   History,
+  Package,
+  Users,
 } from "lucide-react";
 
 const menuItems = [
@@ -18,6 +20,9 @@ const menuItems = [
   { to: "/bureau/expeditions", label: "Expéditions", icon: Truck },
   { to: "/bureau/import", label: "Import PDF", icon: Paperclip },
   { to: "/bureau/historique", label: "Historique", icon: History },
+  { to: "/bureau/admin/produits", label: "Gestion des produits", icon: Package },
+  { to: "/bureau/admin/employes", label: "Gestion des employés", icon: Users },
+
 ];
 
 function Sidebar() {
