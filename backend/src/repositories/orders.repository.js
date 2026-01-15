@@ -994,6 +994,56 @@ async function departTruck(orderId, { createdByUserId = null } = {}) {
   }
 }
 
+async function findShipmentsByOrderId(orderId) {
+  const [shipments] = await pool.query(
+    `
+    SELECT id, departed_at
+    FROM shipments
+    WHERE order_id = ?
+    ORDER BY departed_at DESC, id DESC
+    `,
+    [orderId]
+  );
+
+  const shipmentIds = shipments.map((s) => s.id);
+  if (shipmentIds.length === 0) return [];
+
+  const [lines] = await pool.query(
+    `
+    SELECT
+      sl.shipment_id,
+      sl.product_id,
+      COALESCE(NULLIF(sl.product_label_pdf, ''), pc.pdf_label_exact) AS label,
+      pc.weight_per_unit_kg,
+      sl.quantity_loaded
+    FROM shipment_lines sl
+    JOIN products_catalog pc ON pc.id = sl.product_id
+    WHERE sl.shipment_id IN (?)
+    ORDER BY sl.shipment_id DESC, sl.id ASC
+    `,
+    [shipmentIds]
+  );
+
+  const map = new Map();
+  for (const l of lines) {
+    if (!map.has(l.shipment_id)) map.set(l.shipment_id, []);
+    map.get(l.shipment_id).push({
+      product_id: l.product_id,
+      label: l.label,
+      quantity_loaded: Number(l.quantity_loaded || 0),
+      weight_per_unit_kg: l.weight_per_unit_kg
+        ? Number(l.weight_per_unit_kg)
+        : null,
+    });
+  }
+
+  return shipments.map((s) => ({
+    id: s.id,
+    departed_at: s.departed_at,
+    lines: map.get(s.id) || [],
+  }));
+}
+
 module.exports = {
   findOrderByArc,
   findActiveOrders,
@@ -1010,4 +1060,5 @@ module.exports = {
   updateOrderLineLoaded,
   departTruck,
   validateProduction,
+  findShipmentsByOrderId,
 };
