@@ -3,30 +3,51 @@
  * - Bureau : Header + Sidebar + wrapper central
  * - Mobile (Production/Admin-mobile) : Header sticky + burger menu + contenu plein écran
  */
-import { Outlet, useLocation } from "react-router-dom";
+import { Outlet, useLocation, Navigate } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 
 import Header from "./Header.jsx";
 import Sidebar from "./Sidebar.jsx";
 import MobileHeader from "./MobileHeader.jsx";
 import MobileMenu from "./MobileMenu.jsx";
-import { LayoutDashboard, ClipboardList, Truck } from "lucide-react";
+import { LayoutDashboard, ClipboardList, Truck, Users } from "lucide-react";
 
 function AppLayout() {
   const location = useLocation();
 
+  // Affichage (confort) : on adapte selon largeur écran
+  const [isSmallScreen, setIsSmallScreen] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.matchMedia("(max-width: 1024px)").matches; // <= lg
+  });
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const mq = window.matchMedia("(max-width: 1024px)");
+    const onChange = () => setIsSmallScreen(mq.matches);
+
+    // init + subscribe
+    onChange();
+    mq.addEventListener?.("change", onChange);
+    return () => mq.removeEventListener?.("change", onChange);
+  }, []);
+
   const mode = useMemo(() => {
     const p = location.pathname;
 
-    // Admin desktop-only (PC) : produits
+    // Admin produits = desktop only
     if (p.startsWith("/admin/produits")) return "admin_desktop";
 
-    // Admin mobile (dashboard + employés plus tard)
-    if (p.startsWith("/admin")) return "admin_mobile";
+    // Admin dashboard + employés = mobile ou desktop selon taille écran
+    if (p.startsWith("/admin")) return isSmallScreen ? "admin_mobile" : "admin_desktop";
 
+    // Production = mobile
     if (p.startsWith("/production")) return "production";
+
+    // Bureau = desktop
     return "bureau";
-  }, [location.pathname]);
+  }, [location.pathname, isSmallScreen]);
 
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -35,13 +56,15 @@ function AppLayout() {
     setMenuOpen(false);
   }, [location.pathname]);
 
-  // ⚠️ IMPORTANT : on définit mobileConfig AVANT de l’utiliser
   const mobileConfig = useMemo(() => {
     if (mode === "admin_mobile") {
       return {
         label: "Mathieu - Admin",
         items: [
           { to: "/admin", label: "Dashboard admin", end: true, icon: LayoutDashboard },
+
+          // ✅ Employés dispo sur mobile
+          { to: "/admin/employes", label: "Employés", end: false, icon: Users },
 
           // Tu ne veux PAS produits sur mobile => on ne met pas /admin/produits ici
 
@@ -68,8 +91,33 @@ function AppLayout() {
 
   const isMobileLayout = mode === "admin_mobile" || mode === "production";
 
+  // Guard UI : produits sur mobile => message
+  if (mode === "admin_mobile" && location.pathname.startsWith("/admin/produits")) {
+    return (
+      <div className="min-h-dvh bg-gf-bg text-gf-text overflow-hidden">
+        <MobileHeader
+          label="Mathieu - Admin"
+          isOpen={menuOpen}
+          onToggle={() => setMenuOpen((v) => !v)}
+        />
+        <MobileMenu
+          open={menuOpen}
+          onClose={() => setMenuOpen(false)}
+          items={mobileConfig?.items || []}
+        />
+        <main className="h-[calc(100dvh-4rem)] overflow-y-auto p-6">
+          <div className="rounded-2xl border border-gf-border bg-gf-surface p-6">
+            <div className="text-sm font-semibold text-gf-title">Disponible sur PC</div>
+            <div className="text-xs text-gf-subtitle mt-2">
+              La gestion des produits est uniquement disponible sur ordinateur.
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   if (isMobileLayout) {
-    // Sécurité anti-crash
     if (!mobileConfig) {
       return (
         <div className="min-h-dvh bg-gf-bg text-gf-text overflow-hidden">
@@ -99,7 +147,7 @@ function AppLayout() {
     );
   }
 
-  // Bureau + admin_desktop
+  // Desktop (Bureau + Admin desktop)
   return (
     <div className="min-h-dvh bg-gf-bg text-gf-text overflow-hidden">
       <Header />
