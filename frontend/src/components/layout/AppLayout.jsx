@@ -11,10 +11,19 @@ import Sidebar from "./Sidebar.jsx";
 import MobileHeader from "./MobileHeader.jsx";
 import MobileMenu from "./MobileMenu.jsx";
 import { LayoutDashboard, ClipboardList, Truck, Users } from "lucide-react";
-import { getAuth } from "../../services/auth.storage.js";
+import { getUser } from "../../services/auth.storage.js";
+
+function formatRole(role) {
+  if (role === "ADMIN") return "Admin";
+  if (role === "BUREAU") return "Bureau";
+  if (role === "PRODUCTION") return "Production";
+  return role || "—";
+}
 
 function AppLayout() {
   const location = useLocation();
+  const user = getUser();
+  const who = `${user?.first_name || "—"} - ${formatRole(user?.role)}`;
 
   // Affichage (confort) : on adapte selon largeur écran
   const [isSmallScreen, setIsSmallScreen] = useState(() => {
@@ -36,7 +45,7 @@ function AppLayout() {
 
   const mode = useMemo(() => {
       const p = location.pathname;
-      const role = getAuth()?.user?.role;
+      const role = user?.role;
 
       // Admin produits = desktop only
       if (p.startsWith("/admin/produits")) return "admin_desktop";
@@ -58,14 +67,9 @@ function AppLayout() {
 
       // Bureau = desktop
       return "bureau";
-    }, [location.pathname, isSmallScreen]);
+    }, [location.pathname, isSmallScreen, user?.role]);
 
   const [menuOpen, setMenuOpen] = useState(false);
-
-  // Ferme le menu dès qu’on change de route
-  useEffect(() => {
-    setMenuOpen(false);
-  }, [location.pathname]);
 
   // Ferme le menu dès qu’on change de route
   useEffect(() => {
@@ -75,7 +79,7 @@ function AppLayout() {
   const mobileConfig = useMemo(() => {
     if (mode === "admin_mobile") {
       return {
-        label: "Mathieu - Admin",
+        label: who,
         items: [
           { kind: "section", label: "Administration" },
           { to: "/admin", label: "Dashboard admin", end: true, icon: LayoutDashboard },
@@ -90,7 +94,7 @@ function AppLayout() {
 
     if (mode === "production") {
       return {
-        label: "Mathieu - Production",
+        label: who,
         items: [
           { to: "/production", label: "Tableau de bord", end: true, icon: LayoutDashboard },
           { to: "/production/commandes", label: "Commandes à produire", end: false, icon: ClipboardList },
@@ -100,7 +104,7 @@ function AppLayout() {
     }
 
     return null;
-  }, [mode]);
+  }, [mode, who]);
 
   const isMobileLayout = mode === "admin_mobile" || mode === "production";
 
@@ -109,7 +113,7 @@ function AppLayout() {
     return (
       <div className="min-h-dvh bg-gf-bg text-gf-text overflow-hidden">
         <MobileHeader
-          label="Mathieu - Admin"
+          label={who}
           isOpen={menuOpen}
           onToggle={() => setMenuOpen((v) => !v)}
         />

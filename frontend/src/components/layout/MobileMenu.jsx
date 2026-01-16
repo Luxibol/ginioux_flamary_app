@@ -5,6 +5,7 @@
  */
 import { NavLink, useNavigate } from "react-router-dom";
 import { Power } from "lucide-react";
+import { logoutAndRedirect } from "../../services/auth.logout.js";
 
 function MobileMenu({ open, onClose, items }) {
   const navigate = useNavigate();
@@ -63,8 +64,7 @@ function MobileMenu({ open, onClose, items }) {
                 type="button"
                 onClick={() => {
                   onClose();
-                  // Placeholder auth : plus tard => clear token + redirect login
-                  navigate("/bureau", { replace: true });
+                  logoutAndRedirect(navigate);
                 }}
                 className="w-full text-left px-4 py-3 text-sm text-gf-text hover:bg-gf-orange/10 flex items-center gap-3"
               >

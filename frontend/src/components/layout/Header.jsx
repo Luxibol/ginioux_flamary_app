@@ -1,13 +1,28 @@
 /**
  * Header (layout global)
  * - Affiche le logo
- * - Affiche l’utilisateur (placeholder) + bouton “Se déconnecter”
- * Note : pour l’instant c’est statique (pas d’auth). Plus tard : brancher user + logout.
+ * - Affiche l’utilisateur + bouton “Se déconnecter”
  */
 import logo from "../../assets/pictures/logo.png";
 import { Power } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { logoutAndRedirect } from "../../services/auth.logout.js";
+import { getUser } from "../../services/auth.storage.js";
+
+function formatRole(role) {
+  if (role === "ADMIN") return "Admin";
+  if (role === "BUREAU") return "Bureau";
+  if (role === "PRODUCTION") return "Production";
+  return role || "—";
+}
 
 function Header() {
+  const navigate = useNavigate();
+  const user = getUser();
+
+  const firstName = user?.first_name || "—";
+  const roleLabel = formatRole(user?.role);
+
   return (
     <header className="h-16 flex items-center justify-between pl-6 pr-4 border-b border-gf-border bg-gf-surface">
       <div className="flex items-center">
@@ -15,10 +30,14 @@ function Header() {
       </div>
 
       <div className="flex items-center pr-6 gap-2 text-xs">
-        <span className="text-gf-text whitespace-nowrap">Mathieu - Bureau</span>
+        <span className="text-gf-text whitespace-nowrap">{firstName} - {roleLabel}</span>
         <span className="text-gf-text"> | </span>
-        {/* Placeholder logout : à brancher quand l’auth sera en place (clear token + redirect). */}
-        <button className="inline-flex items-center gap-2 whitespace-nowrap text-gf-orange hover:underline">
+
+        <button
+          type="button"
+          onClick={() => logoutAndRedirect(navigate)}
+          className="inline-flex items-center gap-2 whitespace-nowrap text-gf-orange hover:underline"
+        >
           Se déconnecter
           <Power className="h-5 w-5 shrink-0" />
         </button>
