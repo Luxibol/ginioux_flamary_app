@@ -38,9 +38,13 @@ export const router = createBrowserRouter([
 
   // Tout le reste dans l'AppLayout
   {
-    element: <RequireAuth><AppLayout /></RequireAuth>,
+    element: (
+      <RequireAuth>
+        <AppLayout />
+      </RequireAuth>
+    ),
     children: [
-      { index: true, element: <Navigate to="/login" replace /> },
+      { index: true, element: <Navigate to="/bureau" replace /> },
 
       {
         path: "/bureau",
