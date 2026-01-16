@@ -6,11 +6,14 @@ const pdfRoutes = require("./routes/pdf.routes");
 const ordersRoutes = require("./routes/orders.routes");
 const productsRoutes = require("./routes/products.routes");
 const authRoutes = require("./routes/auth.routes");
+const adminUsersRoutes = require("./routes/adminUsers.routes");
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
+
+app.use("/admin/users", adminUsersRoutes);
 
 app.use("/health", healthRoutes);
 
