@@ -2,9 +2,24 @@ import { Navigate, useLocation } from "react-router-dom";
 import { getAuth } from "../../services/auth.storage.js";
 
 function canAccessPath(role, path) {
-  if (path.startsWith("/admin")) return role === "ADMIN";
+  // ADMIN area
+  if (path.startsWith("/admin")) {
+    // BUREAU a aussi accès aux produits
+    if (path.startsWith("/admin/produits")) return role === "ADMIN" || role === "BUREAU";
+    // employés = admin only
+    if (path.startsWith("/admin/employes")) return role === "ADMIN";
+    // dashboard admin = admin only
+    if (path === "/admin") return role === "ADMIN";
+    // par défaut : admin only
+    return role === "ADMIN";
+  }
+
+  // Bureau area
   if (path.startsWith("/bureau")) return role === "ADMIN" || role === "BUREAU";
+
+  // Production area (admin y a accès)
   if (path.startsWith("/production")) return role === "ADMIN" || role === "PRODUCTION";
+
   return true;
 }
 

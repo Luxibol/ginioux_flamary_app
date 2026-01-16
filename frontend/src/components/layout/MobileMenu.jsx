@@ -22,7 +22,18 @@ function MobileMenu({ open, onClose, items }) {
       <div className="fixed top-16 left-0 right-0 z-50 bg-gf-surface border-b border-gf-border shadow-sm">
         <nav className="py-2">
           <ul>
-            {items.map((it) => {
+            {items.map((it, idx) => {
+              // Section separator
+              if (it.kind === "section") {
+                return (
+                  <li key={`section-${idx}`} className="px-4 pt-3 pb-1">
+                    <div className="text-[11px] font-semibold uppercase tracking-wide text-gf-subtitle">
+                      {it.label}
+                    </div>
+                  </li>
+                );
+              }
+
               const Icon = it.icon;
 
               return (
@@ -36,9 +47,7 @@ function MobileMenu({ open, onClose, items }) {
                         "px-4 py-3 text-sm",
                         "hover:bg-gf-orange/10",
                         "flex items-center gap-3",
-                        isActive
-                          ? "text-gf-orange font-medium"
-                          : "text-gf-text",
+                        isActive ? "text-gf-orange font-medium" : "text-gf-text",
                       ].join(" ")
                     }
                   >

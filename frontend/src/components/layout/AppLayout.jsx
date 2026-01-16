@@ -3,7 +3,7 @@
  * - Bureau : Header + Sidebar + wrapper central
  * - Mobile (Production/Admin-mobile) : Header sticky + burger menu + contenu plein écran
  */
-import { Outlet, useLocation, Navigate } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 
 import Header from "./Header.jsx";
@@ -11,6 +11,7 @@ import Sidebar from "./Sidebar.jsx";
 import MobileHeader from "./MobileHeader.jsx";
 import MobileMenu from "./MobileMenu.jsx";
 import { LayoutDashboard, ClipboardList, Truck, Users } from "lucide-react";
+import { getAuth } from "../../services/auth.storage.js";
 
 function AppLayout() {
   const location = useLocation();
@@ -34,22 +35,37 @@ function AppLayout() {
   }, []);
 
   const mode = useMemo(() => {
-    const p = location.pathname;
+      const p = location.pathname;
+      const role = getAuth()?.user?.role;
 
-    // Admin produits = desktop only
-    if (p.startsWith("/admin/produits")) return "admin_desktop";
+      // Admin produits = desktop only
+      if (p.startsWith("/admin/produits")) return "admin_desktop";
 
-    // Admin dashboard + employés = mobile ou desktop selon taille écran
-    if (p.startsWith("/admin")) return isSmallScreen ? "admin_mobile" : "admin_desktop";
+      // ADMIN sur petit écran : garde le mode admin même sur /production/*
+      if (
+        role === "ADMIN" &&
+        isSmallScreen &&
+        (p.startsWith("/admin") || p.startsWith("/production"))
+      ) {
+        return "admin_mobile";
+      }
 
-    // Production = mobile
-    if (p.startsWith("/production")) return "production";
+      // Admin dashboard + employés = mobile ou desktop selon taille écran
+      if (p.startsWith("/admin")) return isSmallScreen ? "admin_mobile" : "admin_desktop";
 
-    // Bureau = desktop
-    return "bureau";
-  }, [location.pathname, isSmallScreen]);
+      // Production = mobile
+      if (p.startsWith("/production")) return "production";
+
+      // Bureau = desktop
+      return "bureau";
+    }, [location.pathname, isSmallScreen]);
 
   const [menuOpen, setMenuOpen] = useState(false);
+
+  // Ferme le menu dès qu’on change de route
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [location.pathname]);
 
   // Ferme le menu dès qu’on change de route
   useEffect(() => {
@@ -61,14 +77,11 @@ function AppLayout() {
       return {
         label: "Mathieu - Admin",
         items: [
+          { kind: "section", label: "Administration" },
           { to: "/admin", label: "Dashboard admin", end: true, icon: LayoutDashboard },
+          { to: "/admin/employes", label: "Gestion des employés", end: false, icon: Users },
 
-          // ✅ Employés dispo sur mobile
-          { to: "/admin/employes", label: "Employés", end: false, icon: Users },
-
-          // Tu ne veux PAS produits sur mobile => on ne met pas /admin/produits ici
-
-          // Accès aux pages production (SANS dashboard production)
+          { kind: "section", label: "Production" },
           { to: "/production/commandes", label: "Commandes à produire", end: false, icon: ClipboardList },
           { to: "/production/expeditions", label: "Expéditions à charger", end: false, icon: Truck },
         ],
