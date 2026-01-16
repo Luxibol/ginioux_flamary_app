@@ -12,6 +12,7 @@ import AppLayout from "./components/layout/AppLayout.jsx";
 // AUTH (hors layout)
 import LoginPage from "./pages/auth/LoginPage.jsx";
 import ChangePasswordPage from "./pages/auth/ChangePasswordPage.jsx";
+import RequireAuth from "./components/auth/RequireAuth.jsx";
 
 // Bureau
 import DashboardBureauPage from "./pages/bureau/DashboardBureauPage.jsx";
@@ -37,7 +38,7 @@ export const router = createBrowserRouter([
 
   // Tout le reste dans l'AppLayout
   {
-    element: <AppLayout />,
+    element: <RequireAuth><AppLayout /></RequireAuth>,
     children: [
       { index: true, element: <Navigate to="/login" replace /> },
 
