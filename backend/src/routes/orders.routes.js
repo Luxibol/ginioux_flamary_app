@@ -1,14 +1,7 @@
-/**
- * Routes commandes
- * - GET  /orders/active : liste des commandes actives (filtres + pagination)
- * - GET  /orders/production : liste des commandes côté production (à produire + complètes non validées)
- * - PATCH /orders/:orderId/lines/:lineId/ready : MAJ quantité prête d'une ligne
- * - POST /orders/:id/production-validate : validation manuelle de fin de production
- * - GET  /orders/:id : détails d'une commande + lignes
- * - PATCH /orders/:id : mise à jour des champs + lignes
- * - DELETE /orders/:id : suppression d'une commande
- */
 const express = require("express");
+
+const { requireAuth } = require("../middlewares/auth.middleware");
+const { requireRole } = require("../middlewares/rbac.middleware");
 
 const ordersController = require("../controllers/orders.controller");
 const orderDetailsController = require("../controllers/orderDetails.controller");
@@ -21,42 +14,103 @@ const orderShipmentsController = require("../controllers/orderShipments.controll
 
 const router = express.Router();
 
-router.get("/production", productionController.getProductionOrders);
+// ⚠️ Toutes les routes /orders sont protégées
+router.use(requireAuth);
+
+/* =========================
+   PRODUCTION (ADMIN + PRODUCTION)
+========================= */
+router.get(
+  "/production",
+  requireRole("ADMIN", "PRODUCTION"),
+  productionController.getProductionOrders
+);
 
 // Production - Expéditions à charger
-router.get("/shipments", productionController.getProductionShipments);
+router.get(
+  "/shipments",
+  requireRole("ADMIN", "PRODUCTION"),
+  productionController.getProductionShipments
+);
 router.patch(
   "/:orderId/lines/:lineId/loaded",
+  requireRole("ADMIN", "PRODUCTION"),
   productionController.patchOrderLineLoaded
 );
-router.post("/:orderId/shipments/depart", productionController.postDepartTruck);
+router.post(
+  "/:orderId/shipments/depart",
+  requireRole("ADMIN", "PRODUCTION"),
+  productionController.postDepartTruck
+);
 
 router.patch(
   "/:orderId/lines/:lineId/ready",
+  requireRole("ADMIN", "PRODUCTION"),
   productionController.patchOrderLineReady
 );
-router.get("/active", ordersController.getActiveOrders);
-
-router.get("/:id/shipments", orderShipmentsController.getOrderShipments);
-
 router.post(
   "/:id/production-validate",
+  requireRole("ADMIN", "PRODUCTION"),
   ordersController.postProductionValidate
 );
 
+/* =========================
+   MIXTE (ADMIN + BUREAU + PRODUCTION)
+========================= */
+router.get(
+  "/:id/shipments",
+  requireRole("ADMIN", "BUREAU", "PRODUCTION"),
+  orderShipmentsController.getOrderShipments
+);
+
+/* =========================
+   BUREAU (ADMIN + BUREAU)
+========================= */
+router.get(
+  "/active",
+  requireRole("ADMIN", "BUREAU"),
+  ordersController.getActiveOrders
+);
+
 // Bureau - Expéditions (à accuser réception)
-router.get("/bureau/shipments/pending", shipmentsBureauController.getPending);
+router.get(
+  "/bureau/shipments/pending",
+  requireRole("ADMIN", "BUREAU"),
+  shipmentsBureauController.getPending
+);
 router.post(
   "/:orderId/shipments/ack",
+  requireRole("ADMIN", "BUREAU"),
   shipmentsBureauController.postAckForOrder
 );
 
-// Bureau - Historique (commandes archivées)
-router.get("/archived", historyController.getArchivedOrders);
-router.get("/:id/history", historyController.getArchivedOrderHistory);
+// Bureau - Historique
+router.get(
+  "/archived",
+  requireRole("ADMIN", "BUREAU"),
+  historyController.getArchivedOrders
+);
+router.get(
+  "/:id/history",
+  requireRole("ADMIN", "BUREAU"),
+  historyController.getArchivedOrderHistory
+);
 
-router.get("/:id", orderDetailsController.getOrderDetails);
-router.patch("/:id", ordersUpdateController.patchOrderMeta);
-router.delete("/:id", ordersDeleteController.deleteOrder);
+// Détails + édition + suppression
+router.get(
+  "/:id",
+  requireRole("ADMIN", "BUREAU"),
+  orderDetailsController.getOrderDetails
+);
+router.patch(
+  "/:id",
+  requireRole("ADMIN", "BUREAU"),
+  ordersUpdateController.patchOrderMeta
+);
+router.delete(
+  "/:id",
+  requireRole("ADMIN", "BUREAU"),
+  ordersDeleteController.deleteOrder
+);
 
 module.exports = router;
