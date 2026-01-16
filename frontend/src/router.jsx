@@ -9,26 +9,37 @@
 import { createBrowserRouter, Navigate } from "react-router-dom";
 import AppLayout from "./components/layout/AppLayout.jsx";
 
+// AUTH (hors layout)
+import LoginPage from "./pages/auth/LoginPage.jsx";
+import ChangePasswordPage from "./pages/auth/ChangePasswordPage.jsx";
+
+// Bureau
 import DashboardBureauPage from "./pages/bureau/DashboardBureauPage.jsx";
 import OrdersPage from "./pages/bureau/OrdersPage.jsx";
 import ShipmentsPage from "./pages/bureau/ShipmentsPage.jsx";
 import ImportPdfPage from "./pages/bureau/ImportPdfPage.jsx";
 import HistoryPage from "./pages/bureau/HistoryPage.jsx";
 
+// Production
 import DashboardProductionPage from "./pages/production/DashboardProductionPage.jsx";
 import ProductionOrdersPage from "./pages/production/ProductionOrdersPage.jsx";
 import ProductionShipmentsPage from "./pages/production/ProductionShipmentsPage.jsx";
 
+// Admin
 import AdminDashboardPage from "./pages/admin/AdminDashboardPage.jsx";
 import AdminProductsPage from "./pages/admin/AdminProductsPage.jsx";
 import AdminEmployeesPage from "./pages/admin/AdminEmployeesPage.jsx";
 
 export const router = createBrowserRouter([
+  // Pages auth hors AppLayout
+  { path: "/login", element: <LoginPage /> },
+  { path: "/change-password", element: <ChangePasswordPage /> },
+
+  // Tout le reste dans l'AppLayout
   {
     element: <AppLayout />,
     children: [
-      // Redirection racine -> /bureau (page par défaut en attendant l’auth)
-      { index: true, element: <Navigate to="/bureau" replace /> },
+      { index: true, element: <Navigate to="/login" replace /> },
 
       {
         path: "/bureau",
