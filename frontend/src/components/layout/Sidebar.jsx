@@ -1,7 +1,9 @@
 /**
  * Sidebar (navigation latérale) du layout "Bureau".
- * - Définit les entrées du menu (routes + label + icône)
- * - Utilise <NavLink> pour gérer l'état actif (styles + barre orange à droite)
+ * - Sections : Administration + Bureau (comme maquettes)
+ * - Affichage selon rôle :
+ *   - ADMIN : produits + employés
+ *   - BUREAU : produits (pas employés)
  */
 import { NavLink } from "react-router-dom";
 import {
@@ -14,23 +16,46 @@ import {
   Users,
 } from "lucide-react";
 
-const menuItems = [
-  { to: "/bureau", label: "Tableau de bord", icon: LayoutDashboard, end: true },
-  { to: "/bureau/commandes", label: "Commandes en cours", icon: ClipboardList },
-  { to: "/bureau/expeditions", label: "Expéditions", icon: Truck },
-  { to: "/bureau/import", label: "Import PDF", icon: Paperclip },
-  { to: "/bureau/historique", label: "Historique", icon: History },
-  { to: "/bureau/admin/produits", label: "Gestion des produits", icon: Package },
-  { to: "/bureau/admin/employes", label: "Gestion des employés", icon: Users },
-
-];
+import { getAuth } from "../../services/auth.storage.js";
 
 function Sidebar() {
-  return (
-    <aside className="w-64 border-r border-gf-border bg-gf-surface flex flex-col">
-      <nav className="flex-1 p-3 pt-4">
+  const auth = getAuth();
+  const role = auth?.user?.role || "";
+
+  const canSeeAdminProducts = role === "ADMIN" || role === "BUREAU";
+  const canSeeAdminEmployees = role === "ADMIN";
+
+  const adminItems = [
+    ...(role === "ADMIN"
+      ? [{ to: "/admin", label: "Tableau de bord", icon: LayoutDashboard, end: true }]
+      : []),
+    ...(canSeeAdminProducts
+      ? [{ to: "/admin/produits", label: "Gestion des produits", icon: Package }]
+      : []),
+    ...(canSeeAdminEmployees
+      ? [{ to: "/admin/employes", label: "Gestion des employés", icon: Users }]
+      : []),
+  ];
+
+  const bureauItems = [
+    { to: "/bureau", label: "Tableau de bord", icon: LayoutDashboard, end: true },
+    { to: "/bureau/commandes", label: "Commandes en cours", icon: ClipboardList },
+    { to: "/bureau/expeditions", label: "Expéditions", icon: Truck },
+    { to: "/bureau/import", label: "Import PDF", icon: Paperclip },
+    { to: "/bureau/historique", label: "Historique", icon: History },
+  ];
+
+  function renderSection(title, items) {
+    if (!items.length) return null;
+
+    return (
+      <div className="mb-4">
+        <div className="px-3 pb-2 text-[11px] font-semibold uppercase tracking-wide text-gf-subtitle">
+          {title}
+        </div>
+
         <ul className="space-y-1">
-          {menuItems.map((item) => {
+          {items.map((item) => {
             const Icon = item.icon;
 
             return (
@@ -63,6 +88,24 @@ function Sidebar() {
             );
           })}
         </ul>
+      </div>
+    );
+  }
+
+  return (
+    <aside className="w-64 border-r border-gf-border bg-gf-surface flex flex-col">
+      <nav className="flex-1 p-3 pt-4">
+        {role === "BUREAU" ? (
+          <>
+            {renderSection("Bureau", bureauItems)}
+            {renderSection("Administration", adminItems)}
+          </>
+        ) : (
+          <>
+            {renderSection("Administration", adminItems)}
+            {renderSection("Bureau", bureauItems)}
+          </>
+        )}
       </nav>
     </aside>
   );

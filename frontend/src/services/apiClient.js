@@ -6,6 +6,7 @@
  * Ne définit pas Content-Type automatiquement pour ne pas casser les uploads FormData.
  */
 const base = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
+import { getToken } from "./auth.storage.js";
 
 /**
  * Construit l'URL complète de l'API.
@@ -27,7 +28,21 @@ export function apiUrl(path) {
  * @throws {Error & {status?:number, data?:any}} Erreur enrichie si HTTP != 2xx
  */
 export async function apiFetch(path, options = {}) {
-  const res = await fetch(apiUrl(path), options);
+  const token = getToken();
+
+  const headers = new Headers(options.headers || {});
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+
+  // Ne pas forcer Content-Type si FormData
+  const body = options.body;
+  const isFormData =
+    typeof FormData !== "undefined" && body instanceof FormData;
+
+  if (!isFormData && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
+
+  const res = await fetch(apiUrl(path), { ...options, headers });
   const data = await res.json().catch(() => ({}));
 
   if (!res.ok) {

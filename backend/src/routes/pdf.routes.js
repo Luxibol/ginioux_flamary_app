@@ -14,8 +14,12 @@ const crypto = require("crypto");
 const { parseOrderFromPdfText } = require("../services/pdfParsing.service");
 const ordersRepository = require("../repositories/orders.repository");
 const productsRepository = require("../repositories/products.repository");
+const { requireAuth } = require("../middlewares/auth.middleware");
+const { requireRole } = require("../middlewares/rbac.middleware");
 
 const router = express.Router();
+
+router.use(requireAuth, requireRole("ADMIN", "BUREAU"));
 
 const PREVIEW_TTL_MS = 15 * 60 * 1000; // 15 minutes
 const previewStore = new Map();
