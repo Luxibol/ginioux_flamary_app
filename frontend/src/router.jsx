@@ -3,6 +3,7 @@
  * - AppLayout : layout commun (Bureau desktop / Production mobile selon la route)
  * - /bureau/* : espace "Bureau"
  * - /production/* : espace "Production" (mobile)
+ * - /admin/* : espace "Admin" (dashboard + produits desktop + employés pc/mobile)
  * - Redirect / -> /bureau (en attendant l’auth)
  */
 import { createBrowserRouter, Navigate } from "react-router-dom";
@@ -22,7 +23,6 @@ import AdminDashboardPage from "./pages/admin/AdminDashboardPage.jsx";
 import AdminProductsPage from "./pages/admin/AdminProductsPage.jsx";
 import AdminEmployeesPage from "./pages/admin/AdminEmployeesPage.jsx";
 
-
 export const router = createBrowserRouter([
   {
     element: <AppLayout />,
@@ -38,8 +38,6 @@ export const router = createBrowserRouter([
           { path: "expeditions", element: <ShipmentsPage /> },
           { path: "import", element: <ImportPdfPage /> },
           { path: "historique", element: <HistoryPage /> },
-          { path: "admin/produits", element: <AdminProductsPage /> },
-          { path: "admin/employes", element: <AdminEmployeesPage /> },
         ],
       },
 
@@ -56,6 +54,8 @@ export const router = createBrowserRouter([
         path: "/admin",
         children: [
           { index: true, element: <AdminDashboardPage /> },
+          { path: "produits", element: <AdminProductsPage /> },
+          { path: "employes", element: <AdminEmployeesPage /> },
         ],
       },
     ],
