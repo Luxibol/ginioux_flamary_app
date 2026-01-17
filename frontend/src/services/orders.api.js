@@ -144,3 +144,10 @@ export async function postDepartTruck(orderId) {
 export async function getOrderShipments(orderId) {
   return apiFetch(`/orders/${orderId}/shipments`);
 }
+
+export async function getProducedOrdersCount({ period } = {}) {
+  const params = new URLSearchParams();
+  if (period) params.set("period", period);
+  const qs = params.toString();
+  return apiFetch(`/orders/produced${qs ? `?${qs}` : ""}`);
+}

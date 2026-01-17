@@ -14,7 +14,7 @@ const orderShipmentsController = require("../controllers/orderShipments.controll
 
 const router = express.Router();
 
-// ⚠️ Toutes les routes /orders sont protégées
+// Toutes les routes /orders sont protégées
 router.use(requireAuth);
 
 /* =========================
@@ -52,6 +52,12 @@ router.post(
   "/:id/production-validate",
   requireRole("ADMIN", "PRODUCTION"),
   ordersController.postProductionValidate
+);
+
+router.get(
+  "/produced",
+  requireRole("ADMIN"),
+  productionController.getProducedCount
 );
 
 /* =========================

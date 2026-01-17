@@ -1,2 +1,2 @@
-import Dashboard from "../../features/admin/pages/Dashboard.jsx";
-export default Dashboard;
+import AdminDashboardPage from "../../features/admin/pages/Dashboard.jsx";
+export default AdminDashboardPage;

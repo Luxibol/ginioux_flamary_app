@@ -35,7 +35,7 @@ async function validateProduction(orderId) {
       AND production_validated_at IS NULL
     LIMIT 1
     `,
-    [orderId]
+    [orderId],
   );
   return r.affectedRows > 0;
 }
@@ -125,7 +125,7 @@ async function createOrderWithLines(orderData, orderProducts) {
  */
 async function createOrderFromPreview(
   preview,
-  { createdByUserId = null } = {}
+  { createdByUserId = null } = {},
 ) {
   const norm = (s) => String(s ?? "").trim();
 
@@ -183,7 +183,7 @@ async function createOrderFromPreview(
 
   if (missingLabels.length > 0) {
     const err = new Error(
-      "Produits introuvables en base pour certains libellés PDF."
+      "Produits introuvables en base pour certains libellés PDF.",
     );
     err.code = 422;
     err.missingLabels = missingLabels;
@@ -232,11 +232,11 @@ async function findActiveOrders({
     where.push("o.expedition_status = 'EXP_COMPLETE'");
   } else if (state === "PRETE_A_EXPEDIER") {
     where.push(
-      "o.production_status = 'PROD_COMPLETE' AND o.expedition_status = 'NON_EXPEDIEE'"
+      "o.production_status = 'PROD_COMPLETE' AND o.expedition_status = 'NON_EXPEDIEE'",
     );
   } else if (state === "EN_PREPARATION") {
     where.push(
-      "o.expedition_status = 'NON_EXPEDIEE' AND o.production_status IN ('A_PROD', 'PROD_PARTIELLE')"
+      "o.expedition_status = 'NON_EXPEDIEE' AND o.production_status IN ('A_PROD', 'PROD_PARTIELLE')",
     );
   }
 
@@ -297,7 +297,7 @@ async function findOrderById(id) {
     WHERE id = ?
     LIMIT 1
     `,
-    [id]
+    [id],
   );
 
   return rows[0] || null;
@@ -322,7 +322,7 @@ async function findOrderLinesByOrderId(orderId) {
     WHERE op.order_id = ?
     ORDER BY op.id ASC
     `,
-    [orderId]
+    [orderId],
   );
 
   return rows;
@@ -375,7 +375,7 @@ async function deleteOrderById(orderId) {
 
     const [result] = await connection.query(
       "DELETE FROM orders WHERE id = ? LIMIT 1",
-      [orderId]
+      [orderId],
     );
 
     await connection.commit();
@@ -403,7 +403,7 @@ async function updateOrderAndLinesById(orderId, patch = {}, lines = null) {
 
     const [orderRows] = await connection.query(
       "SELECT id FROM orders WHERE id = ? LIMIT 1",
-      [orderId]
+      [orderId],
     );
     if (orderRows.length === 0) throw new Error("Commande introuvable");
 
@@ -435,7 +435,7 @@ async function updateOrderAndLinesById(orderId, patch = {}, lines = null) {
       params.push(orderId);
       const [r] = await connection.query(
         `UPDATE orders SET ${sets.join(", ")} WHERE id = ? LIMIT 1`,
-        params
+        params,
       );
       if (r.affectedRows === 0) throw new Error("Commande introuvable");
     }
@@ -445,7 +445,7 @@ async function updateOrderAndLinesById(orderId, patch = {}, lines = null) {
         `SELECT id, product_id, quantity_ready, quantity_shipped
          FROM order_products
          WHERE order_id = ?`,
-        [orderId]
+        [orderId],
       );
 
       const existingById = new Map(existing.map((x) => [x.id, x]));
@@ -459,13 +459,13 @@ async function updateOrderAndLinesById(orderId, patch = {}, lines = null) {
             Number(ex.quantity_shipped) > 0
           ) {
             throw new Error(
-              "Impossible de supprimer une ligne déjà en préparation/expédiée."
+              "Impossible de supprimer une ligne déjà en préparation/expédiée.",
             );
           }
 
           const [del] = await connection.query(
             `DELETE FROM order_products WHERE id = ? AND order_id = ? LIMIT 1`,
-            [ex.id, orderId]
+            [ex.id, orderId],
           );
           if (del.affectedRows === 0)
             throw new Error("Suppression ligne impossible");
@@ -483,7 +483,7 @@ async function updateOrderAndLinesById(orderId, patch = {}, lines = null) {
 
           if (l.quantity < ready || l.quantity < shipped) {
             throw new Error(
-              "Quantité commandée ne peut pas être < quantité prête/expédiée."
+              "Quantité commandée ne peut pas être < quantité prête/expédiée.",
             );
           }
 
@@ -492,7 +492,7 @@ async function updateOrderAndLinesById(orderId, patch = {}, lines = null) {
             (ready > 0 || shipped > 0)
           ) {
             throw new Error(
-              "Impossible de remplacer un produit sur une ligne déjà en préparation/expédiée."
+              "Impossible de remplacer un produit sur une ligne déjà en préparation/expédiée.",
             );
           }
 
@@ -501,7 +501,7 @@ async function updateOrderAndLinesById(orderId, patch = {}, lines = null) {
              SET product_id = ?, quantity_ordered = ?
              WHERE id = ? AND order_id = ?
              LIMIT 1`,
-            [l.productId, l.quantity, l.id, orderId]
+            [l.productId, l.quantity, l.id, orderId],
           );
           if (up.affectedRows === 0)
             throw new Error("Mise à jour ligne impossible");
@@ -509,7 +509,7 @@ async function updateOrderAndLinesById(orderId, patch = {}, lines = null) {
           await connection.query(
             `INSERT INTO order_products (order_id, product_id, quantity_ordered, quantity_ready, quantity_shipped)
              VALUES (?, ?, ?, 0, 0)`,
-            [orderId, l.productId, l.quantity]
+            [orderId, l.productId, l.quantity],
           );
         }
       }
@@ -518,7 +518,7 @@ async function updateOrderAndLinesById(orderId, patch = {}, lines = null) {
         `UPDATE orders
         SET production_validated_at = NULL
         WHERE id = ? LIMIT 1`,
-        [orderId]
+        [orderId],
       );
 
       // 3) Recalcul statut production APRÈS sync complète
@@ -612,7 +612,7 @@ async function recalcAndUpdateProductionStatus(connection, orderId) {
     FROM order_products
     WHERE order_id = ?
     `,
-    [orderId]
+    [orderId],
   );
 
   const { ready_lines = 0, total_lines = 0, sum_ready = 0 } = aggRows[0] || {};
@@ -626,7 +626,7 @@ async function recalcAndUpdateProductionStatus(connection, orderId) {
 
   await connection.query(
     `UPDATE orders SET production_status = ? WHERE id = ? LIMIT 1`,
-    [productionStatus, orderId]
+    [productionStatus, orderId],
   );
 
   return productionStatus;
@@ -656,7 +656,7 @@ async function updateOrderLineReady(orderId, lineId, readyQty) {
       WHERE id = ? AND order_id = ?
       LIMIT 1
       `,
-      [lineId, orderId]
+      [lineId, orderId],
     );
 
     if (lineRows.length === 0) {
@@ -676,19 +676,19 @@ async function updateOrderLineReady(orderId, lineId, readyQty) {
       WHERE id = ? AND order_id = ?
       LIMIT 1
       `,
-      [nextReady, lineId, orderId]
+      [nextReady, lineId, orderId],
     );
 
     // 3) Toucher au ready invalide une validation précédente
     await connection.query(
       `UPDATE orders SET production_validated_at = NULL WHERE id = ? LIMIT 1`,
-      [orderId]
+      [orderId],
     );
 
     // 4) Recalc statut production
     const productionStatus = await recalcAndUpdateProductionStatus(
       connection,
-      orderId
+      orderId,
     );
 
     // 5) Commit (sinon rien n'est persisté)
@@ -720,7 +720,7 @@ async function recalcAndUpdateExpeditionStatus(connection, orderId) {
     FROM order_products
     WHERE order_id = ?
     `,
-    [orderId]
+    [orderId],
   );
 
   const { sum_ordered = 0, sum_shipped = 0 } = aggRows[0] || {};
@@ -737,7 +737,7 @@ async function recalcAndUpdateExpeditionStatus(connection, orderId) {
 
   await connection.query(
     `UPDATE orders SET expedition_status = ? WHERE id = ? LIMIT 1`,
-    [expeditionStatus, orderId]
+    [expeditionStatus, orderId],
   );
 
   return expeditionStatus;
@@ -839,7 +839,7 @@ async function updateOrderLineLoaded(orderId, lineId, loadedQty) {
       LIMIT 1
       FOR UPDATE
       `,
-      [lineId, orderId]
+      [lineId, orderId],
     );
 
     if (lineRows.length === 0) {
@@ -861,7 +861,7 @@ async function updateOrderLineLoaded(orderId, lineId, loadedQty) {
       WHERE id = ? AND order_id = ?
       LIMIT 1
       `,
-      [nextLoaded, lineId, orderId]
+      [nextLoaded, lineId, orderId],
     );
 
     await connection.commit();
@@ -892,7 +892,7 @@ async function departTruck(orderId, { createdByUserId = null } = {}) {
     // lock commande
     const [orderRows] = await connection.query(
       `SELECT id FROM orders WHERE id = ? LIMIT 1 FOR UPDATE`,
-      [orderId]
+      [orderId],
     );
     if (orderRows.length === 0) {
       await connection.rollback();
@@ -915,7 +915,7 @@ async function departTruck(orderId, { createdByUserId = null } = {}) {
       ORDER BY id ASC
       FOR UPDATE
       `,
-      [orderId]
+      [orderId],
     );
 
     const loadedLines = lines.filter((l) => Number(l.quantity_loaded || 0) > 0);
@@ -923,7 +923,7 @@ async function departTruck(orderId, { createdByUserId = null } = {}) {
     if (loadedLines.length === 0) {
       await connection.rollback();
       const err = new Error(
-        "Aucune quantité chargée. Impossible de déclarer un départ camion."
+        "Aucune quantité chargée. Impossible de déclarer un départ camion.",
       );
       err.code = 400;
       throw err;
@@ -935,7 +935,7 @@ async function departTruck(orderId, { createdByUserId = null } = {}) {
       INSERT INTO shipments (order_id, status, departed_at, created_by)
       VALUES (?, 'IN_TRANSIT', NOW(), ?)
       `,
-      [orderId, createdByUserId]
+      [orderId, createdByUserId],
     );
     const shipmentId = shipRes.insertId;
 
@@ -952,7 +952,7 @@ async function departTruck(orderId, { createdByUserId = null } = {}) {
       INSERT INTO shipment_lines (shipment_id, product_id, product_label_pdf, quantity_loaded)
       VALUES ?
       `,
-      [shipLineValues]
+      [shipLineValues],
     );
 
     // 3) commit loaded -> shipped, reset loaded
@@ -965,13 +965,13 @@ async function departTruck(orderId, { createdByUserId = null } = {}) {
       WHERE order_id = ?
         AND quantity_loaded > 0
       `,
-      [orderId]
+      [orderId],
     );
 
     // 4) recalc expedition_status
     const expeditionStatus = await recalcAndUpdateExpeditionStatus(
       connection,
-      orderId
+      orderId,
     );
 
     await connection.commit();
@@ -1002,7 +1002,7 @@ async function findShipmentsByOrderId(orderId) {
     WHERE order_id = ?
     ORDER BY departed_at DESC, id DESC
     `,
-    [orderId]
+    [orderId],
   );
 
   const shipmentIds = shipments.map((s) => s.id);
@@ -1021,7 +1021,7 @@ async function findShipmentsByOrderId(orderId) {
     WHERE sl.shipment_id IN (?)
     ORDER BY sl.shipment_id DESC, sl.id ASC
     `,
-    [shipmentIds]
+    [shipmentIds],
   );
 
   const map = new Map();
@@ -1044,6 +1044,75 @@ async function findShipmentsByOrderId(orderId) {
   }));
 }
 
+/**
+ * Compte les commandes "produites" (production validée) sur une période.
+ * - produced = production_validated_at IS NOT NULL
+ * @param {{days?: number|null}} filters
+ * @returns {Promise<number>}
+ */
+async function countProducedOrders({ days = null } = {}) {
+  const where = ["production_validated_at IS NOT NULL"];
+  const params = [];
+
+  if (Number.isFinite(days) && days > 0) {
+    where.push("production_validated_at >= DATE_SUB(NOW(), INTERVAL ? DAY)");
+    params.push(days);
+  }
+
+  const [rows] = await pool.query(
+    `
+    SELECT COUNT(*) AS c
+    FROM orders
+    WHERE ${where.join(" AND ")}
+    `,
+    params,
+  );
+
+  return Number(rows?.[0]?.c ?? 0);
+}
+
+/**
+ * Totaux BigBag/Roche des commandes "produites" sur une période.
+ * produit = production_validated_at IS NOT NULL
+ * total produit ligne = GREATEST(quantity_ready, quantity_shipped)
+ * @param {{days?: number|null}} filters
+ * @returns {Promise<{bigbag:number, roche:number}>}
+ */
+async function sumProducedTotals({ days = null } = {}) {
+  const where = ["o.production_validated_at IS NOT NULL"];
+  const params = [];
+
+  if (Number.isFinite(days) && days > 0) {
+    where.push("o.production_validated_at >= DATE_SUB(NOW(), INTERVAL ? DAY)");
+    params.push(days);
+  }
+
+  const [rows] = await pool.query(
+    `
+    SELECT pc.category AS category,
+           SUM(GREATEST(op.quantity_ready, op.quantity_shipped)) AS qty
+    FROM orders o
+    JOIN order_products op ON op.order_id = o.id
+    JOIN products_catalog pc ON pc.id = op.product_id
+    WHERE ${where.join(" AND ")}
+    GROUP BY pc.category
+    `,
+    params,
+  );
+
+  const totals = { bigbag: 0, roche: 0 };
+
+  for (const r of rows || []) {
+    const cat = String(r.category || "").toUpperCase();
+    const qty = Number(r.qty ?? 0);
+
+    if (cat === "BIGBAG") totals.bigbag = qty;
+    if (cat === "ROCHE") totals.roche = qty;
+  }
+
+  return totals;
+}
+
 module.exports = {
   findOrderByArc,
   findActiveOrders,
@@ -1061,4 +1130,6 @@ module.exports = {
   departTruck,
   validateProduction,
   findShipmentsByOrderId,
+  countProducedOrders,
+  sumProducedTotals,
 };
