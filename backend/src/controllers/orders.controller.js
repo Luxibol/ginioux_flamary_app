@@ -45,10 +45,14 @@ async function getActiveOrders(req, res) {
       offset,
     };
 
-    const data = await ordersRepository.findActiveOrders(filters);
+    const [data, total] = await Promise.all([
+      ordersRepository.findActiveOrders(filters),
+      ordersRepository.countActiveOrders(filters),
+    ]);
 
     res.json({
       count: data.length,
+      total,
       filters,
       data,
     });

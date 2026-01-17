@@ -1113,6 +1113,48 @@ async function sumProducedTotals({ days = null } = {}) {
   return totals;
 }
 
+async function countActiveOrders({
+  q = null,
+  priority = null,
+  state = null,
+} = {}) {
+  const where = ["o.is_archived = 0"];
+  const params = [];
+
+  if (q) {
+    where.push("(o.arc LIKE ? OR o.client_name LIKE ?)");
+    params.push(`%${q}%`, `%${q}%`);
+  }
+
+  if (priority) {
+    where.push("o.priority = ?");
+    params.push(priority);
+  }
+
+  if (state === "PARTIELLEMENT_EXPEDIEE") {
+    where.push("o.expedition_status = 'EXP_PARTIELLE'");
+  } else if (state === "EXPEDIEE") {
+    where.push("o.expedition_status = 'EXP_COMPLETE'");
+  } else if (state === "PRETE_A_EXPEDIER") {
+    where.push(
+      "o.production_status = 'PROD_COMPLETE' AND o.expedition_status = 'NON_EXPEDIEE'",
+    );
+  } else if (state === "EN_PREPARATION") {
+    where.push(
+      "o.expedition_status = 'NON_EXPEDIEE' AND o.production_status IN ('A_PROD', 'PROD_PARTIELLE')",
+    );
+  }
+
+  const [rows] = await pool.query(
+    `SELECT COUNT(*) AS c
+     FROM orders o
+     WHERE ${where.join(" AND ")}`,
+    params,
+  );
+
+  return Number(rows?.[0]?.c ?? 0);
+}
+
 module.exports = {
   findOrderByArc,
   findActiveOrders,
@@ -1132,4 +1174,5 @@ module.exports = {
   findShipmentsByOrderId,
   countProducedOrders,
   sumProducedTotals,
+  countActiveOrders,
 };

@@ -1,0 +1,171 @@
+import { useEffect, useMemo, useState } from "react";
+
+import { getActiveOrders } from "../../../services/orders.api.js";
+import { getBureauPendingShipments } from "../../../services/shipments.api.js";
+import { getArchivedOrders } from "../../../services/history.api.js";
+
+import BureauKpiCard from "../components/BureauKpiCard.jsx";
+import BureauListBlock from "../components/BureauListBlock.jsx";
+
+import { getUser } from "../../../services/auth.storage.js";
+
+
+function formatDateFR(value) {
+  if (!value) return "—";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "—";
+  return new Intl.DateTimeFormat("fr-FR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(d);
+}
+
+function n(v) {
+  const x = Number(v);
+  return Number.isFinite(x) ? x : 0;
+}
+
+export default function Dashboard() {
+  const firstName = useMemo(() => {
+    const user = getUser();
+    return user?.first_name || "Secrétaire";
+  }, []);
+
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const [activeTotal, setActiveTotal] = useState(0);
+  const [urgentTotal, setUrgentTotal] = useState(0);
+  const [pendingCount, setPendingCount] = useState(0);
+
+  const [urgentTop, setUrgentTop] = useState([]);
+  const [archivedTop, setArchivedTop] = useState([]);
+
+  useEffect(() => {
+    let alive = true;
+
+    async function run() {
+      setLoading(true);
+      setError("");
+
+      try {
+        const [activeRes, urgentCountRes, urgentListRes, pendingRes, archivedRes] =
+          await Promise.all([
+            getActiveOrders({ limit: 1, offset: 0 }),
+            getActiveOrders({ priority: "URGENT", limit: 1, offset: 0 }),  // KPI urgent (total)
+            getActiveOrders({ priority: "URGENT", limit: 5, offset: 0 }),  // LISTE urgent (5)
+            getBureauPendingShipments(),
+            getArchivedOrders(),
+          ]);
+        if (!alive) return;
+
+        setActiveTotal(n(activeRes?.total ?? activeRes?.count));
+        setUrgentTotal(n(urgentCountRes?.total ?? urgentCountRes?.count));
+        setPendingCount(n(pendingRes?.count));
+
+        const uTop = Array.isArray(urgentListRes?.data) ? urgentListRes.data : [];
+        setUrgentTop(uTop.slice(0, 5));
+
+        const arch = Array.isArray(archivedRes?.data) ? archivedRes.data : [];
+        setArchivedTop(arch.slice(0, 5));
+      } catch (e) {
+        if (!alive) return;
+        setError(e?.message || "Erreur lors du chargement du dashboard.");
+      } finally {
+        if (!alive) return;
+        setLoading(false);
+      }
+    }
+
+    run();
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const urgentLines = useMemo(() => {
+    return urgentTop.slice(0, 5).map((o) => {
+      return `${o.arc || "—"} — ${o.client_name || "Client —"} — ${o.priority || "URGENT"} — ${
+        o.order_state_label || "—"
+      }`;
+    });
+  }, [urgentTop]);
+
+  const archivedLines = useMemo(() => {
+    return archivedTop.slice(0, 5).map((o) => {
+      return `${o.arc || "—"} — ${o.client_name || "Client —"} — Expédiée le ${formatDateFR(
+        o.last_departed_at
+      )}`;
+    });
+  }, [archivedTop]);
+
+  if (loading) {
+    return <div className="p-4 text-xs text-gf-subtitle">Chargement…</div>;
+  }
+
+  if (error) {
+    return (
+      <div className="p-4">
+        <div className="rounded-md border border-gf-border bg-gf-surface p-3">
+          <div className="text-xs font-medium text-gf-title">Erreur</div>
+          <div className="mt-1 text-xs text-gf-subtitle">{error}</div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-4">
+      {/* Header de page (comme maquette) */}
+      <div className="p-4">
+        <div>
+          <h1 className="gf-h1">Tableau de bord</h1>
+        </div>
+        <div className="text-xs text-gf-subtitle">Vue d&apos;ensemble des commandes et expéditions.</div>
+
+        <div className="mt-4 text-center font-semibold text-gf-orange">
+          Bonjour {firstName}
+        </div>
+
+        {/* Panneau gris (comme maquette) */}
+        <div className="mt-5 rounded-md bg-gf-bg px-8 pt-10 pb-8 min-h-[420px]">
+          {/* KPI centrés */}
+          <div className="flex flex-wrap justify-center gap-48">
+            <BureauKpiCard title="Commandes en cours" value={activeTotal} lines={["Actives"]} />
+            <BureauKpiCard
+              title="Commandes urgentes"
+              value={urgentTotal}
+              lines={["Priorité haute"]}
+              dot={urgentTotal > 0}
+            />
+            <BureauKpiCard
+              title="Expéditions à traiter"
+              value={pendingCount}
+              lines={["À accuser réception"]}
+            />
+          </div>
+
+          {/* Deux colonnes bas */}
+          <div className="mt-14">
+            <div className="grid grid-cols-2 gap-10 pl-48">
+              <BureauListBlock
+                title="Commandes urgentes"
+                items={urgentLines}
+                linkTo="/bureau/commandes"
+                linkLabel="Voir toutes les commandes"
+              />
+
+              <BureauListBlock
+                title="Dernières expéditions"
+                items={archivedLines}
+                linkTo="/bureau/historique"
+                linkLabel="Voir l'historique d'expéditions"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

@@ -17,14 +17,22 @@ import { apiFetch } from "./apiClient";
 
 /**
  * Récupère les commandes actives (non archivées) avec filtres optionnels.
- * @param {{q?:string, priority?:string, state?:string}} [filters]
- * @returns {Promise<{count:number, filters:object, data:any[]}>}
+ * @param {{q?:string, priority?:string, state?:string, limit?:number, offset?:number}} [filters]
+ * @returns {Promise<{count:number, total?:number, filters:object, data:any[]}>}
  */
-export async function getActiveOrders({ q, priority, state } = {}) {
+export async function getActiveOrders({
+  q,
+  priority,
+  state,
+  limit,
+  offset,
+} = {}) {
   const params = new URLSearchParams();
   if (q) params.set("q", q);
   if (priority) params.set("priority", priority);
   if (state) params.set("state", state);
+  if (Number.isFinite(limit)) params.set("limit", String(limit));
+  if (Number.isFinite(offset)) params.set("offset", String(offset));
 
   const qs = params.toString();
   return apiFetch(`/orders/active${qs ? `?${qs}` : ""}`);
