@@ -11,6 +11,15 @@ function asInt(v) {
   return Math.trunc(n);
 }
 
+const ALLOWED_PERIODS = ["ALL", "7D", "30D", "90D"];
+
+function periodToDays(period) {
+  if (period === "7D") return 7;
+  if (period === "30D") return 30;
+  if (period === "90D") return 90;
+  return null;
+}
+
 async function getProductionOrders(req, res) {
   try {
     const q = (req.query.q || "").trim();
@@ -60,7 +69,7 @@ async function patchOrderLineReady(req, res) {
     const result = await ordersRepository.updateOrderLineReady(
       orderId,
       lineId,
-      ready
+      ready,
     );
 
     if (result?.notFound) {
@@ -125,7 +134,7 @@ async function patchOrderLineLoaded(req, res) {
     const result = await ordersRepository.updateOrderLineLoaded(
       orderId,
       lineId,
-      loaded
+      loaded,
     );
 
     if (result?.notFound) {
@@ -164,6 +173,22 @@ async function postDepartTruck(req, res) {
   }
 }
 
+async function getProducedCount(req, res) {
+  try {
+    const period = String(req.query.period || "7D").toUpperCase();
+    const days = periodToDays(period);
+
+    const [count, totals] = await Promise.all([
+      ordersRepository.countProducedOrders({ days }),
+      ordersRepository.sumProducedTotals({ days }),
+    ]);
+
+    res.json({ count, period, totals });
+  } catch (e) {
+    res.status(400).json({ error: e.message || "Requête invalide" });
+  }
+}
+
 // puis export :
 module.exports = {
   getProductionOrders,
@@ -171,4 +196,5 @@ module.exports = {
   getProductionShipments,
   patchOrderLineLoaded,
   postDepartTruck,
+  getProducedCount,
 };

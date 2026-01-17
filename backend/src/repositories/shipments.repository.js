@@ -54,7 +54,7 @@ async function findPendingShipmentsWithLines(orderIds) {
 
     ORDER BY s.order_id ASC, s.departed_at DESC, sl.id ASC
     `,
-    [orderIds]
+    [orderIds],
   );
 
   return rows;
@@ -81,7 +81,7 @@ async function findRemainingByOrder(orderIds) {
       AND (op.quantity_ordered - op.quantity_shipped) > 0
     ORDER BY op.order_id ASC, op.id ASC
     `,
-    [orderIds]
+    [orderIds],
   );
 
   return rows;
@@ -104,7 +104,7 @@ async function findRecapTotals(orderIds) {
     WHERE order_id IN (?)
     GROUP BY order_id
     `,
-    [orderIds]
+    [orderIds],
   );
 
   return rows;
@@ -117,7 +117,7 @@ async function findRecapTotals(orderIds) {
 async function ackPendingShipmentsForOrder(
   connection,
   orderId,
-  { bureauAckBy = null } = {}
+  { bureauAckBy = null } = {},
 ) {
   const [r] = await connection.query(
     `
@@ -127,7 +127,7 @@ async function ackPendingShipmentsForOrder(
     WHERE order_id = ?
       AND bureau_ack_at IS NULL
     `,
-    [bureauAckBy, orderId]
+    [bureauAckBy, orderId],
   );
 
   return r.affectedRows || 0;
@@ -146,10 +146,49 @@ async function archiveOrderIfComplete(connection, orderId) {
       AND expedition_status = 'EXP_COMPLETE'
     LIMIT 1
     `,
-    [orderId]
+    [orderId],
   );
 
   return (r.affectedRows || 0) > 0;
+}
+
+async function countDepartedDistinctOrdersSinceDays(days) {
+  const [rows] = await pool.query(
+    `
+    SELECT COUNT(DISTINCT s.order_id) AS c
+    FROM shipments s
+    WHERE s.departed_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
+    `,
+    [days],
+  );
+  return Number(rows?.[0]?.c ?? 0);
+}
+
+async function sumDepartedTotalsSinceDays(days) {
+  const [rows] = await pool.query(
+    `
+    SELECT pc.category AS category,
+           SUM(sl.quantity_loaded) AS qty
+    FROM shipments s
+    JOIN shipment_lines sl ON sl.shipment_id = s.id
+    JOIN products_catalog pc ON pc.id = sl.product_id
+    WHERE s.departed_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
+    GROUP BY pc.category
+    `,
+    [days],
+  );
+
+  const totals = { bigbag: 0, roche: 0 };
+  for (const r of rows || []) {
+    const cat = String(r.category || "").toUpperCase();
+    const qty = Number(r.qty ?? 0);
+    if (!Number.isFinite(qty)) continue;
+
+    if (cat === "BIGBAG") totals.bigbag += qty; // SmallBag inclus
+    if (cat === "ROCHE") totals.roche += qty;
+  }
+
+  return totals;
 }
 
 module.exports = {
@@ -159,4 +198,6 @@ module.exports = {
   findRecapTotals,
   ackPendingShipmentsForOrder,
   archiveOrderIfComplete,
+  countDepartedDistinctOrdersSinceDays,
+  sumDepartedTotalsSinceDays,
 };

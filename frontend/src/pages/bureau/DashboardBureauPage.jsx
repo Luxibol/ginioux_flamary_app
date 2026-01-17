@@ -1,3 +1,5 @@
-export default function Dashboard() {
-  return <h1 className="gf-h1">Tableau de bord (Bureau)</h1>;
+import DashboardBureau from "../../features/orders/pages/Dashboard.jsx";
+
+export default function DashboardBureauPage() {
+  return <DashboardBureau />;
 }
