@@ -159,3 +159,7 @@ export async function getProducedOrdersCount({ period } = {}) {
   const qs = params.toString();
   return apiFetch(`/orders/produced${qs ? `?${qs}` : ""}`);
 }
+
+export async function getProductionShipmentsStats() {
+  return apiFetch(`/orders/shipments/stats`);
+}

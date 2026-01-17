@@ -11,6 +11,7 @@ const productionController = require("../controllers/production.controller");
 const shipmentsBureauController = require("../controllers/shipmentsBureau.controller");
 const historyController = require("../controllers/history.controller");
 const orderShipmentsController = require("../controllers/orderShipments.controller");
+const shipmentsStatsController = require("../controllers/shipmentsStats.controller");
 
 const router = express.Router();
 
@@ -23,41 +24,47 @@ router.use(requireAuth);
 router.get(
   "/production",
   requireRole("ADMIN", "PRODUCTION"),
-  productionController.getProductionOrders
+  productionController.getProductionOrders,
 );
 
 // Production - Expéditions à charger
 router.get(
+  "/shipments/stats",
+  requireRole("ADMIN", "PRODUCTION"),
+  shipmentsStatsController.getShipmentStats,
+);
+
+router.get(
   "/shipments",
   requireRole("ADMIN", "PRODUCTION"),
-  productionController.getProductionShipments
+  productionController.getProductionShipments,
 );
 router.patch(
   "/:orderId/lines/:lineId/loaded",
   requireRole("ADMIN", "PRODUCTION"),
-  productionController.patchOrderLineLoaded
+  productionController.patchOrderLineLoaded,
 );
 router.post(
   "/:orderId/shipments/depart",
   requireRole("ADMIN", "PRODUCTION"),
-  productionController.postDepartTruck
+  productionController.postDepartTruck,
 );
 
 router.patch(
   "/:orderId/lines/:lineId/ready",
   requireRole("ADMIN", "PRODUCTION"),
-  productionController.patchOrderLineReady
+  productionController.patchOrderLineReady,
 );
 router.post(
   "/:id/production-validate",
   requireRole("ADMIN", "PRODUCTION"),
-  ordersController.postProductionValidate
+  ordersController.postProductionValidate,
 );
 
 router.get(
   "/produced",
   requireRole("ADMIN"),
-  productionController.getProducedCount
+  productionController.getProducedCount,
 );
 
 /* =========================
@@ -66,7 +73,7 @@ router.get(
 router.get(
   "/:id/shipments",
   requireRole("ADMIN", "BUREAU", "PRODUCTION"),
-  orderShipmentsController.getOrderShipments
+  orderShipmentsController.getOrderShipments,
 );
 
 /* =========================
@@ -75,48 +82,48 @@ router.get(
 router.get(
   "/active",
   requireRole("ADMIN", "BUREAU"),
-  ordersController.getActiveOrders
+  ordersController.getActiveOrders,
 );
 
 // Bureau - Expéditions (à accuser réception)
 router.get(
   "/bureau/shipments/pending",
   requireRole("ADMIN", "BUREAU"),
-  shipmentsBureauController.getPending
+  shipmentsBureauController.getPending,
 );
 router.post(
   "/:orderId/shipments/ack",
   requireRole("ADMIN", "BUREAU"),
-  shipmentsBureauController.postAckForOrder
+  shipmentsBureauController.postAckForOrder,
 );
 
 // Bureau - Historique
 router.get(
   "/archived",
   requireRole("ADMIN", "BUREAU"),
-  historyController.getArchivedOrders
+  historyController.getArchivedOrders,
 );
 router.get(
   "/:id/history",
   requireRole("ADMIN", "BUREAU"),
-  historyController.getArchivedOrderHistory
+  historyController.getArchivedOrderHistory,
 );
 
 // Détails + édition + suppression
 router.get(
   "/:id",
-  requireRole("ADMIN", "BUREAU"),
-  orderDetailsController.getOrderDetails
+  requireRole("ADMIN", "BUREAU", "PRODUCTION"),
+  orderDetailsController.getOrderDetails,
 );
 router.patch(
   "/:id",
   requireRole("ADMIN", "BUREAU"),
-  ordersUpdateController.patchOrderMeta
+  ordersUpdateController.patchOrderMeta,
 );
 router.delete(
   "/:id",
   requireRole("ADMIN", "BUREAU"),
-  ordersDeleteController.deleteOrder
+  ordersDeleteController.deleteOrder,
 );
 
 module.exports = router;
