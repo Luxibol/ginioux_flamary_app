@@ -46,7 +46,7 @@ async function getActiveOrders(req, res) {
     };
 
     const [data, total] = await Promise.all([
-      ordersRepository.findActiveOrders(filters),
+      ordersRepository.findActiveOrders(filters, { userId: req.user?.id }),
       ordersRepository.countActiveOrders(filters),
     ]);
 

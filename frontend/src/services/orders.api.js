@@ -163,3 +163,15 @@ export async function getProducedOrdersCount({ period } = {}) {
 export async function getProductionShipmentsStats() {
   return apiFetch(`/orders/shipments/stats`);
 }
+
+export async function getOrderComments(orderId) {
+  return apiFetch(`/orders/${orderId}/comments`);
+}
+
+export async function postOrderComment(orderId, content) {
+  return apiFetch(`/orders/${orderId}/comments`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ content }),
+  });
+}

@@ -4,8 +4,14 @@ const { pool } = require("../config/db");
  * Récupère les commandes ayant au moins un shipment non ack par le bureau.
  * Retourne des lignes "order header" avec last_departed_at.
  */
-async function findBureauPendingOrders() {
-  const [rows] = await pool.query(`
+// shipments.repository.js
+
+async function findBureauPendingOrders({ userId } = {}) {
+  if (!userId)
+    throw new Error("userId manquant pour les compteurs commentaires");
+
+  const [rows] = await pool.query(
+    `
     SELECT
       o.id,
       o.arc,
@@ -13,15 +19,41 @@ async function findBureauPendingOrders() {
       o.pickup_date,
       o.priority,
       o.expedition_status,
-      MAX(s.departed_at) AS last_departed_at
+      MAX(s.departed_at) AS last_departed_at,
+
+      COALESCE(oc.messagesCount, 0) AS messagesCount,
+      COALESCE(uc.unreadCount, 0) AS unreadCount
+
     FROM orders o
     JOIN shipments s ON s.order_id = o.id
+
+    LEFT JOIN (
+      SELECT order_id, COUNT(*) AS messagesCount
+      FROM order_comments
+      GROUP BY order_id
+    ) oc ON oc.order_id = o.id
+
+    LEFT JOIN (
+      SELECT c.order_id, COUNT(*) AS unreadCount
+      FROM order_comments c
+      LEFT JOIN order_comment_reads r
+        ON r.order_id = c.order_id AND r.user_id = ?
+      WHERE c.author_id <> ?
+        AND c.created_at > COALESCE(r.last_read_at, '1970-01-01 00:00:00')
+      GROUP BY c.order_id
+    ) uc ON uc.order_id = o.id
+
     WHERE o.is_archived = 0
       AND s.bureau_ack_at IS NULL
+
     GROUP BY
-      o.id, o.arc, o.client_name, o.pickup_date, o.priority, o.expedition_status
+      o.id, o.arc, o.client_name, o.pickup_date, o.priority, o.expedition_status,
+      oc.messagesCount, uc.unreadCount
+
     ORDER BY last_departed_at DESC
-  `);
+    `,
+    [userId, userId],
+  );
 
   return rows;
 }

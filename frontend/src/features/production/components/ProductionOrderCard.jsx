@@ -1,14 +1,14 @@
 /**
  * Card commande (Production mobile)
  * - Accordéon (collapse/expand)
- * - Lignes produits + stepper "Prêts"
- * - Actions : tout marquer prêt, production terminée (si complet)
- * - Commentaires repliables + enveloppe conditionnelle
- * - Clic enveloppe : ouvre card + ouvre commentaires + scroll
+ * - Lignes produits + stepper "Chargés"
+ * - Actions : tout charger, départ camion, etc.
+ * - Commentaires contrôlés (parent) + enveloppe stable
  */
 import { useMemo, useRef, useState } from "react";
-import { Mail, ChevronDown, ChevronUp, Plus } from "lucide-react";
+import { Mail, ChevronDown, ChevronUp } from "lucide-react";
 import QtyStepper from "./QtyStepper.jsx";
+import OrderCommentsThread from "../../../components/comments/OrderCommentsThread.jsx";
 
 function dotClassByStatus(status) {
   if (status === "COMPLETE") return "bg-green-500";
@@ -29,30 +29,51 @@ function priorityClass(priority) {
   return "text-gf-muted";
 }
 
-function ProductionOrderCard({
+export default function ProductionOrderCard({
   order,
   expanded,
   onToggle,
+
   readyByLineId,
   onChangeReady,
   onMarkAllReady,
-  onFinishProduction,
-  onAddComment,
+
+  onCountsChange,
+
   statusLabelOverride = null,
   statusKeyOverride = null,
-  // optionnels
+
+  // optionnels UI
   stepperLabel = "Prêts",
   markAllLabel = "Tout marquer prêt",
   markAllDisabled = false,
   primaryLabel = "Production terminée",
   primaryDisabled = null,
   onPrimaryAction = null,
-}) {
-  const [commentsOpen, setCommentsOpen] = useState(false);
 
-  const unreadCount = order?.unreadCount ?? 0;
-  const commentsCount = order?.comments?.length ?? 0;
-  const hasComments = commentsCount > 0;
+  // ✅ NEW (contrôle depuis Shipment.jsx)
+  onMailClick,
+  commentsOpen: commentsOpenProp,
+  onCommentsOpenChange,
+}) {
+  // ✅ contrôlé (si fourni), sinon local
+  const [commentsOpenLocal, setCommentsOpenLocal] = useState(false);
+  const commentsOpen =
+    typeof commentsOpenProp === "boolean" ? commentsOpenProp : commentsOpenLocal;
+
+  const setCommentsOpen = (v) => {
+    const next = Boolean(v);
+    if (typeof commentsOpenProp === "boolean") {
+      onCommentsOpenChange?.(next);
+    } else {
+      setCommentsOpenLocal(next);
+      onCommentsOpenChange?.(next);
+    }
+  };
+
+  const unreadCount = Number(order?.unreadCount ?? 0);
+  const messagesCount = Number(order?.messagesCount ?? 0);
+  const hasComments = messagesCount > 0;
 
   const commentsRef = useRef(null);
 
@@ -80,7 +101,7 @@ function ProductionOrderCard({
   const effectivePrimaryDisabled =
     primaryDisabled !== null ? primaryDisabled : !allReady;
 
-  const effectivePrimaryAction = onPrimaryAction ?? onFinishProduction;
+  const effectivePrimaryAction = onPrimaryAction;
 
   return (
     <section className="rounded-2xl border border-gf-border bg-gf-surface shadow-sm overflow-hidden">
@@ -96,23 +117,21 @@ function ProductionOrderCard({
             onToggle?.();
           }
         }}
-        className="w-full text-left px-4 py-3 flex items-start gap-3"
+        className="relative w-full text-left px-4 py-3 pr-14 flex items-start gap-3"
       >
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between gap-2">
             <h2 className="font-semibold text-sm truncate">{order?.company}</h2>
 
-            <div className="flex items-center gap-2 shrink-0">
-              <span className="inline-flex items-center gap-2 text-xs text-gf-text">
-                <span
-                  className={[
-                    "h-2.5 w-2.5 rounded-full",
-                    dotClassByStatus(statusKey),
-                  ].join(" ")}
-                />
-                {statusLabelOverride ?? labelByStatus(statusKey)}
-              </span>
-            </div>
+            <span className="inline-flex items-center gap-2 text-xs text-gf-text shrink-0">
+              <span
+                className={[
+                  "h-2.5 w-2.5 rounded-full",
+                  dotClassByStatus(statusKey),
+                ].join(" ")}
+              />
+              {statusLabelOverride ?? labelByStatus(statusKey)}
+            </span>
           </div>
 
           <div className="mt-1 text-xs text-gf-text">
@@ -129,32 +148,44 @@ function ProductionOrderCard({
           <div className="mt-0.5 text-xs text-gf-muted">{order?.summary}</div>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0 pt-1">
-          {hasComments ? (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                openCardAndScrollToComments();
-              }}
-              className="relative h-9 w-9 inline-flex items-center justify-center rounded-lg hover:bg-gf-orange/10"
-              aria-label="Voir les commentaires"
-            >
-              <Mail className="h-5 w-5 text-gf-orange" />
-              {unreadCount > 0 ? (
-                <span className="absolute -top-1 -left-1 h-5 min-w-5 px-1 rounded-full bg-red-500 text-white text-[10px] inline-flex items-center justify-center">
-                  {unreadCount}
-                </span>
-              ) : null}
-            </button>
-          ) : null}
+        {/* Chevron (haut droite) */}
+          <div className="absolute top-3 right-3">
+            {expanded ? (
+              <ChevronUp className="h-5 w-5 text-gf-muted" />
+            ) : (
+              <ChevronDown className="h-5 w-5 text-gf-muted" />
+            )}
+          </div>
 
-          {expanded ? (
-            <ChevronUp className="h-5 w-5 text-gf-muted" />
-          ) : (
-            <ChevronDown className="h-5 w-5 text-gf-muted" />
-          )}
-        </div>
+          {/* Enveloppe (bas droite) */}
+          <div className="absolute bottom-3 right-3">
+            <div className="relative h-9 w-9 grid place-items-center">
+              {hasComments ? (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openCardAndScrollToComments();
+                  }}
+                  className="relative h-9 w-9 grid place-items-center rounded-lg hover:bg-gf-orange/10"
+                  aria-label="Voir les commentaires"
+                  title="Messages"
+                >
+                  <Mail className="h-5 w-5 text-gf-orange" />
+                  {unreadCount > 0 ? (
+                    <span className="absolute -top-1 -left-1 h-5 min-w-5 px-1 rounded-full bg-gf-orange text-white text-[10px] grid place-items-center">
+                      {unreadCount}
+                    </span>
+                  ) : null}
+                </button>
+              ) : (
+                // place réservée (invisible)
+                <span className="pointer-events-none opacity-0">
+                  <Mail className="h-5 w-5" />
+                </span>
+              )}
+            </div>
+          </div>
       </div>
 
       {/* Body */}
@@ -213,52 +244,18 @@ function ProductionOrderCard({
             {markAllLabel}
           </button>
 
-          {/* Commentaires repliables */}
+          {/* ✅ Commentaires : UN SEUL header (celui du thread) */}
           <div ref={commentsRef} className="pt-1">
-            <button
-              type="button"
-              onClick={() => setCommentsOpen((v) => !v)}
-              className="w-full flex items-center justify-between gap-2"
-            >
-              <div className="text-sm font-semibold">
-                Commentaires ({commentsCount})
-              </div>
-
-              {commentsOpen ? (
-                <ChevronUp className="h-5 w-5 text-gf-muted" />
-              ) : (
-                <ChevronDown className="h-5 w-5 text-gf-muted" />
-              )}
-            </button>
-
-            {commentsOpen && (
-              <>
-                <div className="mt-2 space-y-2">
-                  {(order?.comments ?? []).map((c) => (
-                    <div
-                      key={c.id}
-                      className="rounded-xl bg-gray-600 text-white px-3 py-2 text-xs"
-                    >
-                      <div className="text-gf-orange font-semibold">
-                        {c.author} - {c.at}
-                      </div>
-                      <div className="mt-0.5">{c.text}</div>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="flex justify-center mt-2">
-                  <button
-                    type="button"
-                    onClick={onAddComment}
-                    className="h-9 w-11 rounded-lg border border-gf-orange text-gf-orange inline-flex items-center justify-center hover:bg-gf-orange/10"
-                    aria-label="Ajouter un commentaire"
-                  >
-                    <Plus className="h-5 w-5" />
-                  </button>
-                </div>
-              </>
-            )}
+            <OrderCommentsThread
+              orderId={order?.id}
+              open={true}
+              onCountsChange={onCountsChange}
+              // contrôle ouverture depuis parent/enveloppe
+              collapsed={!commentsOpen}
+              onCollapsedChange={(isCollapsed) => setCommentsOpen(!isCollapsed)}
+              // IMPORTANT: on garde le header du thread, donc pas de header custom ici
+              showHeader={true}
+            />
           </div>
 
           <button
@@ -279,5 +276,3 @@ function ProductionOrderCard({
     </section>
   );
 }
-
-export default ProductionOrderCard;

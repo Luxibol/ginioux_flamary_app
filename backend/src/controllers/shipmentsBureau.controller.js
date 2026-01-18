@@ -13,12 +13,13 @@ function asInt(v) {
  */
 async function getPending(req, res) {
   try {
-    const orders = await shipmentsRepo.findBureauPendingOrders();
+    const userId = req.user?.id ?? null; // si ton auth met req.user
+    const orders = await shipmentsRepo.findBureauPendingOrders({ userId });
+
     const orderIds = orders.map((o) => o.id);
 
-    const shipRows = await shipmentsRepo.findPendingShipmentsWithLines(
-      orderIds
-    );
+    const shipRows =
+      await shipmentsRepo.findPendingShipmentsWithLines(orderIds);
     const remainingRows = await shipmentsRepo.findRemainingByOrder(orderIds);
     const recapRows = await shipmentsRepo.findRecapTotals(orderIds);
 
@@ -79,6 +80,9 @@ async function getPending(req, res) {
           priority: o.priority,
           expedition_status: o.expedition_status,
           last_departed_at: o.last_departed_at,
+
+          messagesCount: Number(o.messagesCount ?? 0),
+          unreadCount: Number(o.unreadCount ?? 0),
         },
         pending_shipments,
         remaining: remainingByOrder.get(o.id) || [],
@@ -116,12 +120,12 @@ async function postAckForOrder(req, res) {
       orderId,
       {
         bureauAckBy: null, // plus tard: req.user?.id
-      }
+      },
     );
 
     const archived = await shipmentsRepo.archiveOrderIfComplete(
       connection,
-      orderId
+      orderId,
     );
 
     await connection.commit();

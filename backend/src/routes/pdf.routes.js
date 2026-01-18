@@ -267,10 +267,11 @@ router.post("/:importId/confirm", async (req, res) => {
     }
 
     const preview = sanitized.value;
-    const internalComment = req.body?.internalComment ?? null;
+    const internalComment = String(req.body?.internalComment ?? "").trim();
 
     const result = await ordersRepository.createOrderFromPreview(preview, {
-      createdByUserId: null,
+      createdByUserId: req.user.id,
+      internalComment,
     });
 
     previewStore.delete(importId);

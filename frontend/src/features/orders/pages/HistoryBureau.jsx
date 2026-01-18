@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { ChevronDown, ChevronUp, RefreshCw } from "lucide-react";
 import { getArchivedOrders, getArchivedOrderHistory } from "../../../services/history.api.js";
 import { formatDateFr, priorityClass, priorityLabel } from "../utils/orders.format.js";
+import OrderCommentsThread from "../../../components/comments/OrderCommentsThread.jsx";
 
 const PERIODS = [
   { value: "ALL", label: "Tout" },
@@ -267,10 +268,12 @@ export default function HistoryBureau() {
                               </div>
 
                               <div>
-                                <div className="text-gf-title font-medium mb-1">Commentaires</div>
-                                <div className="text-xs text-gf-subtitle">
-                                  (On branchera après : order_comments + reads)
-                                </div>
+                                <OrderCommentsThread
+                                  orderId={details.order.id}
+                                  open={true}
+                                  readOnly={true}
+                                  className="mt-2"
+                                />
                               </div>
                             </div>
                           ) : null}
