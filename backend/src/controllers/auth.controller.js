@@ -59,10 +59,10 @@ async function changePassword(req, res) {
     if (!userId) return res.status(401).json({ error: "Non authentifié." });
 
     const newPassword = String(req.body.new_password || "");
-    if (newPassword.length < 6) {
+    if (newPassword.length < 8) {
       return res
         .status(400)
-        .json({ error: "Mot de passe trop court (min 6 caractères)." });
+        .json({ error: "Mot de passe trop court (min 8 caractères)." });
     }
 
     const hash = await bcrypt.hash(newPassword, 10);

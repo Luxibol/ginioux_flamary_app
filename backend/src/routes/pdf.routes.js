@@ -161,6 +161,14 @@ function getPreview(importId) {
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 }, // 10 Mo
+  fileFilter: (req, file, cb) => {
+    const okMime = file.mimetype === "application/pdf";
+    const okExt = (file.originalname || "").toLowerCase().endsWith(".pdf");
+    if (!okMime && !okExt) {
+      return cb(new Error("Seuls les fichiers PDF sont acceptés"));
+    }
+    cb(null, true);
+  },
 });
 
 /**
@@ -175,6 +183,14 @@ router.post("/preview", upload.single("file"), async (req, res) => {
       return res
         .status(400)
         .json({ error: 'Aucun fichier fourni (champ "file" manquant)' });
+    }
+
+    // signature simple : "%PDF"
+    const head = req.file.buffer?.subarray?.(0, 4)?.toString?.("utf8") || "";
+    if (head !== "%PDF") {
+      return res
+        .status(400)
+        .json({ error: "Fichier invalide (signature PDF absente)" });
     }
 
     const parsedPdf = await pdfParse(req.file.buffer);
