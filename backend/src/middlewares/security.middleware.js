@@ -31,7 +31,7 @@ function buildCorsOptions() {
       if (allowList.includes(origin)) return cb(null, true);
       return cb(new Error("Origin non autorisée par CORS"), false);
     },
-    credentials: false, // tu utilises Bearer token, pas de cookies -> mieux en false
+    credentials: true,
   };
 }
 

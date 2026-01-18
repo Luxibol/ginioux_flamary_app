@@ -6,11 +6,13 @@ const ordersRoutes = require("./routes/orders.routes");
 const productsRoutes = require("./routes/products.routes");
 const authRoutes = require("./routes/auth.routes");
 const adminUsersRoutes = require("./routes/adminUsers.routes");
+const cookieParser = require("cookie-parser");
 
 const { applySecurity } = require("./middlewares/security.middleware");
 
 const app = express();
 applySecurity(app);
+app.use(cookieParser());
 
 app.use("/admin/users", adminUsersRoutes);
 app.use("/health", healthRoutes);
