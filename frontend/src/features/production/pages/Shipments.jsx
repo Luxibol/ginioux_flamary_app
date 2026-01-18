@@ -42,6 +42,22 @@ function Shipments() {
   const [bulkByOrderId, setBulkByOrderId] = useState({});
   const [departByOrderId, setDepartByOrderId] = useState({});
 
+  const [commentsOpenByOrderId, setCommentsOpenByOrderId] = useState({});
+
+  const applyCounts = (orderId, counts) => {
+    setOrders((prev) =>
+      prev.map((o) =>
+        o.id === orderId
+          ? {
+              ...o,
+              messagesCount: Number(counts?.messagesCount ?? 0),
+              unreadCount: Number(counts?.unreadCount ?? 0),
+            }
+          : o
+      )
+    );
+  };
+
   function resetDetailsCache() {
     detailsLoadedRef.current = new Set();
     setLoadedByLineId({});
@@ -114,6 +130,9 @@ function Shipments() {
           loadedTotal,
           chargeableTotal,
 
+          messagesCount: Number(o.messagesCount ?? 0),
+          unreadCount: Number(o.unreadCount ?? 0),
+
           groups: [],
           comments: [],
           summary: `Chargés ${loadedTotal}/${chargeableTotal}`,
@@ -181,6 +200,23 @@ function Shipments() {
             const { status: uiStatus, label: uiLabel } =
               computeShipmentUiFromTotals(loadedTotal, chargeableTotal);
 
+            const onMailClick = (e) => {
+              e?.stopPropagation?.();
+
+              if (expandedId !== order.id) {
+                setExpandedId(order.id);
+                ensureDetails(order.id);
+              }
+
+              setCommentsOpenByOrderId((m) => ({ ...m, [order.id]: true }));
+
+              requestAnimationFrame(() => {
+                // ⚠️ le scroll est géré côté card via commentsRef,
+                // donc si tu veux scroll ici, il faut exposer un ref -> plus lourd.
+                // Donc : le mieux est de NE PAS passer onMailClick et laisser la card faire.
+              });
+            };
+
             return (
               <ProductionOrderCard
                 key={order.id}
@@ -189,11 +225,25 @@ function Shipments() {
                 onToggle={() => {
                   setExpandedId((cur) => {
                     const next = cur === order.id ? null : order.id;
+
+                    // si on ferme -> on ferme aussi commentaires
+                    if (next === null) {
+                      setCommentsOpenByOrderId((m) => ({ ...m, [order.id]: false }));
+                    }
+
                     if (next === order.id) ensureDetails(order.id);
                     return next;
                   });
                 }}
                 readyByLineId={loadedByLineId}
+                messagesCount={Number(order.messagesCount ?? 0)}
+                unreadCount={Number(order.unreadCount ?? 0)}
+
+                commentsOpen={Boolean(commentsOpenByOrderId[order.id])}
+                onCommentsOpenChange={(open) =>
+                  setCommentsOpenByOrderId((m) => ({ ...m, [order.id]: Boolean(open) }))
+                }
+                onCountsChange={applyCounts}
                 onChangeReady={async (lineId, next) => {
                   // optimistic stepper
                   setLoadedByLineId((prev) => ({ ...prev, [lineId]: next }));

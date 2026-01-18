@@ -50,6 +50,21 @@ export default function Orders() {
   // Cache des détails par commande (évite de re-fetch quand on replie/déplie la même ligne).
   const [detailsById, setDetailsById] = useState({});
   const [detailsLoadingId, setDetailsLoadingId] = useState(null);
+  const [commentsOpenById, setCommentsOpenById] = useState({});
+
+  const applyCounts = (orderId, counts) => {
+    setRows((prev) =>
+      prev.map((o) =>
+        o.id === orderId
+          ? {
+              ...o,
+              messagesCount: Number(counts?.messagesCount ?? 0),
+              unreadCount: Number(counts?.unreadCount ?? 0),
+            }
+          : o
+      )
+    );
+  };
 
   /**
    * Ouvre/ferme l'accordéon d'une commande.
@@ -59,8 +74,11 @@ export default function Orders() {
     const next = expandedId === o.id ? null : o.id;
     setExpandedId(next);
 
-    // si on ferme -> rien d'autre
-    if (!next) return;
+    // si on ferme -> on referme aussi les commentaires
+    if (!next) {
+      setCommentsOpenById((prev) => ({ ...prev, [o.id]: false }));
+      return;
+    }
 
     // Si détails déjà chargés, on ne refait pas d'appel API.
     if (detailsById[o.id]) return;
@@ -343,22 +361,37 @@ export default function Orders() {
                           <div>{o.order_state_label || "—"}</div>
                           {/* Actions */}
                           <div className="flex justify-center items-center gap-2">
-                            {/* Enveloppe (future) */}
-                            {o.messagesCount > 0 ? (
-                              <button
-                                type="button"
-                                className="relative text-gf-orange hover:opacity-80"
-                                title="Messages"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <Mail className="h-4 w-4" />
-                                {o.unreadCount > 0 ? (
-                                  <span className="absolute -top-2 -left-2 min-w-4 h-4 px-1 rounded-full bg-gf-orange text-white text-[10px] grid place-items-center">
-                                    {o.unreadCount}
-                                  </span>
-                                ) : null}
-                              </button>
-                            ) : null}
+                            {/* Enveloppe */}
+                            <div className="relative h-8 w-8 grid place-items-center">
+                              {o.messagesCount > 0 ? (
+                                <button
+                                  type="button"
+                                  className="relative text-gf-orange hover:opacity-80"
+                                  title="Messages"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+
+                                    // ouvrir la ligne si elle ne l'est pas déjà
+                                    if (expandedId !== o.id) toggleRow(o);
+
+                                    // ouvrir commentaires
+                                    setCommentsOpenById((prev) => ({ ...prev, [o.id]: true }));
+                                  }}
+                                >
+                                  <Mail className="h-4 w-4" />
+                                  {o.unreadCount > 0 ? (
+                                    <span className="absolute -top-2 -left-2 min-w-4 h-4 px-1 rounded-full bg-gf-orange text-white text-[10px] grid place-items-center">
+                                      {o.unreadCount}
+                                    </span>
+                                  ) : null}
+                                </button>
+                              ) : (
+                                // place réservée, invisible
+                                <span className="pointer-events-none opacity-0">
+                                  <Mail className="h-4 w-4" />
+                                </span>
+                              )}
+                            </div>
 
                             <button
                               type="button"
@@ -409,6 +442,11 @@ export default function Orders() {
                               arc={o.arc}
                               expeditionStatus={o.expedition_status}
                               details={details}
+                              onCountsChange={applyCounts}
+                              commentsOpen={Boolean(commentsOpenById[o.id])}
+                              onCommentsOpenChange={(open) =>
+                                setCommentsOpenById((prev) => ({ ...prev, [o.id]: open }))
+                              }
                             />
                           )}
                         </div>

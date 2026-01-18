@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
-import { RefreshCw, Archive, ChevronDown, ChevronUp } from "lucide-react";
+import { RefreshCw, Archive, ChevronDown, ChevronUp, Mail } from "lucide-react";
 import {
   getBureauPendingShipments,
   ackOrderShipments,
 } from "../../../services/shipments.api.js";
 import { formatDateFr } from "../utils/orders.format.js";
+import OrderCommentsThread from "../../../components/comments/OrderCommentsThread.jsx";
 
 function formatDateTimeFr(v) {
   if (!v) return "—";
@@ -41,6 +42,32 @@ export default function ShipmentsBureau() {
   const [expandedId, setExpandedId] = useState(null);
   const [ackingId, setAckingId] = useState(null);
 
+  const [commentsOpenById, setCommentsOpenById] = useState({});
+
+  const toggleComments = (orderId) => {
+    setCommentsOpenById((prev) => ({
+      ...prev,
+      [orderId]: !prev[orderId],
+    }));
+  };
+
+  const applyCounts = (orderId, counts) => {
+    setRows((prev) =>
+      prev.map((r) =>
+        r.order?.id === orderId
+          ? {
+              ...r,
+              order: {
+                ...r.order,
+                messagesCount: Number(counts?.messagesCount ?? 0),
+                unreadCount: Number(counts?.unreadCount ?? 0),
+              },
+            }
+          : r
+      )
+    );
+  };
+
   const load = async () => {
     try {
       setLoading(true);
@@ -49,6 +76,7 @@ export default function ShipmentsBureau() {
       setRows(res.data || []);
       setCount(res.count || (res.data || []).length);
       setExpandedId(null);
+      setCommentsOpenById({});
     } catch (e) {
       setError(e.message || "Erreur.");
       setRows([]);
@@ -64,7 +92,16 @@ export default function ShipmentsBureau() {
   }, []);
 
   const toggleRow = (orderId) => {
-    setExpandedId((prev) => (prev === orderId ? null : orderId));
+    setExpandedId((prev) => {
+      const next = prev === orderId ? null : orderId;
+
+      // si on ferme la ligne -> on ferme aussi les commentaires
+      if (next === null) {
+        setCommentsOpenById((m) => ({ ...m, [orderId]: false }));
+      }
+
+      return next;
+    });
   };
 
   const onArchive = async (orderId) => {
@@ -174,6 +211,37 @@ export default function ShipmentsBureau() {
                           </div>
 
                           <div className="flex justify-center items-center gap-2">
+                            {/* Enveloppe + badge (place réservée) */}
+                            {/* Enveloppe */}
+                            <div className="relative h-8 w-8 grid place-items-center">
+                              {Number(o.messagesCount ?? 0) > 0 ? (
+                                <button
+                                  type="button"
+                                  className="relative text-gf-orange hover:opacity-80"
+                                  title="Messages"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+
+                                    // ouvrir la ligne si besoin (utilise toggleRow pour garder la logique de fermeture commentaires)
+                                    if (!isOpen) toggleRow(o.id);
+
+                                    // ouvrir commentaires
+                                    setCommentsOpenById((prev) => ({ ...prev, [o.id]: true }));
+                                  }}
+                                >
+                                  <Mail className="h-4 w-4" />
+                                  {Number(o.unreadCount ?? 0) > 0 ? (
+                                    <span className="absolute -top-2 -left-2 min-w-4 h-4 px-1 rounded-full bg-gf-orange text-white text-[10px] grid place-items-center">
+                                      {Number(o.unreadCount ?? 0)}
+                                    </span>
+                                  ) : null}
+                                </button>
+                              ) : (
+                                <span className="pointer-events-none opacity-0">
+                                  <Mail className="h-4 w-4" />
+                                </span>
+                              )}
+                            </div>
                             <button
                               type="button"
                               onClick={(e) => {
@@ -268,15 +336,20 @@ export default function ShipmentsBureau() {
                               )}
                             </div>
 
-                            {/* 4) Commentaires (placeholder) */}
-                            <div className="mt-5">
-                              <div className="text-gf-title font-medium mb-1">
-                                Commentaires
-                              </div>
-                              <div className="text-xs text-gf-subtitle">
-                                (On branchera plus tard : order_comments + reads)
-                              </div>
+                            {/* 4) Commentaires */}
+                            <div className="mt-4">
+                              <OrderCommentsThread
+                                orderId={o.id}
+                                open={true}
+                                onCountsChange={applyCounts}
+                                collapsed={!commentsOpenById[o.id]}
+                                onCollapsedChange={(isCollapsed) =>
+                                  setCommentsOpenById((prev) => ({ ...prev, [o.id]: !isCollapsed }))
+                                }
+                              />
                             </div>
+
+
                           </div>
                         </div>
                       ) : null}

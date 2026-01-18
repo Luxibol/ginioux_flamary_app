@@ -4,6 +4,7 @@
  */
 const { pool } = require("../config/db");
 const productsRepository = require("./products.repository");
+const orderCommentsRepository = require("./orderComments.repository");
 
 /**
  * Retourne la commande si un ARC existe déjà, sinon null.
@@ -125,7 +126,7 @@ async function createOrderWithLines(orderData, orderProducts) {
  */
 async function createOrderFromPreview(
   preview,
-  { createdByUserId = null } = {},
+  { createdByUserId = null, internalComment = "" } = {},
 ) {
   const norm = (s) => String(s ?? "").trim();
 
@@ -202,6 +203,28 @@ async function createOrderFromPreview(
   };
 
   const orderId = await createOrderWithLines(orderData, orderProducts);
+
+  // Si commentaire interne saisi à l'import : on le crée comme commentaire lié à la commande
+  const text = String(internalComment || "").trim();
+  if (text) {
+    if (!createdByUserId) {
+      const err = new Error("Auteur manquant pour le commentaire interne.");
+      err.code = 400;
+      throw err;
+    }
+
+    await orderCommentsRepository.create({
+      orderId,
+      authorId: createdByUserId,
+      content: text,
+    });
+
+    await orderCommentsRepository.markRead({
+      orderId,
+      userId: createdByUserId,
+    });
+  }
+
   return { action: "created", orderId, arc };
 }
 
@@ -588,7 +611,7 @@ async function findProductionOrders(
   }
 
   const sql = `
-    SELECT
+  SELECT
       o.id,
       o.arc,
       o.client_name,
@@ -600,10 +623,35 @@ async function findProductionOrders(
       o.created_at,
       o.production_validated_at,
 
+      -- Totaux par catégorie (pour afficher dès la liste)
+      COALESCE(cat.bigbag_total, 0) AS bigbag_total,
+      COALESCE(cat.roche_total, 0) AS roche_total,
+
       COALESCE(oc.messagesCount, 0) AS messagesCount,
       COALESCE(uc.unreadCount, 0) AS unreadCount
 
     FROM orders o
+
+    -- agrégat catégories (order_products + products_catalog)
+    LEFT JOIN (
+      SELECT
+        op.order_id,
+        SUM(
+          CASE
+            WHEN UPPER(pc.category) IN ('BIGBAG', 'SMALLBAG') THEN COALESCE(op.quantity_ordered,0)
+            ELSE 0
+          END
+        ) AS bigbag_total,
+        SUM(
+          CASE
+            WHEN UPPER(pc.category) = 'ROCHE' THEN COALESCE(op.quantity_ordered,0)
+            ELSE 0
+          END
+        ) AS roche_total
+      FROM order_products op
+      JOIN products_catalog pc ON pc.id = op.product_id
+      GROUP BY op.order_id
+    ) cat ON cat.order_id = o.id
 
     LEFT JOIN (
       SELECT order_id, COUNT(*) AS messagesCount

@@ -44,6 +44,19 @@ function Orders() {
   const ordersRef = useRef([]);
   useEffect(() => { ordersRef.current = orders; }, [orders]);
 
+  const applyCounts = (orderId, counts) => {
+    setOrders((prev) =>
+      prev.map((o) =>
+        o.id === orderId
+          ? {
+              ...o,
+              messagesCount: Number(counts?.messagesCount ?? 0),
+              unreadCount: Number(counts?.unreadCount ?? 0),
+            }
+          : o
+      )
+    );
+  };
 
   function resetDetailsCache() {
     detailsLoadedRef.current = new Set();
@@ -142,6 +155,7 @@ function Orders() {
               key={order.id}
               order={order}
               expanded={expandedId === order.id}
+              onCountsChange={applyCounts}
               onToggle={() => {
                 setExpandedId((cur) => {
                   const next = cur === order.id ? null : order.id;
