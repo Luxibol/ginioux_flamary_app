@@ -206,15 +206,15 @@ async function createOrderFromPreview(
 }
 
 // Filtre d'état "métier" calculé à partir des statuts production/expédition.
-async function findActiveOrders({
-  q = null,
-  priority = null,
-  state = null,
-  limit = 50,
-  offset = 0,
-} = {}) {
+async function findActiveOrders(
+  { q = null, priority = null, state = null, limit = 50, offset = 0 } = {},
+  { userId } = {},
+) {
+  if (!userId)
+    throw new Error("userId manquant pour les compteurs commentaires");
+
   const where = ["o.is_archived = 0"];
-  const params = [];
+  const params = [userId, userId]; // 1) r.user_id  2) c.author_id <> userId
 
   if (q) {
     where.push("(o.arc LIKE ? OR o.client_name LIKE ?)");
@@ -251,6 +251,7 @@ async function findActiveOrders({
       o.production_status,
       o.expedition_status,
       o.created_at,
+
       CASE
         WHEN o.expedition_status = 'EXP_PARTIELLE' THEN 'Partiellement expédiée'
         WHEN o.expedition_status = 'EXP_COMPLETE' THEN 'Expédiée'
@@ -258,14 +259,36 @@ async function findActiveOrders({
         WHEN o.production_status = 'PROD_COMPLETE' AND o.expedition_status = 'NON_EXPEDIEE' THEN 'Prête à expédier'
         ELSE '—'
       END AS order_state_label,
+
       CASE
         WHEN o.expedition_status = 'EXP_PARTIELLE' THEN 'PARTIELLEMENT_EXPEDIEE'
         WHEN o.expedition_status = 'EXP_COMPLETE' THEN 'EXPEDIEE'
         WHEN o.production_status IN ('A_PROD', 'PROD_PARTIELLE') THEN 'EN_PREPARATION'
         WHEN o.production_status = 'PROD_COMPLETE' AND o.expedition_status = 'NON_EXPEDIEE' THEN 'PRETE_A_EXPEDIER'
         ELSE 'UNKNOWN'
-      END AS order_state
+      END AS order_state,
+
+      COALESCE(oc.messagesCount, 0) AS messagesCount,
+      COALESCE(uc.unreadCount, 0) AS unreadCount
+
     FROM orders o
+
+    LEFT JOIN (
+      SELECT order_id, COUNT(*) AS messagesCount
+      FROM order_comments
+      GROUP BY order_id
+    ) oc ON oc.order_id = o.id
+
+    LEFT JOIN (
+      SELECT c.order_id, COUNT(*) AS unreadCount
+      FROM order_comments c
+      LEFT JOIN order_comment_reads r
+        ON r.order_id = c.order_id AND r.user_id = ?
+      WHERE c.author_id <> ?
+        AND c.created_at > COALESCE(r.last_read_at, '1970-01-01 00:00:00')
+      GROUP BY c.order_id
+    ) uc ON uc.order_id = o.id
+
     WHERE ${where.join(" AND ")}
     ORDER BY o.created_at DESC
     LIMIT ? OFFSET ?
@@ -541,7 +564,13 @@ async function updateOrderAndLinesById(orderId, patch = {}, lines = null) {
  * @param {{q?:string|null, limit?:number, offset?:number}} filters
  * @returns {Promise<object[]>}
  */
-async function findProductionOrders({ q = null, limit = 50, offset = 0 } = {}) {
+async function findProductionOrders(
+  { q = null, limit = 50, offset = 0 } = {},
+  { userId } = {},
+) {
+  if (!userId)
+    throw new Error("userId manquant pour les compteurs commentaires");
+
   const where = [
     "o.is_archived = 0",
     `(
@@ -549,7 +578,9 @@ async function findProductionOrders({ q = null, limit = 50, offset = 0 } = {}) {
       OR (o.production_status = 'PROD_COMPLETE' AND o.production_validated_at IS NULL)
     )`,
   ];
-  const params = [];
+
+  // 2 placeholders dans unreadCount => [userId, userId]
+  const params = [userId, userId];
 
   if (q) {
     where.push("(o.arc LIKE ? OR o.client_name LIKE ?)");
@@ -567,9 +598,31 @@ async function findProductionOrders({ q = null, limit = 50, offset = 0 } = {}) {
       o.production_status,
       o.expedition_status,
       o.created_at,
-      o.production_validated_at
+      o.production_validated_at,
+
+      COALESCE(oc.messagesCount, 0) AS messagesCount,
+      COALESCE(uc.unreadCount, 0) AS unreadCount
+
     FROM orders o
+
+    LEFT JOIN (
+      SELECT order_id, COUNT(*) AS messagesCount
+      FROM order_comments
+      GROUP BY order_id
+    ) oc ON oc.order_id = o.id
+
+    LEFT JOIN (
+      SELECT c.order_id, COUNT(*) AS unreadCount
+      FROM order_comments c
+      LEFT JOIN order_comment_reads r
+        ON r.order_id = c.order_id AND r.user_id = ?
+      WHERE c.author_id <> ?
+        AND c.created_at > COALESCE(r.last_read_at, '1970-01-01 00:00:00')
+      GROUP BY c.order_id
+    ) uc ON uc.order_id = o.id
+
     WHERE ${where.join(" AND ")}
+
     ORDER BY
       CASE o.priority
         WHEN 'URGENT' THEN 1
@@ -577,10 +630,10 @@ async function findProductionOrders({ q = null, limit = 50, offset = 0 } = {}) {
         WHEN 'NORMAL' THEN 3
         ELSE 99
       END ASC,
-        (o.pickup_date IS NULL) ASC,
-        o.pickup_date ASC,
-        o.created_at DESC
-      LIMIT ? OFFSET ?
+      (o.pickup_date IS NULL) ASC,
+      o.pickup_date ASC,
+      o.created_at DESC
+    LIMIT ? OFFSET ?
   `;
 
   params.push(limit, offset);
@@ -753,20 +806,23 @@ async function recalcAndUpdateExpeditionStatus(connection, orderId) {
  * - loaded_total     = Σ loaded
  * - loading_status   = TODO | PARTIAL | COMPLETE
  */
-async function findProductionShipments({
-  q = null,
-  limit = 50,
-  offset = 0,
-} = {}) {
+async function findProductionShipments(
+  { q = null, limit = 50, offset = 0 } = {},
+  { userId } = {},
+) {
+  if (!userId)
+    throw new Error("userId manquant pour les compteurs commentaires");
+
   const where = ["o.is_archived = 0"];
-  const params = [];
+
+  // 2 placeholders dans unreadCount => [userId, userId]
+  const params = [userId, userId];
 
   if (q) {
     where.push("(o.arc LIKE ? OR o.client_name LIKE ?)");
     params.push(`%${q}%`, `%${q}%`);
   }
 
-  // ON AFFICHE si chargeable_total > 0 (au moins une ligne ready > shipped)
   const sql = `
     SELECT
       o.id,
@@ -786,9 +842,13 @@ async function findProductionShipments({
         WHEN agg.loaded_total <= 0 THEN 'TODO'
         WHEN agg.chargeable_total > 0 AND agg.loaded_total >= agg.chargeable_total THEN 'COMPLETE'
         ELSE 'PARTIAL'
-      END AS loading_status
+      END AS loading_status,
+
+      COALESCE(oc.messagesCount, 0) AS messagesCount,
+      COALESCE(uc.unreadCount, 0) AS unreadCount
 
     FROM orders o
+
     JOIN (
       SELECT
         op.order_id,
@@ -797,6 +857,22 @@ async function findProductionShipments({
       FROM order_products op
       GROUP BY op.order_id
     ) agg ON agg.order_id = o.id
+
+    LEFT JOIN (
+      SELECT order_id, COUNT(*) AS messagesCount
+      FROM order_comments
+      GROUP BY order_id
+    ) oc ON oc.order_id = o.id
+
+    LEFT JOIN (
+      SELECT c.order_id, COUNT(*) AS unreadCount
+      FROM order_comments c
+      LEFT JOIN order_comment_reads r
+        ON r.order_id = c.order_id AND r.user_id = ?
+      WHERE c.author_id <> ?
+        AND c.created_at > COALESCE(r.last_read_at, '1970-01-01 00:00:00')
+      GROUP BY c.order_id
+    ) uc ON uc.order_id = o.id
 
     WHERE ${where.join(" AND ")}
       AND agg.chargeable_total > 0

@@ -12,11 +12,24 @@ const shipmentsBureauController = require("../controllers/shipmentsBureau.contro
 const historyController = require("../controllers/history.controller");
 const orderShipmentsController = require("../controllers/orderShipments.controller");
 const shipmentsStatsController = require("../controllers/shipmentsStats.controller");
+const orderCommentsController = require("../controllers/orderComments.controller");
 
 const router = express.Router();
 
 // Toutes les routes /orders sont protégées
 router.use(requireAuth);
+
+router.get(
+  "/:id/comments",
+  requireRole("ADMIN", "BUREAU", "PRODUCTION"),
+  orderCommentsController.getOrderComments,
+);
+
+router.post(
+  "/:id/comments",
+  requireRole("ADMIN", "BUREAU", "PRODUCTION"),
+  orderCommentsController.postOrderComment,
+);
 
 /* =========================
    PRODUCTION (ADMIN + PRODUCTION)

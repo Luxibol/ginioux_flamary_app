@@ -32,11 +32,10 @@ async function getProductionOrders(req, res) {
       : 50;
     const offset = Number.isFinite(offsetRaw) ? Math.max(offsetRaw, 0) : 0;
 
-    const data = await ordersRepository.findProductionOrders({
-      q,
-      limit,
-      offset,
-    });
+    const data = await ordersRepository.findProductionOrders(
+      { q, limit, offset },
+      { userId: req.user?.id },
+    );
 
     return res.json({
       count: data.length,
@@ -97,11 +96,10 @@ async function getProductionShipments(req, res) {
       : 50;
     const offset = Number.isFinite(offsetRaw) ? Math.max(offsetRaw, 0) : 0;
 
-    const data = await ordersRepository.findProductionShipments({
-      q,
-      limit,
-      offset,
-    });
+    const data = await ordersRepository.findProductionShipments(
+      { q, limit, offset },
+      { userId: req.user?.id },
+    );
 
     return res.json({
       count: data.length,
