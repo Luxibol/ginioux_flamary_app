@@ -43,49 +43,6 @@ async function markRead({ orderId, userId }) {
   );
 }
 
-async function listByOrderId(orderId) {
-  const [rows] = await pool.query(
-    `
-    SELECT
-      c.id,
-      c.order_id,
-      c.author_id,
-      u.first_name,
-      u.last_name,
-      c.content,
-      c.created_at
-    FROM order_comments c
-    JOIN users u ON u.id = c.author_id
-    WHERE c.order_id = ?
-    ORDER BY c.created_at ASC, c.id ASC
-    `,
-    [orderId],
-  );
-  return rows;
-}
-
-async function create({ orderId, authorId, content }) {
-  const [r] = await pool.query(
-    `
-    INSERT INTO order_comments (order_id, author_id, content)
-    VALUES (?, ?, ?)
-    `,
-    [orderId, authorId, content],
-  );
-  return r.insertId;
-}
-
-async function markRead({ orderId, userId }) {
-  await pool.query(
-    `
-    INSERT INTO order_comment_reads (order_id, user_id, last_read_at)
-    VALUES (?, ?, NOW())
-    ON DUPLICATE KEY UPDATE last_read_at = NOW()
-    `,
-    [orderId, userId],
-  );
-}
-
 async function getCountsForOrder({ orderId, userId }) {
   const [[row]] = await pool.query(
     `
