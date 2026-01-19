@@ -43,7 +43,7 @@ export default function EmployeeResetPasswordModal({
                 copyToClipboard(tempPassword);
                 onCopy?.();
               }}
-              className="h-10 px-4 rounded-md bg-gf-border/40 text-gf-title text-xs hover:opacity-90 disabled:opacity-60"
+              className="gf-btn h-10 px-4 text-xs"
             >
               Copier
             </button>
@@ -54,7 +54,7 @@ export default function EmployeeResetPasswordModal({
           <button
             type="button"
             onClick={onClose}
-            className="h-9 rounded-md bg-gf-orange px-6 text-xs font-medium text-white hover:opacity-90 disabled:opacity-60"
+            className="gf-btn gf-btn-primary h-9 px-6 text-xs"
             disabled={loading}
           >
             Fermer

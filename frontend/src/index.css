@@ -41,6 +41,8 @@
   --color-gf-subtitle: #687b83; /* H2 */
   --color-gf-text: #7a7a7a; /* texte général */
 
+  --color-gf-muted: #98a3a8; /* texte secondaire discret */
+
   /* Background / surfaces / bordures */
   --color-gf-bg: #f0f0f0; /* fond général de l'app */
   --color-gf-surface: #ffffff; /* cartes, panneaux, modales */
@@ -49,6 +51,9 @@
   /* États */
   --color-gf-success: #22c55e;
   --color-gf-danger: #ef4444;
+
+  --color-gf-orange-hover: #e77c18;
+  --color-gf-danger-hover: #dc2626;
 
   /* Police principale */
   --font-sans:
@@ -74,5 +79,75 @@ body {
 
   .gf-body {
     @apply text-[14px] text-gf-text;
+  }
+
+  .gf-h3 {
+    @apply text-[14px] font-medium text-gf-title;
+  }
+
+  /* Boutons */
+  .gf-btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-[14px] font-medium transition
+      border border-gf-border bg-gf-surface text-gf-title;
+  }
+
+  .gf-btn:hover {
+    @apply bg-gray-50;
+  }
+
+  .gf-btn:disabled {
+    @apply opacity-60 cursor-not-allowed;
+  }
+
+    .gf-btn-primary {
+    background: var(--color-gf-orange);
+    color: #fff;
+    border-color: transparent;
+  }
+  .gf-btn-primary:hover {
+    background: var(--color-gf-orange-hover);
+  }
+
+  .gf-btn-danger {
+    background: var(--color-gf-danger);
+    color: #fff;
+    border-color: transparent;
+  }
+  .gf-btn-danger:hover {
+    background: var(--color-gf-danger-hover);
+  }
+
+
+  .gf-btn:focus-visible {
+    @apply ring-2 ring-gf-orange ring-offset-2;
+  }
+
+
+  /* Containers / cards */
+  .gf-card {
+    @apply rounded-2xl border border-gf-border bg-gf-surface;
+  }
+
+  .gf-card-pad {
+    @apply p-4;
+  }
+
+  /* États */
+  .gf-empty {
+    @apply text-[14px] text-gf-muted;
+  }
+
+  .gf-error {
+    @apply text-[14px] text-gf-danger;
+  }
+}
+
+/* === ACCESSIBILITÉ / QUALITÉ PERÇUE ===
+   Focus clavier visible partout (sans casser le design).
+*/
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--color-gf-orange);
+    outline-offset: 2px;
   }
 }

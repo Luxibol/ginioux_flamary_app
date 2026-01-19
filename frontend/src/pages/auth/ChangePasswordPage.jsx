@@ -5,6 +5,7 @@ import { changePassword } from "../../services/auth.api.js";
 import { getAuth, setAuth } from "../../services/auth.storage.js";
 import { landingPathForRole } from "../../utils/roleRouting.js";
 import AuthLayout from "../../components/auth/AuthLayout.jsx";
+import Seo from "../../components/seo/Seo.jsx";
 
 export default function ChangePasswordPage() {
   const navigate = useNavigate();
@@ -31,7 +32,7 @@ export default function ChangePasswordPage() {
       if (auth?.token && auth?.user) {
         setAuth(
           { token: auth.token, user: { ...auth.user, must_change_password: false } },
-          { persist: "local" } // ou session, mais on ne sait pas ici; on garde local (simple)
+          { persist: "local" } // simple : on garde local ici
         );
       }
 
@@ -45,46 +46,74 @@ export default function ChangePasswordPage() {
 
   return (
     <AuthLayout>
-      <div className="w-full max-w-md rounded-2xl border border-gf-border bg-gf-surface shadow-sm p-6">
+      <Seo
+        title="Nouveau mot de passe — Ginioux Flamary"
+        description="Définissez votre nouveau mot de passe pour accéder à l’application."
+        canonical="/change-password"
+      />
+
+      <div className="w-full max-w-md gf-card gf-card-pad shadow-sm">
         <div className="flex flex-col items-center gap-3">
           <img src={logo} alt="Ginioux Flamary" className="h-12 w-auto" />
-          <div className="text-sm font-semibold text-gf-title">Nouveau mot de passe</div>
-          <div className="text-xs text-gf-subtitle text-center">
+          <h1 className="gf-h1">Nouveau mot de passe</h1>
+          <p className="text-xs text-gf-subtitle text-center">
             Vous devez changer votre mot de passe temporaire.
-          </div>
+          </p>
         </div>
 
         <form className="mt-6 space-y-4" onSubmit={onSubmit}>
-          {error ? <div className="text-xs text-gf-danger">{error}</div> : null}
+          {error ? (
+            <div className="gf-error" role="alert">
+              {error}
+            </div>
+          ) : null}
 
           <div>
-            <div className="text-xs text-gf-subtitle mb-1">Nouveau mot de passe</div>
+            <label
+              htmlFor="new_password"
+              className="text-xs text-gf-subtitle mb-1 block"
+            >
+              Nouveau mot de passe
+            </label>
             <input
+              id="new_password"
+              name="new_password"
               value={p1}
               onChange={(e) => setP1(e.target.value)}
               type="password"
               className="h-10 w-full rounded-md border border-gf-border bg-gf-bg px-3 text-xs outline-none focus:border-gf-orange"
-              placeholder="Nouveau mot de passe"
+              placeholder="Au moins 6 caractères"
               autoComplete="new-password"
+              minLength={6}
+              required
             />
           </div>
 
           <div>
-            <div className="text-xs text-gf-subtitle mb-1">Confirmer le mot de passe</div>
+            <label
+              htmlFor="new_password_confirm"
+              className="text-xs text-gf-subtitle mb-1 block"
+            >
+              Confirmer le mot de passe
+            </label>
             <input
+              id="new_password_confirm"
+              name="new_password_confirm"
               value={p2}
               onChange={(e) => setP2(e.target.value)}
               type="password"
               className="h-10 w-full rounded-md border border-gf-border bg-gf-bg px-3 text-xs outline-none focus:border-gf-orange"
               placeholder="Confirmer le mot de passe"
               autoComplete="new-password"
+              minLength={6}
+              required
             />
           </div>
 
           <button
             type="submit"
             disabled={!canSubmit}
-            className="h-10 w-full rounded-md bg-gf-orange text-white text-xs font-medium hover:opacity-90 disabled:opacity-60"
+            className="gf-btn gf-btn-primary w-full"
           >
             {loading ? "Validation…" : "Valider"}
           </button>

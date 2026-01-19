@@ -170,11 +170,11 @@ export default function OrderModal({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-6">
-      <div className="w-full max-w-5xl rounded-2xl bg-gf-surface border border-gf-border shadow-lg">
+      <div className="w-full max-w-5xl gf-card shadow-lg">
         {/* Header */}
         <div className="flex items-start justify-between p-6 pb-3">
           <div>
-            <div className="text-sm font-semibold text-gf-title">
+            <div className="gf-h3">
               {form.arc
                 ? `${form.arc} — ${form.clientName || "—"}`
                 : "Commande"}
@@ -203,7 +203,7 @@ export default function OrderModal({
             </div>
           ) : null}
 
-          <div className="text-sm font-medium text-gf-title mb-2">
+          <div className="text-sm font-medium text-gf-title">
             Infos commande
           </div>
 
@@ -275,7 +275,7 @@ export default function OrderModal({
           ) : null}
 
           <div className="mt-6 flex items-center justify-between">
-            <div className="text-sm font-medium text-gf-title">
+            <div className="gf-h3 mb-2">
               Lignes de produits
             </div>
             <button
@@ -329,7 +329,7 @@ export default function OrderModal({
                   <button
                     type="button"
                     onClick={() => removeLines(idx)}
-                    className="h-9 px-3 rounded-md bg-gf-danger text-white text-xs inline-flex items-center gap-2 hover:opacity-90"
+                    className="gf-btn gf-btn-danger h-9 py-0"
                   >
                     <Trash2 className="h-4 w-4" />
                     Supprimer
@@ -343,14 +343,14 @@ export default function OrderModal({
             <button
               type="button"
               onClick={onClose}
-              className="h-9 rounded-md border border-gf-border bg-gf-bg px-5 text-xs hover:opacity-90"
+              className="gf-btn"
             >
               Annuler
             </button>
             <button
               type="button"
               onClick={confirm}
-              className="h-9 rounded-md bg-gf-orange px-6 text-xs font-medium text-white hover:opacity-90"
+              className="gf-btn gf-btn-primary"
             >
               Valider
             </button>

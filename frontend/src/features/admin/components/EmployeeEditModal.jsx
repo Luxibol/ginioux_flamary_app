@@ -16,7 +16,6 @@ export default function EmployeeEditModal({
   eActive,
   setEActive,
   // meta
-  titleLine,
   onClose,
   onSubmit,
 }) {
@@ -27,7 +26,6 @@ export default function EmployeeEditModal({
       <div className="w-full max-w-2xl rounded-2xl border border-gf-border bg-gf-surface shadow-sm">
         <div className="p-5 border-b border-gf-border">
           <div className="text-sm font-semibold text-gf-title">Modifier un employé</div>
-          <div className="text-xs text-gf-subtitle mt-1">{titleLine}</div>
         </div>
 
         <div className="p-5">
@@ -94,7 +92,7 @@ export default function EmployeeEditModal({
           <button
             type="button"
             onClick={onClose}
-            className="h-9 rounded-md border border-gf-border bg-gf-bg px-5 text-xs"
+            className="gf-btn h-9 px-5 text-xs"
             disabled={loading}
           >
             Annuler
@@ -102,7 +100,7 @@ export default function EmployeeEditModal({
           <button
             type="button"
             onClick={onSubmit}
-            className="h-9 rounded-md bg-gf-orange px-6 text-xs font-medium text-white hover:opacity-90 disabled:opacity-60"
+            className="gf-btn gf-btn-primary h-9 px-6 text-xs"
             disabled={loading}
           >
             {loading ? "Enregistrement…" : "Enregistrer"}

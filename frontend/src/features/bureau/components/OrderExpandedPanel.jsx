@@ -43,13 +43,13 @@ export default function OrderExpandedPanel({
 
   return (
     <div className="px-4 py-4">
-      <div className="text-sm font-semibold text-gf-title mb-3">
+      <div className="gf-h3 mb-3">
         Détails de la commande {arc}
       </div>
 
       <div className="space-y-1 text-xs text-gf-text">
         {lines.length === 0 ? (
-          <div className="text-gf-subtitle">Aucune ligne produit.</div>
+          <div className="gf-empty">Aucune ligne produit.</div>
         ) : (
           lines.map((l) => {
             const ready = toNumber(l.quantity_ready);
@@ -71,16 +71,16 @@ export default function OrderExpandedPanel({
 
       {expeditionStatus === "EXP_PARTIELLE" ? (
         <div className="mt-5">
-          <div className="text-sm font-medium text-gf-title mb-2">
+          <div className="gf-h3 mb-2">
             Expéditions déjà effectuées
           </div>
 
           {shipLoading ? (
-            <div className="text-xs text-gf-subtitle">Chargement…</div>
+            <div className="gf-empty">Chargement…</div>
           ) : shipError ? (
-            <div className="text-xs text-gf-danger">{shipError}</div>
+            <div className="gf-error">{shipError}</div>
           ) : shipments.length === 0 ? (
-            <div className="text-xs text-gf-subtitle">Aucune expédition enregistrée.</div>
+            <div className="gf-empty">Aucune expédition enregistrée.</div>
           ) : (
             <div className="space-y-3 text-xs">
               {shipments.map((s, idx) => (

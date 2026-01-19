@@ -214,7 +214,7 @@ export default function Orders() {
           <button
             type="button"
             onClick={() => navigate("/bureau/import")}
-            className="h-9 rounded-md bg-gf-orange px-4 text-white text-xs font-medium hover:opacity-90"
+            className="gf-btn gf-btn-primary"
           >
             Importer PDF
           </button>
@@ -223,7 +223,7 @@ export default function Orders() {
             type="button"
             onClick={load}
             disabled={loading}
-            className="h-9 inline-flex items-center gap-2 rounded-md border border-gf-border bg-gf-surface px-3 text-xs hover:opacity-90 disabled:opacity-60"
+            className="gf-btn"
           >
             <RefreshCw className="h-4 w-4" />
             Rafraîchir
@@ -284,11 +284,11 @@ export default function Orders() {
       </div>
 
       {/* Content */}
-      <div className="mt-6 rounded-2xl border border-gf-border bg-gf-surface overflow-hidden">
+      <div className="mt-6 gf-card overflow-hidden">
         {error ? (
-          <div className="p-4 text-xs text-gf-danger">{error}</div>
+          <div className="p-4 gf-error">{error}</div>
         ) : rows.length === 0 ? (
-          <div className="p-4 text-xs text-gf-subtitle">
+          <div className="p-4 gf-empty">
             {loading
               ? "Chargement…"
               : "Aucune commande ne correspond aux filtres."}
@@ -399,7 +399,7 @@ export default function Orders() {
                                 e.stopPropagation();
                                 openEdit(o);
                               }}
-                              className="h-8 px-3 rounded-md bg-gf-border/40 text-gf-title text-xs inline-flex items-center gap-2 hover:opacity-90"
+                              className="gf-btn h-8"
                               title="Modifier"
                             >
                               <Pencil className="h-4 w-4" />
@@ -408,7 +408,7 @@ export default function Orders() {
 
                             <button
                               type="button"
-                              className="h-8 px-3 rounded-md bg-gf-danger text-white text-xs inline-flex items-center gap-2 hover:opacity-90"
+                              className="gf-btn gf-btn-danger h-8"
                               title="Supprimer"
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -434,7 +434,7 @@ export default function Orders() {
                       {isOpen ? (
                         <div className="border-t border-gf-border bg-gf-surface">
                           {loadingDetails ? (
-                            <div className="px-4 py-4 text-xs text-gf-subtitle">
+                            <div className="px-4 py-4 gf-empty">
                               Chargement des détails…
                             </div>
                           ) : (

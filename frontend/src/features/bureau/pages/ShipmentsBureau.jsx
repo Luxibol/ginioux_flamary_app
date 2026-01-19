@@ -124,7 +124,7 @@ export default function ShipmentsBureau() {
           type="button"
           onClick={load}
           disabled={loading}
-          className="h-9 inline-flex items-center gap-2 rounded-md border border-gf-border bg-gf-surface px-3 text-xs hover:opacity-90 disabled:opacity-60"
+          className="gf-btn"
         >
           <RefreshCw className="h-4 w-4" />
           Rafraîchir
@@ -132,11 +132,11 @@ export default function ShipmentsBureau() {
       </div>
 
       {/* Content */}
-      <div className="mt-6 rounded-2xl border border-gf-border bg-gf-surface overflow-hidden">
+      <div className="mt-6 gf-card overflow-hidden">
         {error ? (
-          <div className="p-4 text-xs text-gf-danger">{error}</div>
+          <div className="p-4 gf-error">{error}</div>
         ) : rows.length === 0 ? (
-          <div className="p-4 text-xs text-gf-subtitle">
+          <div className="p-4 gf-empty">
             {loading ? "Chargement…" : "Aucune expédition en attente."}
           </div>
         ) : (
@@ -241,7 +241,7 @@ export default function ShipmentsBureau() {
                                 onArchive(o.id);
                               }}
                               disabled={ackingId === o.id}
-                              className="h-8 px-4 rounded-md bg-gf-orange text-white text-xs font-medium hover:opacity-90 disabled:opacity-60 inline-flex items-center gap-2"
+                              className="gf-btn gf-btn-primary h-8 py-0"
                             >
                               <Archive className="h-4 w-4" />
                               {ackingId === o.id ? "…" : "Archiver"}

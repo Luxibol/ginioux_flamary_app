@@ -61,8 +61,8 @@ async function computeTotalsFromOrders(orderIds, { limit = 25, mode = "ORDERED" 
 
 function Card({ title, children }) {
   return (
-    <div className="rounded-xl border border-gf-border bg-white shadow-sm px-4 py-4">
-      <div className="text-center font-semibold text-gf-title">{title}</div>
+    <div className="gf-card shadow-sm p-4">
+      <div className="text-center gf-h3">{title}</div>
       <div className="mt-3">{children}</div>
     </div>
   );
@@ -158,8 +158,8 @@ export default function Dashboard() {
     };
   }, []);
 
-  if (loading) return <div className="p-4 text-xs text-gf-subtitle">Chargement…</div>;
-  if (error) return <div className="p-4 text-xs text-gf-danger">{error}</div>;
+  if (loading) return <div className="p-4 gf-empty">Chargement…</div>;
+  if (error) return <div className="p-4 gf-error">{error}</div>;
 
   const lineProduce = `À produire : ${produceTotals.bigbag} BigBag & SmallBag • ${produceTotals.roche} Roche`;
   const lineLoad = `À charger : ${toLoadTotals.bigbag} BigBag & SmallBag • ${toLoadTotals.roche} Roche`;
@@ -170,7 +170,7 @@ export default function Dashboard() {
   return (
     <div className="p-4">
       <div className="text-center">
-        <div className="gf-h1">Tableau de bord</div>
+        <h1 className="gf-h1">Tableau de bord</h1>
         <div className="mt-1 text-xs text-gf-subtitle">
           Vue d&apos;ensemble des commandes et expéditions
         </div>
@@ -186,7 +186,7 @@ export default function Dashboard() {
 
           <button
             onClick={() => navigate("/production/commandes")}
-            className="mt-3 w-full text-center text-sm font-medium text-gf-orange"
+            className="mt-3 w-full text-center text-sm font-medium text-gf-orange hover:underline"
           >
             Voir les commandes
           </button>
@@ -200,7 +200,7 @@ export default function Dashboard() {
 
           <button
             onClick={() => navigate("/production/expeditions")}
-            className="mt-3 w-full text-center text-sm font-medium text-gf-orange"
+            className="mt-3 w-full text-center text-sm font-medium text-gf-orange hover:underline"
           >
             Voir les expéditions
           </button>

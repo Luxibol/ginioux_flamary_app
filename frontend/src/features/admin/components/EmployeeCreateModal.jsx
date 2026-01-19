@@ -60,7 +60,7 @@ export default function EmployeeCreateModal({
                 <button
                   type="button"
                   onClick={() => copyToClipboard(createdTempPassword)}
-                  className="h-10 px-4 rounded-md bg-gf-border/40 text-gf-title text-xs hover:opacity-90"
+                  className="gf-btn h-10 px-4 text-xs"
                 >
                   Copier
                 </button>
@@ -73,7 +73,7 @@ export default function EmployeeCreateModal({
                     onClearTempPassword?.();
                     onClose();
                   }}
-                  className="h-9 rounded-md bg-gf-orange px-6 text-xs font-medium text-white hover:opacity-90"
+                  className="gf-btn gf-btn-primary h-9 px-6 text-xs"
                 >
                   Terminer
                 </button>
@@ -146,7 +146,7 @@ export default function EmployeeCreateModal({
             <button
               type="button"
               onClick={onClose}
-              className="h-9 rounded-md border border-gf-border bg-gf-bg px-5 text-xs"
+              className="gf-btn h-9 px-5 text-xs"
               disabled={loading}
             >
               Annuler
@@ -154,7 +154,7 @@ export default function EmployeeCreateModal({
             <button
               type="button"
               onClick={onSubmit}
-              className="h-9 rounded-md bg-gf-orange px-6 text-xs font-medium text-white hover:opacity-90 disabled:opacity-60"
+              className="gf-btn gf-btn-primary h-9 px-6 text-xs"
               disabled={loading}
             >
               {loading ? "Enregistrement…" : "Enregistrer"}

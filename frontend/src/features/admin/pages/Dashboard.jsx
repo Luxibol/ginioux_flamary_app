@@ -295,7 +295,7 @@ export default function Dashboard() {
           </div>
 
           <div className="mt-8">
-            <div className="text-xs font-medium text-gf-subtitle mb-2">
+            <div className="gf-h3 mb-2">
               Commandes urgentes
             </div>
             <UrgentTable rows={urgentRows} onView={() => navigate("/bureau/commandes")} />
@@ -309,7 +309,7 @@ export default function Dashboard() {
                 <select
                   value={periodBottom}
                   onChange={(e) => setPeriodBottom(e.target.value)}
-                  className="h-9 w-full rounded-md border border-gf-border bg-gf-bg px-3 text-xs text-gf-text outline-none focus:border-gf-orange"
+                  className="h-9 w-full rounded-md border border-gf-border bg-gf-surface px-3 text-xs text-gf-text outline-none focus:border-gf-orange"
                 >
                   {PERIODS.map((p) => (
                     <option key={p.value} value={p.value}>
@@ -318,7 +318,7 @@ export default function Dashboard() {
                   ))}
                 </select>
               </div>
-              <div className="mt-3 grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-3">
               <MiniStat
                 title="Expéditions effectuées"
                 value={bottomArchivedCount}

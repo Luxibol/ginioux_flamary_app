@@ -11,9 +11,9 @@ import QtyStepper from "./QtyStepper.jsx";
 import OrderCommentsThread from "../../../components/comments/OrderCommentsThread.jsx";
 
 function dotClassByStatus(status) {
-  if (status === "COMPLETE") return "bg-green-500";
+  if (status === "COMPLETE") return "bg-gf-success";
   if (status === "PARTIAL") return "bg-yellow-400";
-  return "bg-gray-300";
+  return "bg-gf-border";
 }
 
 function labelByStatus(status) {
@@ -23,9 +23,9 @@ function labelByStatus(status) {
 }
 
 function priorityClass(priority) {
-  if (priority === "URGENT") return "text-red-500";
+  if (priority === "URGENT") return "text-gf-danger";
   if (priority === "INTERMEDIAIRE") return "text-yellow-600";
-  if (priority === "NORMAL") return "text-green-600";
+  if (priority === "NORMAL") return "text-gf-success";
   return "text-gf-muted";
 }
 
@@ -116,13 +116,14 @@ export default function ProductionOrderCard({
             onToggle?.();
           }
         }}
-        className="relative w-full text-left px-4 py-3 pr-14 flex items-start gap-3"
+        className="relative w-full select-none text-left px-4 py-3 pr-14 flex items-start gap-3"
       >
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between gap-2">
-            <h2 className="font-semibold text-sm truncate">{order?.company}</h2>
-
-            <span className="inline-flex items-center gap-2 text-xs text-gf-text shrink-0">
+            <h2 className="text-[14px] font-semibold text-gf-title truncate">
+              {order?.company}
+            </h2>
+            <span className="inline-flex items-center gap-2 text-[12px] text-gf-subtitle shrink-0">
               <span
                 className={[
                   "h-2.5 w-2.5 rounded-full",
@@ -233,17 +234,12 @@ export default function ProductionOrderCard({
             type="button"
             onClick={onMarkAllReady}
             disabled={markAllDisabled}
-            className={[
-              "w-full h-10 rounded-xl border text-sm",
-              !markAllDisabled
-                ? "border-gf-orange text-gf-orange hover:bg-gf-orange/10"
-                : "border-gf-orange/40 text-gf-orange/40 cursor-not-allowed",
-            ].join(" ")}
+            className={`gf-btn w-full h-10 rounded-xl ${markAllDisabled ? "" : "hover:bg-gf-orange/10"}`}
           >
             {markAllLabel}
           </button>
 
-          {/* ✅ Commentaires : UN SEUL header (celui du thread) */}
+          {/* Commentaires : UN SEUL header (celui du thread) */}
           <div ref={commentsRef} className="pt-1">
             <OrderCommentsThread
               orderId={order?.id}
@@ -261,12 +257,9 @@ export default function ProductionOrderCard({
             type="button"
             disabled={effectivePrimaryDisabled}
             onClick={effectivePrimaryAction}
-            className={[
-              "w-full h-11 rounded-xl text-sm font-medium",
-              !effectivePrimaryDisabled
-                ? "bg-gf-orange text-white hover:opacity-95"
-                : "bg-gf-orange/40 text-white cursor-not-allowed",
-            ].join(" ")}
+            className={`gf-btn gf-btn-primary w-full h-11 rounded-xl ${
+              effectivePrimaryDisabled ? "opacity-60 cursor-not-allowed" : ""
+            }`}
           >
             {primaryLabel}
           </button>
