@@ -30,7 +30,7 @@ function ForgotPasswordModal({ open, onClose }) {
           <button
             type="button"
             onClick={onClose}
-            className="h-9 rounded-md border border-gf-border bg-gf-bg px-5 text-xs"
+            className="gf-btn"
           >
             Fermer
           </button>
@@ -92,7 +92,7 @@ export default function LoginPage() {
         canonical="/login"
       />
 
-      <div className="w-full max-w-md rounded-2xl border border-gf-border bg-gf-surface shadow-sm p-6">
+      <div className="w-full max-w-md gf-card gf-card-pad shadow-sm">
         <div className="flex flex-col items-center gap-3">
           <img src={logo} alt="Ginioux Flamary" className="h-12 w-auto" />
           <h1 className="gf-h1">Connexion</h1>
@@ -103,7 +103,7 @@ export default function LoginPage() {
 
         <form className="mt-6 space-y-4" onSubmit={onSubmit}>
           {error ? (
-            <div className="text-xs text-gf-danger" role="alert">
+            <div className="gf-error" role="alert">
               {error}
             </div>
           ) : null}
@@ -166,7 +166,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={!canSubmit}
-            className="h-10 w-full rounded-md bg-gf-orange text-white text-xs font-medium hover:opacity-90 disabled:opacity-60"
+            className="gf-btn gf-btn-primary w-full"
           >
             {loading ? "Connexion…" : "Se connecter"}
           </button>
