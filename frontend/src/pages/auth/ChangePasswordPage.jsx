@@ -4,6 +4,7 @@ import logo from "../../assets/pictures/logo.png";
 import { changePassword } from "../../services/auth.api.js";
 import { getAuth, setAuth } from "../../services/auth.storage.js";
 import { landingPathForRole } from "../../utils/roleRouting.js";
+import AuthLayout from "../../components/auth/AuthLayout.jsx";
 
 export default function ChangePasswordPage() {
   const navigate = useNavigate();
@@ -43,7 +44,7 @@ export default function ChangePasswordPage() {
   }
 
   return (
-    <div className="min-h-dvh bg-gf-bg text-gf-text flex items-center justify-center p-6">
+    <AuthLayout>
       <div className="w-full max-w-md rounded-2xl border border-gf-border bg-gf-surface shadow-sm p-6">
         <div className="flex flex-col items-center gap-3">
           <img src={logo} alt="Ginioux Flamary" className="h-12 w-auto" />
@@ -93,6 +94,6 @@ export default function ChangePasswordPage() {
           </div>
         </form>
       </div>
-    </div>
+    </AuthLayout>
   );
 }

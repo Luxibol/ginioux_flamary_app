@@ -4,6 +4,7 @@ import logo from "../../assets/pictures/logo.png";
 import { login as loginApi } from "../../services/auth.api.js";
 import { setAuth } from "../../services/auth.storage.js";
 import { landingPathForRole } from "../../utils/roleRouting.js";
+import AuthLayout from "../../components/auth/AuthLayout.jsx";
 
 function ForgotPasswordModal({ open, onClose }) {
   if (!open) return null;
@@ -73,7 +74,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-dvh bg-gf-bg text-gf-text flex items-center justify-center p-6">
+    <AuthLayout>
       <div className="w-full max-w-md rounded-2xl border border-gf-border bg-gf-surface shadow-sm p-6">
         <div className="flex flex-col items-center gap-3">
           <img src={logo} alt="Ginioux Flamary" className="h-12 w-auto" />
@@ -136,6 +137,6 @@ export default function LoginPage() {
       </div>
 
       <ForgotPasswordModal open={openForgot} onClose={() => setOpenForgot(false)} />
-    </div>
+    </AuthLayout>
   );
 }
