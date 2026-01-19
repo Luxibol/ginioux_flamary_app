@@ -318,7 +318,7 @@ export default function Dashboard() {
                   ))}
                 </select>
               </div>
-              <div className="mt-3 grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-3">
               <MiniStat
                 title="Expéditions effectuées"
                 value={bottomArchivedCount}
