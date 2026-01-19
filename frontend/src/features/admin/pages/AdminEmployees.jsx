@@ -172,7 +172,7 @@ export default function AdminEmployees() {
   }
 
   return (
-    <div className="p-6">
+    <div className="p-4 md:p-6">
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div>
@@ -190,7 +190,7 @@ export default function AdminEmployees() {
               setCreatedTempPassword("");
               setOpenCreate(true);
             }}
-            className="h-9 rounded-md bg-gf-orange px-4 text-white text-xs font-medium hover:opacity-90 inline-flex items-center gap-2"
+            className="gf-btn gf-btn-primary h-9 px-4 text-xs"
           >
             <Plus className="h-4 w-4" />
             Ajouter
@@ -200,7 +200,7 @@ export default function AdminEmployees() {
             type="button"
             onClick={load}
             disabled={loading}
-            className="h-9 inline-flex items-center gap-2 rounded-md border border-gf-border bg-gf-surface px-3 text-xs hover:opacity-90 disabled:opacity-60"
+            className="gf-btn h-9 px-3 text-xs"
           >
             <RefreshCw className="h-4 w-4" />
             Rafraîchir
@@ -209,8 +209,8 @@ export default function AdminEmployees() {
       </div>
 
       {/* Table/cards */}
-      <div className="mt-6 rounded-2xl border border-gf-border bg-gf-surface overflow-hidden">
-        {error ? <div className="p-4 text-xs text-gf-danger">{error}</div> : null}
+      <div className="mt-6 gf-card overflow-hidden">
+        {error ? <div className="p-4 gf-error">{error}</div> : null}
 
         {/* Header tableau */}
         <div className="hidden md:block bg-gf-bg text-gf-subtitle">
@@ -242,7 +242,7 @@ export default function AdminEmployees() {
                 >
                   {/* DESKTOP */}
                   <div
-                    className="hidden md:grid items-center px-4 py-3 gap-3 text-xs"
+                    className="hidden md:grid items-center px-4 py-3 gap-3 text-xs hover:bg-gf-orange/5"
                     style={{
                       gridTemplateColumns: "minmax(260px,1fr) 180px 160px 140px 340px",
                     }}
@@ -270,7 +270,7 @@ export default function AdminEmployees() {
                       <button
                         type="button"
                         onClick={() => onOpenReset(u)}
-                        className="h-8 px-3 rounded-md bg-gf-orange text-white text-xs inline-flex items-center gap-2 hover:opacity-90 disabled:opacity-60"
+                        className="gf-btn gf-btn-primary h-8 px-3 text-xs"
                         disabled={loading || !u.is_active}
                         title="Réinitialiser le mot de passe"
                       >
@@ -281,7 +281,7 @@ export default function AdminEmployees() {
                       <button
                         type="button"
                         onClick={() => openEditModal(u)}
-                        className="h-8 px-3 rounded-md bg-gf-border/40 text-gf-title text-xs inline-flex items-center gap-2 hover:opacity-90 disabled:opacity-60"
+                        className="gf-btn h-8 px-3 text-xs"
                         disabled={loading}
                         title="Modifier"
                       >
@@ -318,7 +318,7 @@ export default function AdminEmployees() {
                       <button
                         type="button"
                         onClick={() => onOpenReset(u)}
-                        className="h-8 flex-1 rounded-md bg-gf-orange text-white text-xs inline-flex items-center justify-center gap-2 hover:opacity-90 disabled:opacity-60"
+                        className="gf-btn gf-btn-primary h-8 flex-1 text-xs"
                         disabled={loading || !u.is_active}
                         title="Réinitialiser le mot de passe"
                       >
@@ -328,7 +328,7 @@ export default function AdminEmployees() {
                       <button
                         type="button"
                         onClick={() => openEditModal(u)}
-                        className="h-8 flex-1 rounded-md bg-gf-border/40 text-gf-title text-xs inline-flex items-center justify-center gap-2 hover:opacity-90 disabled:opacity-60"
+                        className="gf-btn h-8 flex-1 text-xs"
                         disabled={loading}
                         title="Modifier"
                       >

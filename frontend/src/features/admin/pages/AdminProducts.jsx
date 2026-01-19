@@ -216,7 +216,7 @@ export default function AdminProducts() {
   }
 
   return (
-    <div className="p-6">
+    <div className="p-4 md:p-6">
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div>
@@ -230,7 +230,7 @@ export default function AdminProducts() {
           <button
             type="button"
             onClick={() => setOpenCreate(true)}
-            className="h-9 rounded-md bg-gf-orange px-4 text-white text-xs font-medium hover:opacity-90 inline-flex items-center gap-2"
+            className="gf-btn gf-btn-primary h-9 px-4 text-xs rounded-md"
           >
             <Plus className="h-4 w-4" />
             Ajouter
@@ -240,7 +240,7 @@ export default function AdminProducts() {
             type="button"
             onClick={load}
             disabled={loading}
-            className="h-9 inline-flex items-center gap-2 rounded-md border border-gf-border bg-gf-surface px-3 text-xs hover:opacity-90 disabled:opacity-60"
+            className="gf-btn h-9 px-3 text-xs rounded-md"
           >
             <RefreshCw className="h-4 w-4" />
             Rafraîchir
@@ -265,20 +265,16 @@ export default function AdminProducts() {
 
         {/* Header tableau */}
         <div className="bg-gf-bg text-gf-subtitle">
-          <div className="p-3">
-            <div
-              className="grid items-center px-4 py-3 gap-3 font-medium text-xs justify-items-center"
-              style={{
-                gridTemplateColumns: "minmax(420px,1fr) 140px 120px 120px 220px",
-              }}
-            >
-              <div className="justify-self-start">Libellé PDF</div>
-              <div>Catégorie</div>
-              <div>Poids (kg)</div>
-              <div>Actif</div>
-              <div>Actions</div>
-            </div>
-          </div>
+          <div
+            className="grid items-center px-4 py-3 gap-3 font-medium text-xs justify-items-center"
+            style={{ gridTemplateColumns: "minmax(420px,1fr) 140px 120px 120px 220px" }}
+          >
+            <div className="justify-self-start">Libellé PDF</div>
+            <div>Catégorie</div>
+            <div>Poids (kg)</div>
+            <div>Actif</div>
+            <div>Actions</div>
+          </div>      
         </div>
 
         {/* Rows */}
@@ -295,7 +291,7 @@ export default function AdminProducts() {
                   className="rounded-xl bg-gf-surface overflow-hidden ring-1 ring-gf-border"
                 >
                   <div
-                    className="grid items-center px-4 py-3 gap-3 text-xs"
+                    className="grid items-center px-4 py-3 gap-3 text-xs hover:bg-gf-orange/5"
                     style={{
                       gridTemplateColumns: "minmax(420px,1fr) 140px 120px 120px 220px",
                     }}
@@ -321,11 +317,11 @@ export default function AdminProducts() {
                       </button>
                     </div>
 
-                    <div className="text-center flex items-center justify-center gap-2">
+                    <div className="flex items-center justify-center gap-2">
                       <button
                         type="button"
                         onClick={() => openEditModal(p)}
-                        className="h-8 px-3 rounded-md bg-gf-border/40 text-gf-title text-xs inline-flex items-center gap-2 hover:opacity-90 disabled:opacity-60"
+                        className="gf-btn h-8 px-3 text-xs rounded-md"
                         disabled={loading}
                         title="Modifier"
                       >
@@ -336,7 +332,7 @@ export default function AdminProducts() {
                       <button
                         type="button"
                         onClick={() => onDelete(p)}
-                        className="h-8 px-3 rounded-md bg-gf-danger text-white text-xs inline-flex items-center gap-2 hover:opacity-90 disabled:opacity-60"
+                        className="gf-btn gf-btn-danger h-8 px-3 text-xs rounded-md"
                         disabled={loading}
                         title="Supprimer"
                       >
