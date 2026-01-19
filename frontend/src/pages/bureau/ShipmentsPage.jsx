@@ -1,4 +1,4 @@
-import ShipmentsBureau from "../../features/orders/pages/ShipmentsBureau.jsx";
+import ShipmentsBureau from "../..//features/bureau/pages/ShipmentsBureau.jsx";
 
 export default function ShipmentsPage() {
   return <ShipmentsBureau />;

@@ -7,7 +7,7 @@
  *   pour sortir la commande de la liste "à produire" même si PROD_COMPLETE.
  * Note : commentaires pas branchés => on garde comments: []
  */
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import ProductionOrderCard from "../components/ProductionOrderCard.jsx";
 import {
   getProductionOrders,
@@ -90,7 +90,7 @@ function Orders() {
     });
   }
 
-  async function refreshList({ keepExpanded = false } = {}) {
+  const refreshList = useCallback(async ({ keepExpanded = false } = {}) => {
     setLoading(true);
     setError("");
 
@@ -102,17 +102,16 @@ function Orders() {
       resetDetailsCache();
 
       if (!keepExpanded) setExpandedId(null);
-    } catch (e) {
+    } catch {
       setError("Impossible de charger les commandes production.");
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
 
   useEffect(() => {
     refreshList();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [refreshList]);
 
   async function ensureDetails(orderId) {
     if (detailsLoadedRef.current.has(orderId)) return;
@@ -190,7 +189,7 @@ function Orders() {
 
                   // vérité BDD pour les steppers
                   syncReadyMapFromApiLines(lines);
-                } catch (e) {
+                } catch {
                   detailsLoadedRef.current.delete(order.id);
                   await ensureDetails(order.id);
                 }

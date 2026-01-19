@@ -38,10 +38,11 @@ export default function AdminEmployees() {
 
   // Reset password modal state
   const [openReset, setOpenReset] = useState(false);
-  const [resetId, setResetId] = useState(null);
   const [resetTitle, setResetTitle] = useState("");
   const [resetTempPassword, setResetTempPassword] = useState("");
   const [resetError, setResetError] = useState("");
+  
+  const [, setResetId] = useState(null);
 
   async function load() {
     try {
@@ -64,7 +65,6 @@ export default function AdminEmployees() {
   // Reload auto sur role/active (q = Enter)
   useEffect(() => {
     load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function openEditModal(u) {

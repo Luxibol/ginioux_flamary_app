@@ -71,11 +71,6 @@ function AppLayout() {
 
   const [menuOpen, setMenuOpen] = useState(false);
 
-  // Ferme le menu dès qu’on change de route
-  useEffect(() => {
-    setMenuOpen(false);
-  }, [location.pathname]);
-
   const mobileConfig = useMemo(() => {
     if (mode === "admin_mobile") {
       return {
