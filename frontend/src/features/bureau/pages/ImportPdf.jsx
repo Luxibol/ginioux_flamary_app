@@ -159,7 +159,7 @@ export default function ImportPdf() {
 
       <div
         className={[
-          "mx-auto w-full max-w-3xl rounded-2xl border border-gf-border bg-gf-surface",
+          "mx-auto w-full max-w-3xl gf-card",
           "flex flex-col items-center justify-center px-6 py-14 text-center",
           isDragOver ? "bg-gf-orange/10 border-gf-orange" : "",
         ].join(" ")}
@@ -189,7 +189,7 @@ export default function ImportPdf() {
           type="button"
           onClick={openPicker}
           disabled={isLoading}
-          className="mt-4 h-9 rounded-md bg-gf-orange px-4 text-white text-xs font-medium hover:opacity-90 disabled:opacity-60"
+          className="mt-4 gf-btn gf-btn-primary"
         >
           {isLoading ? "Traitement…" : "Choisir un fichier PDF"}
         </button>
@@ -204,7 +204,7 @@ export default function ImportPdf() {
       </div>
 
       <div className="mt-10 max-w-3xl mx-auto">
-        <div className="text-sm font-medium text-gf-title">
+        <div className="gf-h3">
           Résultats récents
         </div>
         <div className="gf-body text-gf-subtitle">
@@ -214,7 +214,7 @@ export default function ImportPdf() {
 
         <ul className="mt-3 space-y-2">
           {messages.length === 0 ? (
-            <li className="gf-body text-gf-subtitle">
+            <li className="gf-empty">
               Aucun import validé pour le moment.
             </li>
           ) : (
