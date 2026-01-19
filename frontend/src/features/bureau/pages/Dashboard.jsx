@@ -7,21 +7,11 @@ import { getArchivedOrders } from "../../../services/history.api.js";
 import BureauKpiCard from "../components/BureauKpiCard.jsx";
 import BureauListBlock from "../components/BureauListBlock.jsx";
 
+import { formatDateFr } from "../utils/orders.format.js";
+
 import { toNumber } from "../utils/orders.format.js";
 
 import { getUser } from "../../../services/auth.storage.js";
-
-
-function formatDateFR(value) {
-  if (!value) return "—";
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return "—";
-  return new Intl.DateTimeFormat("fr-FR", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  }).format(d);
-}
 
 export default function Dashboard() {
   const firstName = useMemo(() => {
@@ -90,7 +80,7 @@ export default function Dashboard() {
 
   const archivedLines = useMemo(() => {
     return archivedTop.slice(0, 5).map((o) => {
-      return `${o.arc || "—"} — ${o.client_name || "Client —"} — Expédiée le ${formatDateFR(
+      return `${o.arc || "—"} — ${o.client_name || "Client —"} — Expédiée le ${formatDateFr(
         o.last_departed_at
       )}`;
     });
