@@ -183,16 +183,16 @@ function Shipments() {
 
   return (
     <div className="p-4">
-      <h1 className="text-center text-sm font-semibold text-gf-text mb-3">
-        Expéditions à charger
-      </h1>
-
+      <h1 className="gf-h1 text-center mb-1">Expéditions à charger</h1>
+      <p className="gf-body text-center text-gf-subtitle mb-3">
+        Liste des commandes prêtes à charger.
+      </p>
       {loading ? (
-        <div className="text-sm text-gf-muted">Chargement…</div>
+        <div className="gf-empty">Chargement…</div>
       ) : error ? (
-        <div className="text-sm text-red-500">{error}</div>
+        <div className="gf-error">{error}</div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-3">
           {orders.map((order) => {
             const loadedTotal = Number(order.loadedTotal ?? 0);
             const chargeableTotal = Number(order.chargeableTotal ?? 0);
