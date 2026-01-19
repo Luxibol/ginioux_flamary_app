@@ -195,8 +195,7 @@ export default function Dashboard() {
         if (!alive) return;
         setError(e?.message || "Erreur lors du chargement du dashboard admin.");
       } finally {
-        if (!alive);
-        setLoading(false);
+        if (alive) setLoading(false);
       }
     }
 
