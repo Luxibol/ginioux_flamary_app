@@ -7,6 +7,8 @@ import { getArchivedOrders } from "../../../services/history.api.js";
 import BureauKpiCard from "../components/BureauKpiCard.jsx";
 import BureauListBlock from "../components/BureauListBlock.jsx";
 
+import { n } from "../utils/orders.format.js";
+
 import { getUser } from "../../../services/auth.storage.js";
 
 
@@ -19,11 +21,6 @@ function formatDateFR(value) {
     month: "2-digit",
     year: "numeric",
   }).format(d);
-}
-
-function n(v) {
-  const x = Number(v);
-  return Number.isFinite(x) ? x : 0;
 }
 
 export default function Dashboard() {
