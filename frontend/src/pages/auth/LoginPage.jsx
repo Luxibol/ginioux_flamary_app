@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import logo from "../../assets/pictures/logo.png";
 import { login as loginApi } from "../../services/auth.api.js";
 import { setAuth } from "../../services/auth.storage.js";
+import { landingPathForRole } from "../../utils/roleRouting.js";
 
 function ForgotPasswordModal({ open, onClose }) {
   if (!open) return null;
@@ -28,13 +29,6 @@ function ForgotPasswordModal({ open, onClose }) {
       </div>
     </div>
   );
-}
-
-function landingPathForRole(role) {
-  if (role === "ADMIN") return "/admin";
-  if (role === "BUREAU") return "/bureau";
-  if (role === "PRODUCTION") return "/production/commandes";
-  return "/bureau";
 }
 
 export default function LoginPage() {

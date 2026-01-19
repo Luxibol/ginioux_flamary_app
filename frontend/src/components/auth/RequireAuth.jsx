@@ -1,5 +1,6 @@
 import { Navigate, useLocation } from "react-router-dom";
 import { getAuth } from "../../services/auth.storage.js";
+import { landingPathForRole } from "../../utils/roleRouting.js";
 
 function canAccessPath(role, path) {
   // ADMIN area
@@ -46,13 +47,7 @@ export default function RequireAuth({ children }) {
   // contrôle d'accès par rôle
   if (!canAccessPath(auth.user.role, path)) {
     // fallback simple selon rôle
-    const fallback =
-      auth.user.role === "ADMIN"
-        ? "/admin"
-        : auth.user.role === "BUREAU"
-        ? "/bureau"
-        : "/production/commandes";
-
+    const fallback = landingPathForRole(auth.user.role);
     return <Navigate to={fallback} replace />;
   }
 

@@ -3,13 +3,7 @@ import { useNavigate } from "react-router-dom";
 import logo from "../../assets/pictures/logo.png";
 import { changePassword } from "../../services/auth.api.js";
 import { getAuth, setAuth } from "../../services/auth.storage.js";
-
-function landingPathForRole(role) {
-  if (role === "ADMIN") return "/admin";
-  if (role === "BUREAU") return "/bureau";
-  if (role === "PRODUCTION") return "/production/commandes";
-  return "/bureau";
-}
+import { landingPathForRole } from "../../utils/roleRouting.js";
 
 export default function ChangePasswordPage() {
   const navigate = useNavigate();
