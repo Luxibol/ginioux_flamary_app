@@ -87,15 +87,15 @@ export default function Dashboard() {
   }, [archivedTop]);
 
   if (loading) {
-    return <div className="p-4 text-xs text-gf-subtitle">Chargement…</div>;
+    return <div className="p-4 gf-empty">Chargement…</div>;
   }
 
   if (error) {
     return (
       <div className="p-4">
-        <div className="rounded-md border border-gf-border bg-gf-surface p-3">
-          <div className="text-xs font-medium text-gf-title">Erreur</div>
-          <div className="mt-1 text-xs text-gf-subtitle">{error}</div>
+        <div className="gf-card gf-card-pad">
+          <div className="gf-h3">Erreur</div>
+          <div className="mt-2 gf-error">{error}</div>
         </div>
       </div>
     );
@@ -103,18 +103,18 @@ export default function Dashboard() {
 
   return (
     <div className="p-4">
-      {/* Header de page (comme maquette) */}
-      <div className="p-4">
-        <div>
-          <h1 className="gf-h1">Tableau de bord</h1>
+      {/* Header de page */}
+      <div>
+        <h1 className="gf-h1">Tableau de bord</h1>
+        <div className="mt-1 text-xs text-gf-subtitle">
+          Vue d&apos;ensemble des commandes et expéditions.
         </div>
-        <div className="text-xs text-gf-subtitle">Vue d&apos;ensemble des commandes et expéditions.</div>
 
         <div className="mt-4 text-center font-semibold text-gf-orange">
           Bonjour {firstName}
         </div>
 
-        {/* Panneau gris (comme maquette) */}
+        {/* Panneau gris */}
         <div className="mt-5 rounded-md bg-gf-bg px-8 pt-10 pb-8 min-h-[420px]">
           {/* KPI centrés */}
           <div className="flex flex-wrap justify-center gap-48">
@@ -134,7 +134,11 @@ export default function Dashboard() {
 
           {/* Deux colonnes bas */}
           <div className="mt-14">
-            <div className="grid grid-cols-2 gap-10 pl-48">
+            <div className="pl-48">
+              <h2 className="gf-h2">À surveiller</h2>
+            </div>
+
+            <div className="mt-3 grid grid-cols-2 gap-10 pl-48">
               <BureauListBlock
                 title="Commandes urgentes"
                 items={urgentLines}
