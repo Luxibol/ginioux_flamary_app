@@ -16,7 +16,6 @@ export default function EmployeeEditModal({
   eActive,
   setEActive,
   // meta
-  titleLine,
   onClose,
   onSubmit,
 }) {
@@ -27,9 +26,6 @@ export default function EmployeeEditModal({
       <div className="w-full max-w-2xl rounded-2xl border border-gf-border bg-gf-surface shadow-sm">
         <div className="p-5 border-b border-gf-border">
           <div className="text-sm font-semibold text-gf-title">Modifier un employé</div>
-          {titleLine ? (
-            <div className="text-xs text-gf-subtitle mt-1 truncate">{titleLine}</div>
-          ) : null}
         </div>
 
         <div className="p-5">
