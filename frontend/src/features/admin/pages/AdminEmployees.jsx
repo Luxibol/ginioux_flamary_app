@@ -376,7 +376,6 @@ export default function AdminEmployees() {
         open={openEdit}
         loading={loading}
         error={editError}
-        titleLine={editId ? `#${editId}` : ""}
         eFirstName={eFirstName}
         setEFirstName={setEFirstName}
         eLastName={eLastName}
