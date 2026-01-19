@@ -1,11 +1,6 @@
 const ordersRepository = require("../repositories/orders.repository");
 const orderCommentsRepository = require("../repositories/orderComments.repository");
-
-function asInt(v) {
-  const n = Number(v);
-  if (!Number.isFinite(n)) return null;
-  return Math.trunc(n);
-}
+const { asInt } = require("../utils/parse");
 
 /**
  * GET /orders/:id/comments

@@ -1,14 +1,9 @@
 const bcrypt = require("bcrypt");
 const crypto = require("crypto");
 const usersRepo = require("../repositories/users.repository");
+const { asInt } = require("../utils/parse");
 
 const ALLOWED_ROLES = ["ADMIN", "BUREAU", "PRODUCTION"];
-
-function asInt(v) {
-  const n = Number(v);
-  if (!Number.isFinite(n)) return null;
-  return Math.trunc(n);
-}
 
 function normStr(v) {
   return String(v ?? "").trim();
