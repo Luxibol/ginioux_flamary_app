@@ -12,15 +12,12 @@ function buildCorsOptions() {
 
   return {
     origin(origin, cb) {
-      // Pas d'Origin => ex: curl, mobile app native, SSR, etc.
       if (!origin) return cb(null, true);
 
-      // En dev, on autorise large si pas configuré
       if (process.env.NODE_ENV !== "production" && allowList.length === 0) {
         return cb(null, true);
       }
 
-      // En prod, si pas configuré -> on refuse les origins externes
       if (process.env.NODE_ENV === "production" && allowList.length === 0) {
         return cb(
           new Error("CORS non configuré (CORS_ORIGINS manquant)"),
@@ -31,7 +28,15 @@ function buildCorsOptions() {
       if (allowList.includes(origin)) return cb(null, true);
       return cb(new Error("Origin non autorisée par CORS"), false);
     },
+
     credentials: true,
+
+    // important (preflight OPTIONS)
+    methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+
+    // si un jour on veux lire des headers côté front
+    // exposedHeaders: ["Content-Length"],
   };
 }
 

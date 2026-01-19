@@ -37,3 +37,23 @@ export function getToken() {
 export function getUser() {
   return getAuth()?.user || null;
 }
+
+export function setToken(token) {
+  const cur = getAuth();
+  if (!cur) return;
+
+  // On met à jour dans les deux si jamais un seul existe
+  const next = { ...cur, token };
+
+  const hasLocal = !!getStore("local")?.getItem(KEY);
+  const hasSession = !!getStore("session")?.getItem(KEY);
+
+  if (hasLocal) getStore("local")?.setItem(KEY, JSON.stringify(next));
+  if (hasSession) getStore("session")?.setItem(KEY, JSON.stringify(next));
+
+  // si aucun, on ne fait rien
+}
+
+export function clearToken() {
+  clearAuth();
+}
