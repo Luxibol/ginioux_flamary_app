@@ -1,7 +1,7 @@
 export default function ActivityList({ items = [] }) {
   return (
-    <div className="gf-card px-4 py-4">
-      <div className="text-xs font-medium text-gf-title">Activités récentes</div>
+    <div className="gf-card p-4">
+      <div className="text-xs font-medium text-gf-subtitle">Activités récentes</div>
 
       <div className="mt-2 space-y-1 text-[11px] text-gf-subtitle">
         {items.length === 0 ? (
