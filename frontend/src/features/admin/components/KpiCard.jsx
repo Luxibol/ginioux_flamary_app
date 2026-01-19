@@ -1,8 +1,11 @@
 export default function KpiCard({ title, value, lines = [] }) {
   return (
     <div className="w-full max-w-[260px] rounded-2xl border border-gf-border bg-gf-bg px-4 py-4 text-center">
-      <div className="text-xs font-medium text-gf-title">{title}</div>
-      <div className="mt-1 text-2xl font-semibold text-gf-title">{value}</div>
+      <div className="text-xs font-medium text-gf-subtitle">{title}</div>
+
+      <div className="mt-1 text-[26px] leading-none font-semibold text-gf-title">
+        {value}
+      </div>
 
       <div className="mt-2 space-y-0.5">
         {lines.map((t, i) => {
