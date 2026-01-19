@@ -92,7 +92,7 @@ export default function HistoryBureau() {
           type="button"
           onClick={load}
           disabled={loading}
-          className="h-9 inline-flex items-center gap-2 rounded-md border border-gf-border bg-gf-surface px-3 text-xs hover:opacity-90 disabled:opacity-60"
+          className="gf-btn"
         >
           <RefreshCw className="h-4 w-4" />
           Rafraîchir
@@ -132,11 +132,11 @@ export default function HistoryBureau() {
       </div>
 
       {/* Content */}
-      <div className="mt-6 rounded-2xl border border-gf-border bg-gf-surface overflow-hidden">
+      <div className="mt-6 gf-card overflow-hidden">
         {error ? (
-          <div className="p-4 text-xs text-gf-danger">{error}</div>
+          <div className="p-4 gf-error">{error}</div>
         ) : rows.length === 0 ? (
-          <div className="p-4 text-xs text-gf-subtitle">
+          <div className="p-4 gf-empty">
             {loading ? "Chargement…" : "Aucune commande archivée."}
           </div>
         ) : (
@@ -198,7 +198,7 @@ export default function HistoryBureau() {
                           </div>
 
                           <div className="flex items-center justify-center">
-                            <span className="h-8 px-6 rounded-md bg-gf-orange text-white text-xs font-medium inline-flex items-center">
+                            <span className="gf-btn gf-btn-primary">
                               Détails
                             </span>
                           </div>
@@ -212,7 +212,7 @@ export default function HistoryBureau() {
                       {isOpen ? (
                         <div className="border-t border-gf-border bg-gf-surface">
                           {loadingDetails ? (
-                            <div className="px-4 py-4 text-xs text-gf-subtitle">
+                            <div className="px-4 py-4 gf-empty">
                               Chargement des détails…
                             </div>
                           ) : details ? (
