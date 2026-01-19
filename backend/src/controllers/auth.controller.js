@@ -5,12 +5,12 @@ const jwt = require("jsonwebtoken");
 const usersRepo = require("../repositories/users.repository");
 const refreshRepo = require("../repositories/refreshTokens.repository");
 
-const ACCESS_TTL = "15m";
-const REFRESH_TTL_DAYS = 30;
-
-const REFRESH_COOKIE_NAME = "refresh_token";
-// Ancien path utilisé avant le cookie unique sur "/"
-const LEGACY_REFRESH_COOKIE_PATH = "/auth/refresh";
+const {
+  ACCESS_TTL,
+  REFRESH_TTL_DAYS,
+  REFRESH_COOKIE_NAME,
+  LEGACY_REFRESH_COOKIE_PATH,
+} = require("../config/auth.constants");
 
 function signAccessToken(user) {
   const secret = process.env.JWT_SECRET;
