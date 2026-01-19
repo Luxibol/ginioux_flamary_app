@@ -56,22 +56,10 @@ async function revokeAllForUser(userId) {
   );
 }
 
-async function revokeAllActiveForUser(userId) {
-  const [res] = await pool.query(
-    `UPDATE refresh_tokens
-     SET revoked_at = NOW()
-     WHERE user_id = ?
-       AND revoked_at IS NULL`,
-    [userId],
-  );
-  return res.affectedRows;
-}
-
 module.exports = {
   createToken,
   findValidByHash,
   revokeToken,
   rotateToken,
   revokeAllForUser,
-  revokeAllActiveForUser,
 };

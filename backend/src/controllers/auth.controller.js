@@ -1,11 +1,16 @@
 const bcrypt = require("bcrypt");
-const jwt = require("jsonwebtoken");
-const usersRepo = require("../repositories/users.repository");
-
 const crypto = require("crypto");
+const jwt = require("jsonwebtoken");
+
+const usersRepo = require("../repositories/users.repository");
+const refreshRepo = require("../repositories/refreshTokens.repository");
 
 const ACCESS_TTL = "15m";
 const REFRESH_TTL_DAYS = 30;
+
+const REFRESH_COOKIE_NAME = "refresh_token";
+// Ancien path utilisé avant le cookie unique sur "/"
+const LEGACY_REFRESH_COOKIE_PATH = "/auth/refresh";
 
 function signAccessToken(user) {
   const secret = process.env.JWT_SECRET;
@@ -17,7 +22,6 @@ function signAccessToken(user) {
 }
 
 function newRefreshToken() {
-  // token opaque (pas un JWT)
   return crypto.randomBytes(64).toString("hex"); // 128 chars
 }
 
@@ -31,21 +35,31 @@ function refreshExpiresAt() {
   return d;
 }
 
-function refreshCookieOptions() {
+function refreshCookieBaseOptions() {
   const isProd = process.env.NODE_ENV === "production";
   return {
     httpOnly: true,
     secure: isProd,
     sameSite: isProd ? "none" : "lax",
-    path: "/", //  un seul path maintenant
+  };
+}
+
+function refreshCookieOptions(path = "/") {
+  return {
+    ...refreshCookieBaseOptions(),
+    path,
     maxAge: REFRESH_TTL_DAYS * 24 * 60 * 60 * 1000,
   };
 }
 
 function clearRefreshCookie(res) {
-  // on nettoie les 2 paths possibles (ancien + nouveau)
-  res.clearCookie("refresh_token", { path: "/" });
-  res.clearCookie("refresh_token", { path: "/" });
+  // Nettoie les 2 paths possibles (ancien + nouveau)
+  const base = refreshCookieBaseOptions();
+  res.clearCookie(REFRESH_COOKIE_NAME, { ...base, path: "/" });
+  res.clearCookie(REFRESH_COOKIE_NAME, {
+    ...base,
+    path: LEGACY_REFRESH_COOKIE_PATH,
+  });
 }
 
 async function login(req, res) {
@@ -70,15 +84,11 @@ async function login(req, res) {
     const ok = await bcrypt.compare(password, user.password_hash);
     if (!ok) return res.status(401).json({ error: "Identifiants invalides." });
 
-    const refreshRepo = require("../repositories/refreshTokens.repository");
-
-    // 1) Révoque d'abord (pour éviter l'accumulation)
+    // 1 refresh actif / user
     await refreshRepo.revokeAllForUser(user.id);
 
-    // 2) Génère l'access token (stateless)
     const accessToken = signAccessToken(user);
 
-    // 3) Génère + stocke le refresh token (stateful)
     const refreshToken = newRefreshToken();
     const refreshHash = sha256Hex(refreshToken);
     const expiresAt = refreshExpiresAt();
@@ -91,9 +101,8 @@ async function login(req, res) {
       userAgent: req.headers["user-agent"],
     });
 
-    // 4) Cookie httpOnly
     clearRefreshCookie(res);
-    res.cookie("refresh_token", refreshToken, refreshCookieOptions());
+    res.cookie(REFRESH_COOKIE_NAME, refreshToken, refreshCookieOptions("/"));
 
     return res.json({
       token: accessToken,
@@ -113,7 +122,6 @@ async function login(req, res) {
 
 async function changePassword(req, res) {
   try {
-    // req.user injecté par auth middleware
     const userId = req.user?.id;
     if (!userId) return res.status(401).json({ error: "Non authentifié." });
 
@@ -134,22 +142,9 @@ async function changePassword(req, res) {
   }
 }
 
-function refreshCookieOptions() {
-  const isProd = process.env.NODE_ENV === "production";
-  return {
-    httpOnly: true,
-    secure: isProd, // true en prod (HTTPS)
-    sameSite: isProd ? "none" : "lax", // si front/back domaines différents en prod => none
-    path: "/",
-    maxAge: REFRESH_TTL_DAYS * 24 * 60 * 60 * 1000,
-  };
-}
-
 async function refresh(req, res) {
   try {
-    const refreshRepo = require("../repositories/refreshTokens.repository");
-
-    const token = req.cookies?.refresh_token;
+    const token = req.cookies?.[REFRESH_COOKIE_NAME];
     if (!token)
       return res.status(401).json({ error: "Refresh token manquant." });
 
@@ -160,18 +155,22 @@ async function refresh(req, res) {
 
     const user = await usersRepo.findById(stored.user_id);
     if (!user || !user.is_active) {
-      // compte désactivé => on révoque
       await refreshRepo.revokeToken(stored.id);
-      res.clearCookie("refresh_token", { path: "/" });
+      clearRefreshCookie(res);
       return res.status(403).json({ error: "Compte désactivé." });
     }
 
-    // rotation
+    // rotation anti-reuse
     const newToken = newRefreshToken();
     const newHash = sha256Hex(newToken);
     const expiresAt = refreshExpiresAt();
 
-    await refreshRepo.rotateToken({ id: stored.id, newHash });
+    const rotated = await refreshRepo.rotateToken({ id: stored.id, newHash });
+    if (!rotated) {
+      clearRefreshCookie(res);
+      return res.status(401).json({ error: "Refresh token invalide." });
+    }
+
     await refreshRepo.createToken({
       userId: user.id,
       tokenHash: newHash,
@@ -180,11 +179,9 @@ async function refresh(req, res) {
       userAgent: req.headers["user-agent"],
     });
 
-    // nouveau cookie
     clearRefreshCookie(res);
-    res.cookie("refresh_token", newToken, refreshCookieOptions());
+    res.cookie(REFRESH_COOKIE_NAME, newToken, refreshCookieOptions("/"));
 
-    // nouvel access token
     const accessToken = signAccessToken(user);
 
     return res.json({
@@ -205,14 +202,14 @@ async function refresh(req, res) {
 
 async function logout(req, res) {
   try {
-    const refreshRepo = require("../repositories/refreshTokens.repository");
-    const token = req.cookies?.refresh_token;
+    const token = req.cookies?.[REFRESH_COOKIE_NAME];
 
     if (token) {
       const hash = sha256Hex(token);
       const stored = await refreshRepo.findValidByHash(hash);
       if (stored) await refreshRepo.revokeToken(stored.id);
     }
+
     clearRefreshCookie(res);
     return res.json({ ok: true });
   } catch (e) {
