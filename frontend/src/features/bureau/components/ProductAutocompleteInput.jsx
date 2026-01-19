@@ -101,13 +101,13 @@ export default function ProductAutocompleteInput({
       />
 
       {show ? (
-        <div className="absolute z-50 mt-1 w-full rounded-md border border-gf-border bg-gf-surface shadow-lg overflow-hidden">
+        <div className="absolute z-50 mt-1 w-full gf-card shadow-lg overflow-hidden">
           {loading ? (
-            <div className="px-3 py-2 text-xs text-gf-subtitle">Recherche…</div>
+            <div className="px-3 py-2 gf-empty">Recherche…</div>
           ) : errorMsg ? (
-            <div className="px-3 py-2 text-xs text-gf-danger">{errorMsg}</div>
+            <div className="px-3 py-2 gf-error">{errorMsg}</div>
           ) : items.length === 0 ? (
-            <div className="px-3 py-2 text-xs text-gf-subtitle">
+            <div className="px-3 py-2 gf-empty">
               Aucun résultat
             </div>
           ) : (
@@ -115,7 +115,7 @@ export default function ProductAutocompleteInput({
               <button
                 key={p.id}
                 type="button"
-                className="w-full text-left px-3 py-2 text-xs hover:bg-gf-orange/10"
+                className="w-full text-left px-3 py-2 text-xs hover:bg-gf-orange/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gf-orange/50"
                 onMouseDown={(e) => {
                   // onMouseDown + preventDefault : évite que l'input perde le focus avant la sélection.
                   e.preventDefault();
