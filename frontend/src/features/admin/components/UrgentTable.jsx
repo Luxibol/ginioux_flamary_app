@@ -10,19 +10,19 @@ export default function UrgentTable({ rows, onView }) {
     <div className="rounded-2xl border border-gf-border bg-gf-surface overflow-hidden">
       {/* Header tableau */}
       <div className="bg-gf-bg text-gf-subtitle">
-        <div className="p-3">
-          <div
-            className="grid items-center px-4 py-3 gap-3 font-medium justify-items-center text-xs"
-            style={{ gridTemplateColumns: "110px 1fr 120px 120px 120px 1fr 180px" }}
-          >
-            <div>ARC</div>
-            <div>Client</div>
-            <div>Commande</div>
-            <div>Enlèvement</div>
-            <div>Priorité</div>
-            <div>État</div>
-            <div>Actions</div>
-          </div>
+        <div
+          className="grid items-center px-4 py-3 gap-3 font-medium justify-items-center text-xs"
+          style={{
+            gridTemplateColumns: "110px 1fr 120px 120px 120px 1fr 180px",
+          }}
+        >
+          <div>ARC</div>
+          <div>Client</div>
+          <div>Commande</div>
+          <div>Enlèvement</div>
+          <div>Priorité</div>
+          <div>État</div>
+          <div>Actions</div>
         </div>
       </div>
 
@@ -39,7 +39,9 @@ export default function UrgentTable({ rows, onView }) {
               >
                 <div
                   className="grid items-center px-4 py-3 gap-3 hover:bg-gf-orange/5 justify-items-center"
-                  style={{ gridTemplateColumns: "110px 1fr 120px 120px 120px 1fr 180px" }}
+                  style={{
+                    gridTemplateColumns: "110px 1fr 120px 120px 120px 1fr 180px",
+                  }}
                 >
                   <div className="font-medium text-gf-title">{o.arc}</div>
                   <div>{o.client_name ?? "—"}</div>
@@ -56,7 +58,7 @@ export default function UrgentTable({ rows, onView }) {
                     <button
                       type="button"
                       onClick={() => onView?.(o)}
-                      className="h-8 px-3 rounded-md bg-gf-orange text-white text-xs font-medium hover:opacity-90"
+                      className="gf-btn gf-btn-primary h-8 px-3 text-xs"
                     >
                       Voir
                     </button>
