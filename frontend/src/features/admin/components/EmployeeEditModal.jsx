@@ -28,8 +28,8 @@ export default function EmployeeEditModal({
         <div className="p-5 border-b border-gf-border">
           <div className="text-sm font-semibold text-gf-title">Modifier un employé</div>
           {titleLine ? (
-          <div className="text-xs text-gf-subtitle mt-1 truncate">{titleLine}</div>
-        ) : null}
+            <div className="text-xs text-gf-subtitle mt-1 truncate">{titleLine}</div>
+          ) : null}
         </div>
 
         <div className="p-5">
