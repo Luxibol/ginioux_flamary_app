@@ -51,12 +51,11 @@ export default function ProductionOrderCard({
   primaryDisabled = null,
   onPrimaryAction = null,
 
-  // ✅ NEW (contrôle depuis Shipment.jsx)
-  onMailClick,
+  // NEW (contrôle depuis Shipment.jsx)
   commentsOpen: commentsOpenProp,
   onCommentsOpenChange,
 }) {
-  // ✅ contrôlé (si fourni), sinon local
+  // contrôlé (si fourni), sinon local
   const [commentsOpenLocal, setCommentsOpenLocal] = useState(false);
   const commentsOpen =
     typeof commentsOpenProp === "boolean" ? commentsOpenProp : commentsOpenLocal;

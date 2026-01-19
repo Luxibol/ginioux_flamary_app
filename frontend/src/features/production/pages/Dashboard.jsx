@@ -148,7 +148,7 @@ export default function Dashboard() {
         if (!alive) return;
         setError(e?.message || "Erreur lors du chargement du dashboard production.");
       } finally {
-        if (!alive) return;
+        if (!alive);
         setLoading(false);
       }
     }

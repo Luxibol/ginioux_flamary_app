@@ -44,13 +44,6 @@ export default function ShipmentsBureau() {
 
   const [commentsOpenById, setCommentsOpenById] = useState({});
 
-  const toggleComments = (orderId) => {
-    setCommentsOpenById((prev) => ({
-      ...prev,
-      [orderId]: !prev[orderId],
-    }));
-  };
-
   const applyCounts = (orderId, counts) => {
     setRows((prev) =>
       prev.map((r) =>
@@ -88,7 +81,6 @@ export default function ShipmentsBureau() {
 
   useEffect(() => {
     load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const toggleRow = (orderId) => {

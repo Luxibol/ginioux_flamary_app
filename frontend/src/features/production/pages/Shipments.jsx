@@ -142,7 +142,7 @@ function Shipments() {
       setOrders(mapped);
       setExpandedId(null);
       resetDetailsCache();
-    } catch (e) {
+    } catch {
       setError("Impossible de charger les expéditions à charger.");
     } finally {
       setLoading(false);
@@ -200,23 +200,6 @@ function Shipments() {
             const { status: uiStatus, label: uiLabel } =
               computeShipmentUiFromTotals(loadedTotal, chargeableTotal);
 
-            const onMailClick = (e) => {
-              e?.stopPropagation?.();
-
-              if (expandedId !== order.id) {
-                setExpandedId(order.id);
-                ensureDetails(order.id);
-              }
-
-              setCommentsOpenByOrderId((m) => ({ ...m, [order.id]: true }));
-
-              requestAnimationFrame(() => {
-                // ⚠️ le scroll est géré côté card via commentsRef,
-                // donc si tu veux scroll ici, il faut exposer un ref -> plus lourd.
-                // Donc : le mieux est de NE PAS passer onMailClick et laisser la card faire.
-              });
-            };
-
             return (
               <ProductionOrderCard
                 key={order.id}
@@ -252,7 +235,7 @@ function Shipments() {
                     const res = await patchOrderLineLoaded(order.id, lineId, next);
                     const apiLines = Array.isArray(res?.lines) ? res.lines : [];
                     applyOrderUiFromLines(order.id, apiLines);
-                  } catch (e) {
+                  } catch {
                     // resync complet (groups + totaux + steppers)
                     await refreshOrderFromServer(order.id);
                   }
