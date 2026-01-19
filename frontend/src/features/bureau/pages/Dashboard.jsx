@@ -7,7 +7,7 @@ import { getArchivedOrders } from "../../../services/history.api.js";
 import BureauKpiCard from "../components/BureauKpiCard.jsx";
 import BureauListBlock from "../components/BureauListBlock.jsx";
 
-import { n } from "../utils/orders.format.js";
+import { toNumber } from "../utils/orders.format.js";
 
 import { getUser } from "../../../services/auth.storage.js";
 
@@ -57,9 +57,9 @@ export default function Dashboard() {
           ]);
         if (!alive) return;
 
-        setActiveTotal(n(activeRes?.total ?? activeRes?.count));
-        setUrgentTotal(n(urgentCountRes?.total ?? urgentCountRes?.count));
-        setPendingCount(n(pendingRes?.count));
+        setActiveTotal(toNumber(activeRes?.total ?? activeRes?.count));
+        setUrgentTotal(toNumber(urgentCountRes?.total ?? urgentCountRes?.count));
+        setPendingCount(toNumber(pendingRes?.count));
 
         const uTop = Array.isArray(urgentListRes?.data) ? urgentListRes.data : [];
         setUrgentTop(uTop.slice(0, 5));

@@ -1,4 +1,4 @@
-import { n } from "../utils/orders.format.js";
+import { toNumber } from "../utils/orders.format.js";
 import { useEffect, useState } from "react";
 import { getOrderShipments } from "../../../services/orders.api.js";
 import OrderCommentsThread from "../../../components/comments/OrderCommentsThread.jsx";
@@ -52,9 +52,9 @@ export default function OrderExpandedPanel({
           <div className="text-gf-subtitle">Aucune ligne produit.</div>
         ) : (
           lines.map((l) => {
-            const ready = n(l.quantity_ready);
-            const ordered = n(l.quantity_ordered);
-            const w = l.weight_per_unit_kg ? `${n(l.weight_per_unit_kg)} kg` : "—";
+            const ready = toNumber(l.quantity_ready);
+            const ordered = toNumber(l.quantity_ordered);
+            const w = l.weight_per_unit_kg ? `${toNumber(l.weight_per_unit_kg)} kg` : "—";
 
             return (
               <div key={l.id} className="flex items-baseline gap-2">

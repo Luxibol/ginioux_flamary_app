@@ -35,7 +35,7 @@ export function priorityClass(p) {
 /**
  * Force une valeur numérique exploitable (fallback à 0 si invalide).
  */
-export function n(x) {
+export function toNumber(x) {
   const v = Number(x);
   return Number.isFinite(v) ? v : 0;
 }
