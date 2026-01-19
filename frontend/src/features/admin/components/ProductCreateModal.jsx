@@ -82,7 +82,7 @@ export default function ProductCreateModal({
           <button
             type="button"
             onClick={onClose}
-            className="h-9 rounded-md border border-gf-border bg-gf-bg px-5 text-xs"
+            className="gf-btn h-9 px-5 text-xs"
             disabled={loading}
           >
             Annuler
@@ -90,7 +90,7 @@ export default function ProductCreateModal({
           <button
             type="button"
             onClick={onSubmit}
-            className="h-9 rounded-md bg-gf-orange px-6 text-xs font-medium text-white hover:opacity-90 disabled:opacity-60"
+            className="gf-btn gf-btn-primary h-9 px-6 text-xs"
             disabled={loading}
           >
             Enregistrer
