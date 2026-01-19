@@ -115,7 +115,7 @@ export default function Dashboard() {
         </div>
 
         {/* Panneau gris */}
-        <div className="mt-5 rounded-md bg-gf-bg px-8 pt-10 pb-8 min-h-[420px]">
+        <div className="mt-5 rounded-md border border-gf-border bg-gf-bg px-8 pt-10 pb-8 min-h-[420px]">
           {/* KPI centrés */}
           <div className="flex flex-wrap justify-center gap-48">
             <BureauKpiCard title="Commandes en cours" value={activeTotal} lines={["Actives"]} />

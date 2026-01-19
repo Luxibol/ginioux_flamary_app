@@ -399,7 +399,7 @@ export default function Orders() {
                                 e.stopPropagation();
                                 openEdit(o);
                               }}
-                              className="gf-btn"
+                              className="gf-btn h-8"
                               title="Modifier"
                             >
                               <Pencil className="h-4 w-4" />
@@ -408,7 +408,7 @@ export default function Orders() {
 
                             <button
                               type="button"
-                              className="gf-btn gf-btn-danger"
+                              className="gf-btn gf-btn-danger h-8"
                               title="Supprimer"
                               onClick={(e) => {
                                 e.stopPropagation();
