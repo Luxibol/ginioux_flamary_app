@@ -52,7 +52,7 @@ export default function ChangePasswordPage() {
         canonical="/change-password"
       />
 
-      <div className="w-full max-w-md rounded-2xl border border-gf-border bg-gf-surface shadow-sm p-6">
+      <div className="w-full max-w-md gf-card gf-card-pad shadow-sm">
         <div className="flex flex-col items-center gap-3">
           <img src={logo} alt="Ginioux Flamary" className="h-12 w-auto" />
           <h1 className="gf-h1">Nouveau mot de passe</h1>
@@ -63,7 +63,7 @@ export default function ChangePasswordPage() {
 
         <form className="mt-6 space-y-4" onSubmit={onSubmit}>
           {error ? (
-            <div className="text-xs text-gf-danger" role="alert">
+            <div className="gf-error" role="alert">
               {error}
             </div>
           ) : null}
@@ -113,7 +113,7 @@ export default function ChangePasswordPage() {
           <button
             type="submit"
             disabled={!canSubmit}
-            className="h-10 w-full rounded-md bg-gf-orange text-white text-xs font-medium hover:opacity-90 disabled:opacity-60"
+            className="gf-btn gf-btn-primary w-full"
           >
             {loading ? "Validation…" : "Valider"}
           </button>
