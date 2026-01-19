@@ -195,8 +195,7 @@ export default function Dashboard() {
         if (!alive) return;
         setError(e?.message || "Erreur lors du chargement du dashboard admin.");
       } finally {
-        if (!alive);
-        setLoading(false);
+        if (alive) setLoading(false);
       }
     }
 
@@ -363,19 +362,39 @@ export default function Dashboard() {
           </div>
 
           <div className="mt-4">
-            <div className="text-xs font-medium text-gf-subtitle mb-2">
+            <div className="text-xs text-center font-medium text-gf-subtitle mb-2">
               Commandes urgentes
             </div>
-            <div className="rounded-md border border-gf-border bg-gf-bg p-3 text-xs">
-              {urgentRows[0] ? (
-                <>
-                  <div className="font-medium text-gf-title">
-                    {urgentRows[0].arc} — {urgentRows[0].client_name ?? "—"}
+
+            <div className="space-y-3 text-center">
+              {urgentRows.length ? (
+                urgentRows.map((o) => (
+                  <div
+                    key={o.id ?? o.arc}
+                    className="rounded-md border border-gf-border bg-gf-bg px-4 py-3 text-xs"
+                  >
+                    {/* ARC */}
+                    <div className="text-[11px] text-gf-subtitle">
+                      N° ARC {o.arc ?? "—"}
+                    </div>
+
+                    {/* Client */}
+                    <div className="mt-0.5 font-semibold text-gf-title">
+                      {o.client_name ?? "—"}
+                    </div>
+
+                    {/* Pickup */}
+                    {o.pickup_date ? (
+                      <div className="mt-1 text-[11px] text-gf-subtitle">
+                        Enlèvement prévu : {o.pickup_date}
+                      </div>
+                    ) : null}
                   </div>
-                  <div className="mt-2 text-gf-subtitle">Priorité : Urgent</div>
-                </>
+                ))
               ) : (
-                <div className="text-gf-subtitle">Aucune commande urgente.</div>
+                <div className="rounded-md border border-gf-border bg-gf-bg p-3 text-xs text-gf-subtitle">
+                  Aucune commande urgente.
+                </div>
               )}
             </div>
           </div>

@@ -7,24 +7,11 @@ import { getArchivedOrders } from "../../../services/history.api.js";
 import BureauKpiCard from "../components/BureauKpiCard.jsx";
 import BureauListBlock from "../components/BureauListBlock.jsx";
 
+import { formatDateFr } from "../utils/orders.format.js";
+
+import { toNumber } from "../utils/orders.format.js";
+
 import { getUser } from "../../../services/auth.storage.js";
-
-
-function formatDateFR(value) {
-  if (!value) return "—";
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return "—";
-  return new Intl.DateTimeFormat("fr-FR", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  }).format(d);
-}
-
-function n(v) {
-  const x = Number(v);
-  return Number.isFinite(x) ? x : 0;
-}
 
 export default function Dashboard() {
   const firstName = useMemo(() => {
@@ -60,9 +47,9 @@ export default function Dashboard() {
           ]);
         if (!alive) return;
 
-        setActiveTotal(n(activeRes?.total ?? activeRes?.count));
-        setUrgentTotal(n(urgentCountRes?.total ?? urgentCountRes?.count));
-        setPendingCount(n(pendingRes?.count));
+        setActiveTotal(toNumber(activeRes?.total ?? activeRes?.count));
+        setUrgentTotal(toNumber(urgentCountRes?.total ?? urgentCountRes?.count));
+        setPendingCount(toNumber(pendingRes?.count));
 
         const uTop = Array.isArray(urgentListRes?.data) ? urgentListRes.data : [];
         setUrgentTop(uTop.slice(0, 5));
@@ -73,8 +60,7 @@ export default function Dashboard() {
         if (!alive) return;
         setError(e?.message || "Erreur lors du chargement du dashboard.");
       } finally {
-        if (!alive);
-        setLoading(false);
+        if (alive) setLoading(false);
       }
     }
 
@@ -94,7 +80,7 @@ export default function Dashboard() {
 
   const archivedLines = useMemo(() => {
     return archivedTop.slice(0, 5).map((o) => {
-      return `${o.arc || "—"} — ${o.client_name || "Client —"} — Expédiée le ${formatDateFR(
+      return `${o.arc || "—"} — ${o.client_name || "Client —"} — Expédiée le ${formatDateFr(
         o.last_departed_at
       )}`;
     });
