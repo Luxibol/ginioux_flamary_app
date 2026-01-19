@@ -77,6 +77,58 @@ body {
   .gf-body {
     @apply text-[14px] text-gf-text;
   }
+
+  .gf-h3 {
+    @apply text-[14px] font-medium text-gf-title;
+  }
+
+  /* Boutons */
+  .gf-btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-[14px] font-medium transition
+      border border-gf-border bg-gf-surface text-gf-title;
+  }
+
+  .gf-btn:hover {
+    @apply bg-gray-50;
+  }
+
+  .gf-btn:disabled {
+    @apply opacity-60 cursor-not-allowed;
+  }
+
+  .gf-btn-primary {
+    @apply border-transparent bg-gf-orange text-white;
+  }
+
+  .gf-btn-primary:hover {
+    @apply brightness-95;
+  }
+
+  .gf-btn-danger {
+    @apply border-transparent bg-gf-danger text-white;
+  }
+
+  .gf-btn-danger:hover {
+    @apply brightness-95;
+  }
+
+  /* Containers / cards */
+  .gf-card {
+    @apply rounded-2xl border border-gf-border bg-gf-surface;
+  }
+
+  .gf-card-pad {
+    @apply p-4;
+  }
+
+  /* États */
+  .gf-empty {
+    @apply text-[14px] text-gf-muted;
+  }
+
+  .gf-error {
+    @apply text-[14px] text-gf-danger;
+  }
 }
 
 /* === ACCESSIBILITÉ / QUALITÉ PERÇUE ===
