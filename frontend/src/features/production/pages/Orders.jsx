@@ -261,12 +261,12 @@ function Orders() {
               }}
               markAllDisabled={!!bulkByOrderId[order.id]}
 
-              onFinishProduction={async () => {
+              primaryLabel="Production terminée"
+              onPrimaryAction={async () => {
                 await postProductionValidate(order.id);
                 await refreshList();
                 setExpandedId(null);
-              }}
-              
+              }}            
             />
           ))}
         </div>
