@@ -52,6 +52,9 @@
   --color-gf-success: #22c55e;
   --color-gf-danger: #ef4444;
 
+  --color-gf-orange-hover: #e77c18;
+  --color-gf-danger-hover: #dc2626;
+
   /* Police principale */
   --font-sans:
     "Roboto", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
@@ -96,21 +99,29 @@ body {
     @apply opacity-60 cursor-not-allowed;
   }
 
-  .gf-btn-primary {
-    @apply border-transparent bg-gf-orange text-white;
+    .gf-btn-primary {
+    background: var(--color-gf-orange);
+    color: #fff;
+    border-color: transparent;
   }
-
   .gf-btn-primary:hover {
-    @apply brightness-95;
+    background: var(--color-gf-orange-hover);
   }
 
   .gf-btn-danger {
-    @apply border-transparent bg-gf-danger text-white;
+    background: var(--color-gf-danger);
+    color: #fff;
+    border-color: transparent;
+  }
+  .gf-btn-danger:hover {
+    background: var(--color-gf-danger-hover);
   }
 
-  .gf-btn-danger:hover {
-    @apply brightness-95;
+
+  .gf-btn:focus-visible {
+    @apply ring-2 ring-gf-orange ring-offset-2;
   }
+
 
   /* Containers / cards */
   .gf-card {
