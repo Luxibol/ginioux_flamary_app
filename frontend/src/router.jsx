@@ -31,6 +31,8 @@ import AdminDashboardPage from "./pages/admin/AdminDashboardPage.jsx";
 import AdminProductsPage from "./pages/admin/AdminProductsPage.jsx";
 import AdminEmployeesPage from "./pages/admin/AdminEmployeesPage.jsx";
 
+import NotFoundPage from "./pages/NotFoundPage.jsx";
+
 export const router = createBrowserRouter([
   // Pages auth hors AppLayout
   { path: "/login", element: <LoginPage /> },
@@ -76,4 +78,6 @@ export const router = createBrowserRouter([
       },
     ],
   },
+
+  { path: "*", element: <NotFoundPage /> },
 ]);

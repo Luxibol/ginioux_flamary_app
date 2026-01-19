@@ -41,6 +41,8 @@
   --color-gf-subtitle: #687b83; /* H2 */
   --color-gf-text: #7a7a7a; /* texte général */
 
+  --color-gf-muted: #98a3a8; /* texte secondaire discret */
+
   /* Background / surfaces / bordures */
   --color-gf-bg: #f0f0f0; /* fond général de l'app */
   --color-gf-surface: #ffffff; /* cartes, panneaux, modales */
@@ -74,5 +76,15 @@ body {
 
   .gf-body {
     @apply text-[14px] text-gf-text;
+  }
+}
+
+/* === ACCESSIBILITÉ / QUALITÉ PERÇUE ===
+   Focus clavier visible partout (sans casser le design).
+*/
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--color-gf-orange);
+    outline-offset: 2px;
   }
 }
