@@ -38,7 +38,10 @@ function Sidebar() {
   ];
 
   const bureauItems = [
-    { to: "/bureau", label: "Tableau de bord", icon: LayoutDashboard, end: true },
+    ...(role === "ADMIN"
+      ? []
+      : [{ to: "/bureau", label: "Tableau de bord", icon: LayoutDashboard, end: true }]
+    ),
     { to: "/bureau/commandes", label: "Commandes en cours", icon: ClipboardList },
     { to: "/bureau/expeditions", label: "Expéditions", icon: Truck },
     { to: "/bureau/import", label: "Import PDF", icon: Paperclip },
