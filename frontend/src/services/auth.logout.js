@@ -1,9 +1,14 @@
-// src/services/auth.logout.js
+/**
+ * Auth — Déconnexion (Frontend)
+ * - Nettoie la session locale (storage)
+ * - Redirige vers /login
+ */
 import { clearAuth } from "./auth.storage.js";
 
 /**
- * Déconnecte l'utilisateur et redirige vers /login
- * @param {(to: string, opts?: any) => void} navigate - hook useNavigate()
+ * Déconnecte l'utilisateur et redirige vers /login.
+ * @param {(to: string, opts?: any) => void} navigate Fonction de navigation (useNavigate)
+ * @returns {void}
  */
 export function logoutAndRedirect(navigate) {
   clearAuth();

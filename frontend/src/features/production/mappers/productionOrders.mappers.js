@@ -11,6 +11,11 @@ import {
   buildSummaryFromGroups,
 } from "../utils/productionOrders.format.js";
 
+/**
+ * Normalise la liste /orders/production pour l'UI (cards).
+ * @param {any} apiData
+ * @returns {any[]}
+ */
 export function mapProductionOrdersList(apiData) {
   const data = Array.isArray(apiData) ? apiData : [];
 
@@ -40,6 +45,11 @@ export function mapProductionOrdersList(apiData) {
   });
 }
 
+/**
+ * Transforme des lignes commande en groupes + summary.
+ * @param {any[]} lines
+ * @returns {{ groups: any[], summary: string }}
+ */
 export function mapOrderDetailsToGroups(lines) {
   const groups = buildGroupsFromLines(lines);
   const summary = buildSummaryFromGroups(groups);

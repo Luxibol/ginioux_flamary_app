@@ -10,9 +10,9 @@ import { searchProducts } from "../../../services/products.api";
 /**
  * Hook utilitaire : renvoie une version "debounced" d'une valeur.
  * Utile pour éviter de déclencher une recherche à chaque frappe.
- * @param {any} value Valeur source
- * @param {number} delay Délai en ms avant propagation
- * @returns {any} Valeur retardée
+ * @param {any} value 
+ * @param {number} delay 
+ * @returns {any} 
  */
 function useDebouncedValue(value, delay = 250) {
   const [v, setV] = useState(value);
@@ -26,9 +26,10 @@ function useDebouncedValue(value, delay = 250) {
 /**
  * Input d'autocomplétion basé sur une recherche produit côté API.
  * @param {object} props
- * @param {string} props.value Texte saisi (contrôlé)
- * @param {(product: any) => void} props.onPick Appelé quand l'utilisateur sélectionne un produit
- * @param {(text: string) => void} props.onChangeText Appelé à chaque modification de texte
+ * @param {string} props.value 
+ * @param {(product: any) => void} props.onPick 
+ * @param {(text: string) => void} props.onChangeText 
+ * @returns {import("react").JSX.Element}
  */
 export default function ProductAutocompleteInput({
   value,
@@ -47,7 +48,6 @@ export default function ProductAutocompleteInput({
   useEffect(() => {
     const q = (debounced || "").trim();
 
-    // On ne cherche pas en-dessous de 2 caractères (trop bruité + trop de requêtes).
     if (q.length < 2) {
       setItems([]);
       setLoading(false);
@@ -55,7 +55,6 @@ export default function ProductAutocompleteInput({
       return;
     }
 
-    // On annule la requête précédente si l'utilisateur continue à taper.
     if (abortRef.current) abortRef.current.abort();
     const ctrl = new AbortController();
     abortRef.current = ctrl;
@@ -90,7 +89,7 @@ export default function ProductAutocompleteInput({
         value={value ?? ""}
         onFocus={() => setOpen(true)}
         onBlur={() => {
-          // Petit délai pour laisser le clic sur un résultat se faire avant de fermer la liste.
+          // delay to allow click
           blurTimerRef.current = setTimeout(() => setOpen(false), 120);
         }}
         onChange={(e) => {
@@ -117,7 +116,7 @@ export default function ProductAutocompleteInput({
                 type="button"
                 className="w-full text-left px-3 py-2 text-xs hover:bg-gf-orange/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gf-orange/50"
                 onMouseDown={(e) => {
-                  // onMouseDown + preventDefault : évite que l'input perde le focus avant la sélection.
+                  // keep focus on select
                   e.preventDefault();
                   if (blurTimerRef.current) clearTimeout(blurTimerRef.current);
                   onPick(p);

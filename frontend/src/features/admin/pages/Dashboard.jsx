@@ -1,3 +1,9 @@
+/**
+ * Dashboard — Admin
+ * - KPIs : à produire, expéditions du jour
+ * - Urgences (top 3) + activité récente
+ * - Mini stats pilotées par période (bas de page)
+ */
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -16,17 +22,21 @@ import ActivityList from "../components/ActivityList.jsx";
 import { sameDay } from "../utils/dashboard.format.js";
 import { getUser } from "../../../services/auth.storage.js";
 
-/** Détecte la “famille” à partir de la category */
+/**
+ * Détermine la famille produit à partir d'une ligne (category en priorité).
+ * @param {object} line Ligne de commande
+ * @returns {"BIGBAG"|"ROCHE"|"OTHER"}
+ */
 function normalizeFamily(line) {
-  // priorité à category
+  // Priorité : category
   const cat = String(line?.category ?? "").toUpperCase().trim();
 
   if (cat === "ROCHE") return "ROCHE";
 
-  // BigBag et SmallBag = même catégorie (BIGBAG)
+  // BIGBAG : BigBag/SmallBag regroupés
   if (cat === "BIGBAG") return "BIGBAG";
 
-  // fallback si jamais category est vide (debug / ancien format)
+  // Fallback : analyse du label si category manquante
   const label = String(line?.label ?? "").toLowerCase();
   if (label.includes("roche")) return "ROCHE";
   if (label.includes("big") || label.includes("bag")) return "BIGBAG";
@@ -35,12 +45,12 @@ function normalizeFamily(line) {
 }
 
 /**
- * Calcule les totaux BigBag/Roche à partir d’une liste d’IDs commandes.
- * mode:
- * - "ORDERED" => somme quantity_ordered
- * - "SHIPPED" => somme quantity_shipped
- * - "READY"   => somme quantity_ready
- * - "DISPATCH" => somme quantity_shipped + (quantity_ready - quantity_shipped)
+ * Calcule les totaux BigBag/Roche à partir d'une liste d'IDs commandes.
+ * @param {Array<number|string>} orderIds Identifiants de commandes
+ * @param {object} [options]
+ * @param {number} [options.limit=30] Limite du nombre de commandes détaillées (perf)
+ * @param {"ORDERED"|"SHIPPED"|"READY"|"DISPATCH"} [options.mode="ORDERED"] Mode de calcul
+ * @returns {Promise<{bigbag:number, roche:number}>}
  */
 async function computeTotalsFromOrders(
   orderIds,
@@ -65,9 +75,9 @@ async function computeTotalsFromOrders(
           mode === "SHIPPED"
             ? shipped
             : mode === "READY"
-              ? Math.max(ready - shipped, 0)          // uniquement le RESTE prêt (pas déjà expédié)
+              ? Math.max(ready - shipped, 0)          // Reste prêt (hors expédié)
               : mode === "DISPATCH"
-                ? shipped + Math.max(ready - shipped, 0) // prêt + déjà expédié
+                ? shipped + Math.max(ready - shipped, 0) // Expédié + reste prêt
                 : Number(l.quantity_ordered ?? 0);
 
         const qty = Number(raw);
@@ -140,10 +150,8 @@ export default function Dashboard() {
   }, [urgentRows, archived7dRows]);
 
   /**
-   * ===== Chargement HAUT (1 fois) =====
-   * - Commandes à produire + totaux BigBag/Roche (quantity_ordered)
-   * - Commandes urgentes
-   * - Expéditions du jour (filtrées "today" depuis archived 7D) + totaux (quantity_shipped)
+   * Chargement initial (haut de page).
+   * - À produire, urgences, expéditions du jour (depuis archived 7D)
    */
   useEffect(() => {
     let alive = true;
@@ -206,9 +214,8 @@ export default function Dashboard() {
   }, []);
 
   /**
-   * ===== Chargement BAS (quand periodBottom change) =====
-   * - Expéditions effectuées sur période + totaux BigBag/Roche (quantity_shipped)
-   * - Commandes produites count (backend)
+   * Chargement du bas de page (dépend de la période).
+   * - Expéditions sur période + commandes produites (stats)
    */
   useEffect(() => {
     let alive = true;
@@ -269,7 +276,7 @@ export default function Dashboard() {
 
   return (
   <div className="p-4 md:p-6 bg-white md:bg-transparent">
-      {/* ===== DESKTOP ===== */}
+      {/* DESKTOP */}
       <div className="hidden md:block">
         <div>
           <div className="gf-h1">Tableau de bord administrateur</div>
@@ -339,7 +346,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* ===== MOBILE ===== */}
+      {/* MOBILE */}
       <div className="md:hidden">
         <div className="p-0">
           <div className="gf-h1 text-center">Tableau de bord administrateur</div>
@@ -383,7 +390,7 @@ export default function Dashboard() {
                       {o.client_name ?? "—"}
                     </div>
 
-                    {/* Pickup */}
+                    {/* Enlèvement */}
                     {o.pickup_date ? (
                       <div className="mt-1 text-[11px] text-gf-subtitle">
                         Enlèvement prévu : {o.pickup_date}

@@ -5,12 +5,32 @@
  */
 import { useEffect, useMemo, useRef, useState } from "react";
 
+/**
+ * Clamp une valeur en entier dans [min, max].
+ * @param {unknown} n
+ * @param {number} min
+ * @param {number} max
+ * @returns {number}
+ */
 function clampInt(n, min, max) {
   const x = Math.trunc(Number(n));
   if (!Number.isFinite(x)) return min;
   return Math.min(max, Math.max(min, x));
 }
 
+/**
+ * QtyStepper (UI).
+ * @param {{
+ *  label?: string,
+ *  value?: number,
+ *  min?: number,
+ *  max?: number,
+ *  onChange?: (next: number) => void,
+ *  disabled?: boolean,
+ *  allowDirect?: boolean
+ * }} props
+ * @returns {import("react").JSX.Element}
+ */
 export default function QtyStepper({
   label = "Prêts",
   value = 0,
@@ -28,19 +48,22 @@ export default function QtyStepper({
   const decDisabled = disabled || v <= minV;
   const incDisabled = disabled || v >= maxV;
 
+  /**
+   * Émet une nouvelle valeur si autorisé.
+   * @param {number} next
+   * @returns {void}
+   */
   const emit = (next) => {
     if (disabled) return;
     if (typeof onChange === "function") onChange(next);
   };
 
-  // édition directe
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(String(v));
   const inputRef = useRef(null);
 
   useEffect(() => {
     if (editing) {
-      // focus + select
       requestAnimationFrame(() => {
         inputRef.current?.focus();
         inputRef.current?.select();
@@ -48,6 +71,10 @@ export default function QtyStepper({
     }
   }, [editing]);
 
+  /**
+   * Valide la saisie directe.
+   * @returns {void}
+   */
   const commit = () => {
     const next = clampInt(draft, minV, maxV);
     setEditing(false);
@@ -55,6 +82,10 @@ export default function QtyStepper({
     if (next !== v) emit(next);
   };
 
+  /**
+   * Annule la saisie directe.
+   * @returns {void}
+   */
   const cancel = () => {
     setEditing(false);
     setDraft(String(v));

@@ -9,7 +9,7 @@
 import { createBrowserRouter, Navigate } from "react-router-dom";
 import AppLayout from "./components/layout/AppLayout.jsx";
 
-// AUTH (hors layout)
+// AUTH 
 import LoginPage from "./pages/auth/LoginPage.jsx";
 import ChangePasswordPage from "./pages/auth/ChangePasswordPage.jsx";
 import RequireAuth from "./components/auth/RequireAuth.jsx";
@@ -34,11 +34,11 @@ import AdminEmployeesPage from "./pages/admin/AdminEmployeesPage.jsx";
 import NotFoundPage from "./pages/NotFoundPage.jsx";
 
 export const router = createBrowserRouter([
-  // Pages auth hors AppLayout
+  // Auth (hors layout)
   { path: "/login", element: <LoginPage /> },
   { path: "/change-password", element: <ChangePasswordPage /> },
 
-  // Tout le reste dans l'AppLayout
+  // AppLayout (protégé)
   {
     element: (
       <RequireAuth>

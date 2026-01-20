@@ -1,3 +1,9 @@
+/**
+ * Bureau - Dashboard
+ * - KPI (actives / urgentes / expéditions)
+ * - Listes "à surveiller" (urgentes / dernières expéditions)
+ */
+
 import { useEffect, useMemo, useState } from "react";
 
 import { getActiveOrders } from "../../../services/orders.api.js";
@@ -7,12 +13,16 @@ import { getArchivedOrders } from "../../../services/history.api.js";
 import BureauKpiCard from "../components/BureauKpiCard.jsx";
 import BureauListBlock from "../components/BureauListBlock.jsx";
 
-import { formatDateFr } from "../utils/orders.format.js";
-
-import { toNumber } from "../utils/orders.format.js";
+import { formatDateFr, toNumber } from "../utils/orders.format.js";
 
 import { getUser } from "../../../services/auth.storage.js";
 
+/**
+ * Dashboard Bureau (page).
+ * - Charge les KPI + listes au montage
+ * - Gère loading / error
+ * @returns {import("react").JSX.Element}
+ */
 export default function Dashboard() {
   const firstName = useMemo(() => {
     const user = getUser();
@@ -29,9 +39,14 @@ export default function Dashboard() {
   const [urgentTop, setUrgentTop] = useState([]);
   const [archivedTop, setArchivedTop] = useState([]);
 
+  // Chargement initial : KPI + listes (top urgentes + dernières expéditions)
   useEffect(() => {
     let alive = true;
 
+    /**
+     * Charge les KPI + listes (urgent/pending/archived) au montage.
+     * @returns {Promise<void>}
+     */
     async function run() {
       setLoading(true);
       setError("");
@@ -70,6 +85,7 @@ export default function Dashboard() {
     };
   }, []);
 
+  // Lignes UI : top 5 urgentes
   const urgentLines = useMemo(() => {
     return urgentTop.slice(0, 5).map((o) => {
       return `${o.arc || "—"} — ${o.client_name || "Client —"} — ${o.priority || "URGENT"} — ${
@@ -78,6 +94,7 @@ export default function Dashboard() {
     });
   }, [urgentTop]);
 
+  // Lignes UI : top 5 dernières expéditions
   const archivedLines = useMemo(() => {
     return archivedTop.slice(0, 5).map((o) => {
       return `${o.arc || "—"} — ${o.client_name || "Client —"} — Expédiée le ${formatDateFr(

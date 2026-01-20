@@ -1,3 +1,15 @@
+/**
+ * Mini statistique (dashboard) : titre + valeur + sous-titre optionnel.
+ */
+
+/**
+ * Carte "mini stat" utilisée sur les dashboards.
+ * @param {object} props
+ * @param {string} props.title
+ * @param {string|number} props.value
+ * @param {string} [props.subtitle]
+ * @returns {import("react").JSX.Element}
+ */
 export default function MiniStat({ title, value, subtitle }) {
   const isTotals = typeof subtitle === "string" && subtitle.includes("BigBag");
 

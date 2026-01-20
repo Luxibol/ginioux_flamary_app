@@ -9,6 +9,8 @@
  * Normalise une date en chaîne ISO "YYYY-MM-DD" pour les inputs.
  * Accepte une string ISO, un Date, ou une valeur convertible par `new Date(...)`.
  * Retourne "" si la valeur est invalide.
+ * @param {string|number|Date|null|undefined} v
+ * @returns {string}
  */
 export function toISODate(v) {
   if (!v) return "";
@@ -26,7 +28,9 @@ export function toISODate(v) {
 }
 
 /**
- * Convertit la priorité affichée dans l'UI en valeur attendue par le backend.
+ * Convertit la priorité affichée dans l'UI en valeur backend.
+ * @param {string} priority
+ * @returns {string}
  */
 export function normalizePriority(priority) {
   if (priority === "Urgent") return "URGENT";
@@ -39,6 +43,8 @@ export function normalizePriority(priority) {
  * Sources possibles :
  * - import PDF : { products: [{ pdfLabel, quantity, ... }] } (ou { preview: { products: [...] } })
  * - détails commande : { lines: [...] }
+ * @param {any} data
+ * @returns {Array<{ id: any, productId: any, label: string, weightKg: any, quantity: number }>}
  */
 export function normalizeModalLines(data) {
   const src = data?.preview ?? data;

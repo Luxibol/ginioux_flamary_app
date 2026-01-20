@@ -1,7 +1,7 @@
 /**
- * Layout global de l’application.
- * - Bureau : Header + Sidebar + wrapper central
- * - Mobile (Production/Admin-mobile) : Header sticky + burger menu + contenu plein écran
+ * Layout global
+ * - Desktop : Header + Sidebar + contenu
+ * - Mobile : Header sticky + menu + contenu plein écran
  */
 import { Outlet, useLocation } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
@@ -13,6 +13,11 @@ import MobileMenu from "./MobileMenu.jsx";
 import { LayoutDashboard, ClipboardList, Truck, Users } from "lucide-react";
 import { getUser } from "../../services/auth.storage.js";
 
+/**
+ * Formate un rôle pour l'affichage.
+ * @param {string} role Rôle brut
+ * @returns {string}
+ */
 function formatRole(role) {
   if (role === "ADMIN") return "Admin";
   if (role === "BUREAU") return "Bureau";
@@ -25,7 +30,7 @@ function AppLayout() {
   const user = getUser();
   const who = `${user?.first_name || "—"} - ${formatRole(user?.role)}`;
 
-  // Affichage (confort) : on adapte selon largeur écran
+  // Détection responsive (<= lg)
   const [isSmallScreen, setIsSmallScreen] = useState(() => {
     if (typeof window === "undefined") return false;
     return window.matchMedia("(max-width: 1024px)").matches; // <= lg
@@ -37,7 +42,7 @@ function AppLayout() {
     const mq = window.matchMedia("(max-width: 1024px)");
     const onChange = () => setIsSmallScreen(mq.matches);
 
-    // init + subscribe
+    // Init + écoute des changements
     onChange();
     mq.addEventListener?.("change", onChange);
     return () => mq.removeEventListener?.("change", onChange);
@@ -47,10 +52,10 @@ function AppLayout() {
       const p = location.pathname;
       const role = user?.role;
 
-      // Admin produits = desktop only
+      // Produits admin : desktop uniquement
       if (p.startsWith("/admin/produits")) return "admin_desktop";
 
-      // ADMIN sur petit écran : garde le mode admin même sur /production/*
+      // Admin sur petit écran : conserve le mode admin
       if (
         role === "ADMIN" &&
         isSmallScreen &&
@@ -59,13 +64,13 @@ function AppLayout() {
         return "admin_mobile";
       }
 
-      // Admin dashboard + employés = mobile ou desktop selon taille écran
+      // Admin : mobile ou desktop selon taille écran
       if (p.startsWith("/admin")) return isSmallScreen ? "admin_mobile" : "admin_desktop";
 
-      // Production = mobile
+      // Production : mobile
       if (p.startsWith("/production")) return "production";
 
-      // Bureau = desktop
+      // Bureau : desktop
       return "bureau";
     }, [location.pathname, isSmallScreen, user?.role]);
 
@@ -103,7 +108,7 @@ function AppLayout() {
 
   const isMobileLayout = mode === "admin_mobile" || mode === "production";
 
-  // Guard UI : produits sur mobile => message
+  // Garde-fou : produits indisponibles sur mobile
   if (mode === "admin_mobile" && location.pathname.startsWith("/admin/produits")) {
     return (
       <div className="min-h-dvh bg-gf-bg text-gf-text overflow-hidden">
@@ -159,7 +164,7 @@ function AppLayout() {
     );
   }
 
-  // Desktop (Bureau + Admin desktop)
+  // Desktop (Bureau + Admin)
   return (
     <div className="min-h-dvh bg-gf-bg text-gf-text overflow-hidden">
       <Header />

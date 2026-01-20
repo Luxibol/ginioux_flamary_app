@@ -1,14 +1,16 @@
 /**
- * API Admin - Produits
- * Endpoints backend:
- * - GET    /products
- * - POST   /products
- * - PATCH  /products/:id
- * - DELETE /products/:id
+ * Admin — Produits (API)
+ * - Liste filtrée + pagination (q, category, active, limit, offset)
+ * - Création / mise à jour / suppression
+ * - Normalise la réponse en { data, count }
  */
-import { apiFetch } from "./apiClient";
+import { apiFetch } from "./apiClient.js";
 
-/** Normalise les réponses possibles (au cas où ton backend renvoie {data:...} ou {count,data}). */
+/**
+ * Normalise les réponses possibles en { data, count }.
+ * @param {any} res Réponse API (tableau ou objet {data,count})
+ * @returns {{data:any[], count:number}}
+ */
 function normalizeList(res) {
   if (Array.isArray(res)) return { data: res, count: res.length };
   if (Array.isArray(res?.data))
@@ -17,11 +19,14 @@ function normalizeList(res) {
 }
 
 /**
- * Liste produits avec filtres:
- * - q (string)
- * - category (BIGBAG|ROCHE|AUTRE)
- * - active ("1"|"0") ou 1/0
- * - limit, offset (optionnel)
+ * Liste les produits (admin) avec filtres optionnels.
+ * @param {object} [filters]
+ * @param {string} [filters.q] Recherche texte
+ * @param {string} [filters.category] Catégorie (BIGBAG | ROCHE | AUTRE)
+ * @param {string|number|boolean} [filters.active] Filtre actif/inactif ("1"/"0" ou 1/0)
+ * @param {number} [filters.limit] Pagination : taille
+ * @param {number} [filters.offset] Pagination : offset
+ * @returns {Promise<{data:any[], count:number}>}
  */
 export async function listProducts({
   q,
@@ -49,7 +54,11 @@ export async function listProducts({
   return normalizeList(res);
 }
 
-/** Création produit */
+/**
+ * Crée un produit.
+ * @param {object} payload Données produit (selon le contrat API)
+ * @returns {Promise<any>}
+ */
 export async function createProduct(payload) {
   return apiFetch(`/products`, {
     method: "POST",
@@ -58,7 +67,12 @@ export async function createProduct(payload) {
   });
 }
 
-/** Patch produit */
+/**
+ * Met à jour partiellement un produit.
+ * @param {number|string} id Identifiant produit
+ * @param {object} payload Champs à modifier (selon le contrat API)
+ * @returns {Promise<any>}
+ */
 export async function patchProduct(id, payload) {
   return apiFetch(`/products/${id}`, {
     method: "PATCH",
@@ -67,7 +81,11 @@ export async function patchProduct(id, payload) {
   });
 }
 
-/** Suppression produit */
+/**
+ * Supprime un produit.
+ * @param {number|string} id Identifiant produit
+ * @returns {Promise<any>}
+ */
 export async function deleteProduct(id) {
   return apiFetch(`/products/${id}`, { method: "DELETE" });
 }

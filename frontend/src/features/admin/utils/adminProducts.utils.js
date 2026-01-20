@@ -1,10 +1,8 @@
 /**
- * Utils - Admin Produits
- * - Constantes de catégories
- * - Helpers de parsing (ex: poids saisi en "1000" ou "1000,5")
+ * Utils — Admin produits : catégories + helpers de parsing.
  */
 
-/** Catégories autorisées côté UI (doivent matcher celles du backend). */
+/** Options UI : catégories autorisées (doivent correspondre au backend). */
 export const CATEGORIES = [
   { value: "BIGBAG", label: "Big bag" },
   { value: "ROCHE", label: "Roche" },
@@ -12,9 +10,9 @@ export const CATEGORIES = [
 ];
 
 /**
- * Convertit une valeur (string/number) en Number.
- * - Accepte la virgule française ("1000,5")
- * - Retourne null si non-numérique
+ * Convertit une valeur en nombre (accepte la virgule française).
+ * @param {string|number|null|undefined} v
+ * @returns {number|null} null si non numérique
  */
 export function asNumber(v) {
   const n = Number(String(v ?? "").replace(",", "."));

@@ -1,19 +1,10 @@
 /**
- * API "orders" :
- * - getActiveOrders : liste filtrée (query params)
- * - getOrderDetails : détail d’une commande (order + lines)
- * - patchOrderMeta : édition commande + synchro lignes
- * - deleteOrder : suppression commande
- *
- * Production :
- * - getProductionOrders : commandes à produire
- * - patchOrderLineReady : MAJ quantité prête d'une ligne
- * - postProductionValidate : validation manuelle prod (si PROD_COMPLETE)
- * - getProductionShipments : expéditions à charger
- * - patchOrderLineLoaded : MAJ quantité chargée
- * - postDepartTruck : départ camion
+ * Commandes (API)
+ * - Bureau : commandes actives (liste, détail, édition, suppression)
+ * - Production : commandes à produire + expéditions à charger
+ * - Commentaires et statistiques (produit / expéditions)
  */
-import { apiFetch } from "./apiClient";
+import { apiFetch } from "./apiClient.js";
 
 /**
  * Récupère les commandes actives (non archivées) avec filtres optionnels.
@@ -149,10 +140,21 @@ export async function postDepartTruck(orderId) {
   return apiFetch(`/orders/${orderId}/shipments/depart`, { method: "POST" });
 }
 
+/**
+ * Récupère les expéditions d'une commande.
+ * @param {number|string} orderId Identifiant commande
+ * @returns {Promise<any>}
+ */
 export async function getOrderShipments(orderId) {
   return apiFetch(`/orders/${orderId}/shipments`);
 }
 
+/**
+ * Retourne le total de commandes produites (période optionnelle).
+ * @param {object} [options]
+ * @param {string} [options.period] Période (selon le contrat API)
+ * @returns {Promise<any>}
+ */
 export async function getProducedOrdersCount({ period } = {}) {
   const params = new URLSearchParams();
   if (period) params.set("period", period);
@@ -160,14 +162,29 @@ export async function getProducedOrdersCount({ period } = {}) {
   return apiFetch(`/orders/produced${qs ? `?${qs}` : ""}`);
 }
 
+/**
+ * Statistiques production liées aux expéditions.
+ * @returns {Promise<any>}
+ */
 export async function getProductionShipmentsStats() {
   return apiFetch(`/orders/shipments/stats`);
 }
 
+/**
+ * Récupère les commentaires d'une commande.
+ * @param {number|string} orderId Identifiant commande
+ * @returns {Promise<any>}
+ */
 export async function getOrderComments(orderId) {
   return apiFetch(`/orders/${orderId}/comments`);
 }
 
+/**
+ * Ajoute un commentaire à une commande.
+ * @param {number|string} orderId Identifiant commande
+ * @param {string} content Contenu du commentaire
+ * @returns {Promise<any>}
+ */
 export async function postOrderComment(orderId, content) {
   return apiFetch(`/orders/${orderId}/comments`, {
     method: "POST",

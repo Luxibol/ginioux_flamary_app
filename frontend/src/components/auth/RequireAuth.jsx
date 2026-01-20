@@ -1,52 +1,70 @@
+/**
+ * Guard — Auth & Accès
+ * - Bloque l'accès si non connecté
+ * - Force le changement de mot de passe si requis
+ * - Contrôle d'accès par rôle selon le chemin
+ */
 import { Navigate, useLocation } from "react-router-dom";
 import { getAuth } from "../../services/auth.storage.js";
 import { landingPathForRole } from "../../utils/roleRouting.js";
 
+/**
+ * Vérifie si un rôle peut accéder à un chemin.
+ * @param {string} role Rôle utilisateur
+ * @param {string} path Chemin courant (pathname)
+ * @returns {boolean}
+ */
 function canAccessPath(role, path) {
-  // ADMIN area
+  // Zone Admin
   if (path.startsWith("/admin")) {
-    // BUREAU a aussi accès aux produits
+    // Exception : Bureau peut accéder aux produits
     if (path.startsWith("/admin/produits")) return role === "ADMIN" || role === "BUREAU";
-    // employés = admin only
+    // Employés : admin uniquement
     if (path.startsWith("/admin/employes")) return role === "ADMIN";
-    // dashboard admin = admin only
+    // Dashboard admin : admin uniquement
     if (path === "/admin") return role === "ADMIN";
-    // par défaut : admin only
+    // Par défaut : admin uniquement
     return role === "ADMIN";
   }
 
-  // Bureau area
+  // Zone Bureau
   if (path.startsWith("/bureau")) return role === "ADMIN" || role === "BUREAU";
 
-  // Production area (admin y a accès)
+  // Zone Production (admin autorisé)
   if (path.startsWith("/production")) return role === "ADMIN" || role === "PRODUCTION";
 
   return true;
 }
 
+/**
+ * Protège une route (auth + rôle).
+ * @param {object} props
+ * @param {import("react").ReactNode} props.children Contenu protégé
+ * @returns {import("react").JSX.Element}
+ */
 export default function RequireAuth({ children }) {
   const location = useLocation();
   const auth = getAuth();
   const path = location.pathname;
 
-  // non connecté => login
+  // Non connecté : redirection login
   if (!auth?.token || !auth?.user) {
     return <Navigate to="/login" replace />;
   }
 
-  // doit changer le mdp => on force
+  // Mot de passe à changer : redirection forcée
   if (auth.user.must_change_password && path !== "/change-password") {
     return <Navigate to="/change-password" replace />;
   }
 
-  // si mdp ok mais on est sur change-password => on dégage
+  // Mot de passe OK : sortie de change-password
   if (!auth.user.must_change_password && path === "/change-password") {
     return <Navigate to="/bureau" replace />;
   }
 
-  // contrôle d'accès par rôle
+  // Accès refusé : fallback par rôle
   if (!canAccessPath(auth.user.role, path)) {
-    // fallback simple selon rôle
+    // Fallback : landing page du rôle
     const fallback = landingPathForRole(auth.user.role);
     return <Navigate to={fallback} replace />;
   }

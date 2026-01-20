@@ -1,6 +1,14 @@
+/**
+ * Page — Bureau Import PDF
+ * - Wrapper SEO + rendu de l'écran d'import PDF
+ */
 import Seo from "../../components/seo/Seo.jsx";
 import ImportPdf from "../../features/bureau/pages/ImportPdf.jsx";
 
+/**
+ * Wrapper de page Bureau Import PDF (SEO).
+ * @returns {import("react").JSX.Element}
+ */
 export default function ImportPdfPage() {
   return (
     <>

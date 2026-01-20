@@ -1,12 +1,20 @@
 /**
  * Menu burger mobile générique
  * - Overlay + panneau sous le header
- * - Fermeture : overlay, clic item (et parent gère re-clic burger)
+ * - Fermeture : overlay, clic item, bouton déconnexion
  */
 import { NavLink, useNavigate } from "react-router-dom";
 import { Power } from "lucide-react";
 import { logoutAndRedirect } from "../../services/auth.logout.js";
 
+/**
+ * Menu mobile (overlay + panneau).
+ * @param {object} props
+ * @param {boolean} props.open Affiche/masque le menu
+ * @param {()=>void} props.onClose Ferme le menu
+ * @param {Array<any>} props.items Items de navigation (liens + sections)
+ * @returns {import("react").JSX.Element|null}
+ */
 function MobileMenu({ open, onClose, items }) {
   const navigate = useNavigate();
   if (!open) return null;
@@ -24,7 +32,7 @@ function MobileMenu({ open, onClose, items }) {
         <nav className="py-2">
           <ul>
             {items.map((it, idx) => {
-              // Section separator
+              // Titre de section
               if (it.kind === "section") {
                 return (
                   <li key={`section-${idx}`} className="px-4 pt-3 pb-1">

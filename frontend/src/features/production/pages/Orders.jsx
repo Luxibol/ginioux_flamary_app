@@ -5,7 +5,7 @@
  * - Stepper "Prêts" branché sur PATCH ready
  * - Bouton "Production terminée" : valide manuellement (production_validated_at)
  *   pour sortir la commande de la liste "à produire" même si PROD_COMPLETE.
- * Note : commentaires pas branchés => on garde comments: []
+ *   Note : commentaires non branchés (comments: []).
  */
 import { useEffect, useRef, useState, useCallback } from "react";
 import ProductionOrderCard from "../components/ProductionOrderCard.jsx";
@@ -29,6 +29,12 @@ import {
   runWithConcurrency,
 } from "../utils/productionUi.utils.js";
 
+/**
+ * Orders Production (page).
+ * - Liste + accordéon (détails lazy)
+ * - MAJ "prêts" (PATCH) + validation production
+ * @returns {import("react").JSX.Element}
+ */
 function Orders() {
   const [orders, setOrders] = useState([]);
   const [expandedId, setExpandedId] = useState(null);
@@ -44,6 +50,12 @@ function Orders() {
   const ordersRef = useRef([]);
   useEffect(() => { ordersRef.current = orders; }, [orders]);
 
+  /**
+   * Applique les compteurs messages/non-lus à une commande.
+   * @param {number} orderId
+   * @param {{ messagesCount?: number, unreadCount?: number }} counts
+   * @returns {void}
+   */
   const applyCounts = (orderId, counts) => {
     setOrders((prev) =>
       prev.map((o) =>
@@ -58,11 +70,21 @@ function Orders() {
     );
   };
 
+  /**
+   * Réinitialise le cache des détails et les steppers.
+   * @returns {void}
+   */
   function resetDetailsCache() {
     detailsLoadedRef.current = new Set();
     setReadyByLineId({});
   }
 
+  /**
+   * Injecte les détails (groupes + summary) dans une commande.
+   * @param {number} orderId
+   * @param {any[]} lines
+   * @returns {{ list: any[], groupsWithMin: any[], summary: any }}
+   */
   function applyDetailsFromLines(orderId, lines) {
     const list = Array.isArray(lines) ? lines : [];
     const { groups, summary } = mapOrderDetailsToGroups(list);
@@ -79,6 +101,11 @@ function Orders() {
     return { list, groupsWithMin, summary };
   }
 
+  /**
+   * Synchronise la map des "prêts" depuis les lignes API.
+   * @param {any[]} lines
+   * @returns {void}
+   */
   function syncReadyMapFromApiLines(lines) {
     const list = Array.isArray(lines) ? lines : [];
     setReadyByLineId((prev) => {
@@ -90,6 +117,11 @@ function Orders() {
     });
   }
 
+  /**
+   * Recharge la liste des commandes production.
+   * @param {{ keepExpanded?: boolean }} [options]
+   * @returns {Promise<void>}
+   */
   const refreshList = useCallback(async ({ keepExpanded = false } = {}) => {
     setLoading(true);
     setError("");
@@ -113,6 +145,11 @@ function Orders() {
     refreshList();
   }, [refreshList]);
 
+  /**
+   * Assure le chargement des détails d'une commande (1 seule fois).
+   * @param {number} orderId
+   * @returns {Promise<void>}
+   */
   async function ensureDetails(orderId) {
     if (detailsLoadedRef.current.has(orderId)) return;
     detailsLoadedRef.current.add(orderId);
@@ -121,7 +158,6 @@ function Orders() {
       const { lines } = await getOrderDetails(orderId);
       const { groupsWithMin } = applyDetailsFromLines(orderId, lines);
 
-      // init des steppers depuis _readyFromApi (comme avant)
       setReadyByLineId((prev) => {
         const next = { ...prev };
         groupsWithMin.forEach((g) =>
@@ -173,7 +209,6 @@ function Orders() {
                   const lines = Array.isArray(res?.lines) ? res.lines : [];
                   applyDetailsFromLines(order.id, lines);
 
-                  // status depuis la réponse PATCH (comme avant)
                   setOrders((prev) =>
                     prev.map((o) =>
                       o.id === order.id
@@ -187,7 +222,6 @@ function Orders() {
                     )
                   );
 
-                  // vérité BDD pour les steppers
                   syncReadyMapFromApiLines(lines);
                 } catch {
                   detailsLoadedRef.current.delete(order.id);
@@ -207,7 +241,6 @@ function Orders() {
 
                   const linesToUpdate = current.groups.flatMap((g) => g.lines);
 
-                  // concurrency limitée (au lieu de for OU Promise.all)
                   const tasks = linesToUpdate.map((l) => () =>
                     patchOrderLineReady(order.id, l.id, l.total)
                   );
@@ -241,13 +274,11 @@ function Orders() {
                     return nextMap;
                   });
 
-                  // signaler un échec partiel
                   if (errors.length) {
                     console.warn("Bulk ready: erreurs partielles", errors);
                   }
 
-                  // IMPORTANT : on NE replie pas
-                  // (donc pas de refreshList qui reset l'accordéon)
+                  // keep expanded
                   if (freshOrder?.production_status === "PROD_COMPLETE") {
                     await refreshList({ keepExpanded: true });
                     setExpandedId(order.id);

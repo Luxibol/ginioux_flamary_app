@@ -1,10 +1,32 @@
+/**
+ * Modale — Admin Employés : édition.
+ */
 import { ROLES } from "../utils/adminEmployees.utils.js";
 
+/**
+ * Modale d'édition d'un employé.
+ * @param {object} props
+ * @param {boolean} props.open
+ * @param {boolean} props.loading
+ * @param {string} props.error
+ * @param {string} props.eFirstName
+ * @param {(v:string)=>void} props.setEFirstName
+ * @param {string} props.eLastName
+ * @param {(v:string)=>void} props.setELastName
+ * @param {string} props.eLogin
+ * @param {(v:string)=>void} props.setELogin
+ * @param {string} props.eRole
+ * @param {(v:string)=>void} props.setERole
+ * @param {boolean} props.eActive
+ * @param {(v:boolean)=>void} props.setEActive
+ * @param {()=>void} props.onClose
+ * @param {()=>void} props.onSubmit
+ * @returns {import("react").JSX.Element|null}
+ */
 export default function EmployeeEditModal({
   open,
   loading,
   error,
-  // form
   eFirstName,
   setEFirstName,
   eLastName,
@@ -15,7 +37,6 @@ export default function EmployeeEditModal({
   setERole,
   eActive,
   setEActive,
-  // meta
   onClose,
   onSubmit,
 }) {

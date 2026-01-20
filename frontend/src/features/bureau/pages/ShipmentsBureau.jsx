@@ -1,3 +1,9 @@
+/**
+ * Bureau - Expéditions (page)
+ * - Liste des expéditions en attente
+ * - Accusé réception / archivage
+ * - Thread commentaires
+ */
 import { useEffect, useState } from "react";
 import { RefreshCw, Archive, ChevronDown, ChevronUp, Mail } from "lucide-react";
 import {
@@ -8,6 +14,11 @@ import { formatDateFr } from "../utils/orders.format.js";
 import OrderCommentsThread from "../../../components/comments/OrderCommentsThread.jsx";
 import { formatKg, formatTons } from "../utils/weight.format.js";
 
+/**
+ * Formate une date/heure en fr-FR (fallback "—").
+ * @param {string|number|Date|null|undefined} v
+ * @returns {string}
+ */
 function formatDateTimeFr(v) {
   if (!v) return "—";
   const d = new Date(v);
@@ -21,6 +32,11 @@ function formatDateTimeFr(v) {
   });
 }
 
+/**
+ * Calcule le poids total (kg) des shipments en attente.
+ * @param {Array<any>} [pendingShipments=[]]
+ * @returns {number}
+ */
 function sumPendingWeightKg(pendingShipments = []) {
   let total = 0;
 
@@ -36,18 +52,34 @@ function sumPendingWeightKg(pendingShipments = []) {
   return total;
 }
 
+/**
+ * Libellé UI à partir du statut d'expédition.
+ * @param {string} expeditionStatus
+ * @returns {string}
+ */
 function etatLabel(expeditionStatus) {
   if (expeditionStatus === "EXP_COMPLETE") return "Complète";
   if (expeditionStatus === "EXP_PARTIELLE") return "Partielle";
   return "—";
 }
 
+/**
+ * Classe CSS du dot UI selon le statut d'expédition.
+ * @param {string} expeditionStatus
+ * @returns {string}
+ */
 function etatDotClass(expeditionStatus) {
   if (expeditionStatus === "EXP_COMPLETE") return "bg-gf-success";
   if (expeditionStatus === "EXP_PARTIELLE") return "bg-yellow-400";
   return "bg-gf-border";
 }
 
+/**
+ * ShipmentsBureau (page).
+ * - Charge la liste au montage
+ * - Gère loading / error / accordéon
+ * @returns {import("react").JSX.Element}
+ */
 export default function ShipmentsBureau() {
   const [rows, setRows] = useState([]);
   const [count, setCount] = useState(0);
@@ -60,6 +92,12 @@ export default function ShipmentsBureau() {
 
   const [commentsOpenById, setCommentsOpenById] = useState({});
 
+  /**
+   * Applique les compteurs messages/non-lus à une commande en liste.
+   * @param {number} orderId
+   * @param {{ messagesCount?: number, unreadCount?: number }} counts
+   * @returns {void}
+   */
   const applyCounts = (orderId, counts) => {
     setRows((prev) =>
       prev.map((r) =>
@@ -77,6 +115,10 @@ export default function ShipmentsBureau() {
     );
   };
 
+  /**
+   * Charge la liste des expéditions en attente.
+   * @returns {Promise<void>}
+   */
   const load = async () => {
     try {
       setLoading(true);
@@ -103,7 +145,6 @@ export default function ShipmentsBureau() {
     setExpandedId((prev) => {
       const next = prev === orderId ? null : orderId;
 
-      // si on ferme la ligne -> on ferme aussi les commentaires
       if (next === null) {
         setCommentsOpenById((m) => ({ ...m, [orderId]: false }));
       }
@@ -112,6 +153,11 @@ export default function ShipmentsBureau() {
     });
   };
 
+  /**
+   * Accuse réception des shipments d'une commande (archivage côté expéditions).
+   * @param {number} orderId
+   * @returns {Promise<void>}
+   */
   const onArchive = async (orderId) => {
     try {
       setAckingId(orderId);
@@ -220,7 +266,7 @@ export default function ShipmentsBureau() {
                           </div>
 
                           <div className="flex justify-center items-center gap-2">
-                            {/* Enveloppe + badge (place réservée) */}
+                            {/* Messages */}
                             <div className="relative h-8 w-8 grid place-items-center">
                               {Number(o.messagesCount ?? 0) > 0 ? (
                                 <button

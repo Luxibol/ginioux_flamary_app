@@ -1,14 +1,18 @@
 /**
- * Filtres - Admin Produits
- * - Recherche texte (Entrée => relance le chargement)
- * - Filtre par catégorie
- * - Filtre actif/inactif
- *
- * Props:
- * - q, setQ : état du champ recherche
- * - category, setCategory : filtre catégorie ("" | "BIGBAG" | "ROCHE" | "AUTRE")
- * - active, setActive : filtre actif ("" | "1" | "0")
- * - onSubmit : callback pour relancer la liste (typiquement load())
+ * Admin — Produits : filtres (recherche, catégorie, actif).
+ */
+
+/**
+ * Filtres de la liste produits (Admin).
+ * @param {object} props
+ * @param {string} props.q Recherche texte
+ * @param {(v:string)=>void} props.setQ Setter recherche
+ * @param {string} props.category Catégorie ("" | "BIGBAG" | "ROCHE" | "AUTRE")
+ * @param {(v:string)=>void} props.setCategory Setter catégorie
+ * @param {string} props.active Actif ("" | "1" | "0")
+ * @param {(v:string)=>void} props.setActive Setter actif
+ * @param {()=>void} props.onSubmit Relance le chargement
+ * @returns {import("react").JSX.Element}
  */
 export default function ProductsFilters({
   q,
@@ -17,7 +21,7 @@ export default function ProductsFilters({
   setCategory,
   active,
   setActive,
-  onSubmit, // ex: load
+  onSubmit,
 }) {
   return (
     <div className="mt-6 grid grid-cols-12 gap-3">

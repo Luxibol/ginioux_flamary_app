@@ -1,3 +1,13 @@
+/**
+ * Liste "Activités récentes" (dashboard).
+ */
+
+/**
+ * Affiche une liste courte d'activités (chaînes de texte).
+ * @param {object} props
+ * @param {string[]} [props.items]
+ * @returns {import("react").JSX.Element}
+ */
 export default function ActivityList({ items = [] }) {
   return (
     <div className="gf-card p-4">

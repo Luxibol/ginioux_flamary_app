@@ -1,6 +1,6 @@
 /**
  * Sidebar (navigation latérale) du layout "Bureau".
- * - Sections : Administration + Bureau (comme maquettes)
+ * - Sections : Administration + Bureau
  * - Affichage selon rôle :
  *   - ADMIN : produits + employés
  *   - BUREAU : produits (pas employés)
@@ -18,6 +18,10 @@ import {
 
 import { getAuth } from "../../services/auth.storage.js";
 
+/**
+ * Sidebar Bureau (desktop) avec accès conditionnel selon rôle.
+ * @returns {import("react").JSX.Element}
+ */
 function Sidebar() {
   const auth = getAuth();
   const role = auth?.user?.role || "";
@@ -48,6 +52,12 @@ function Sidebar() {
     { to: "/bureau/historique", label: "Historique", icon: History },
   ];
 
+  /**
+   * Rend une section de navigation.
+   * @param {string} title Titre de section
+   * @param {Array<{to:string, label:string, icon:any, end?:boolean}>} items Liens
+   * @returns {import("react").JSX.Element|null}
+   */
   function renderSection(title, items) {
     if (!items.length) return null;
 

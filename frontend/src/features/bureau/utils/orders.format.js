@@ -6,6 +6,8 @@
 /**
  * Formate une date ISO en date FR (jj/mm/aaaa) pour l’UI.
  * Retourne "—" si vide, et la valeur brute si non parseable.
+ * @param {string|null|undefined} iso
+ * @returns {string}
  */
 export function formatDateFr(iso) {
   if (!iso) return "—";
@@ -16,6 +18,8 @@ export function formatDateFr(iso) {
 
 /**
  * Convertit une priorité backend ("URGENT" | "INTERMEDIAIRE" | "NORMAL") en libellé UI.
+ * @param {string} p
+ * @returns {string}
  */
 export function priorityLabel(p) {
   if (p === "URGENT") return "Urgent";
@@ -25,6 +29,8 @@ export function priorityLabel(p) {
 
 /**
  * Retourne la classe CSS associée à la priorité (couleur).
+ * @param {string} p
+ * @returns {string}
  */
 export function priorityClass(p) {
   if (p === "URGENT") return "text-gf-danger";
@@ -34,6 +40,8 @@ export function priorityClass(p) {
 
 /**
  * Force une valeur numérique exploitable (fallback à 0 si invalide).
+ * @param {any} x
+ * @returns {number}
  */
 export function toNumber(x) {
   const v = Number(x);

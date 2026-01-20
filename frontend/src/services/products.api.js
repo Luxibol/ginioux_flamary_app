@@ -1,18 +1,18 @@
 /**
- * API "products" :
- * - searchProducts : autocomplete produits (libellé PDF exact) avec limit + AbortController.
- * Retourne directement un tableau (normalisé depuis { data: [...] }).
+ * Produits (API)
+ * - Autocomplete produits (recherche par libellé PDF)
+ * - Support AbortController (signal)
+ * - Normalise le retour en tableau (depuis { data: [...] })
  */
-import { apiFetch } from "./apiClient";
+import { apiFetch } from "./apiClient.js";
 
 /**
  * Recherche des produits par libellé (autocomplete).
- * Le backend renvoie { data: [...] }.
- *
  * @param {string} q Terme de recherche
  * @param {number} [limit=10] Nombre max de résultats
- * @param {{signal?: AbortSignal}} [options] Permet d'annuler la requête (AbortController)
- * @returns {Promise<Array<{id:number, pdf_label_exact:string, weight_per_unit_kg:number}>>}
+ * @param {object} [options]
+ * @param {AbortSignal} [options.signal] Permet d'annuler la requête (AbortController)
+ * @returns {Promise<any[]>}
  */
 export async function searchProducts(q, limit = 10, { signal } = {}) {
   const params = new URLSearchParams();

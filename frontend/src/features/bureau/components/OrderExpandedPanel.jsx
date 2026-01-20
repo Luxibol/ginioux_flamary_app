@@ -1,8 +1,25 @@
+/**
+ * Bureau - Order Expanded Panel
+ * - Détails commande + expéditions déjà effectuées (lazy-load)
+ * - Thread commentaires
+ */
 import { toNumber } from "../utils/orders.format.js";
 import { useEffect, useState } from "react";
 import { getOrderShipments } from "../../../services/orders.api.js";
 import OrderCommentsThread from "../../../components/comments/OrderCommentsThread.jsx";
 
+/**
+ * Panneau de détails d'une commande (accordéon).
+ * @param {{
+ *  arc: string,
+ *  expeditionStatus: string,
+ *  details: any,
+ *  onCountsChange: (orderId: number, counts: { messagesCount?: number, unreadCount?: number }) => void,
+ *  commentsOpen?: boolean,
+ *  onCommentsOpenChange?: (open: boolean) => void
+ * }} props
+ * @returns {import("react").JSX.Element}
+ */
 export default function OrderExpandedPanel({ 
   arc, 
   expeditionStatus, 
@@ -19,6 +36,10 @@ export default function OrderExpandedPanel({
   const [shipLoading, setShipLoading] = useState(false);
   const [shipError, setShipError] = useState("");
 
+  /**
+   * Charge les expéditions déjà effectuées quand la commande est (partiellement) expédiée.
+   * @returns {void}
+   */
   useEffect(() => {
     if (!orderId) return;
     if (expeditionStatus === "NON_EXPEDIEE") return;

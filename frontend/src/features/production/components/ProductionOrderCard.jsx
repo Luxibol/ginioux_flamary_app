@@ -10,18 +10,33 @@ import { Mail, ChevronDown, ChevronUp } from "lucide-react";
 import QtyStepper from "./QtyStepper.jsx";
 import OrderCommentsThread from "../../../components/comments/OrderCommentsThread.jsx";
 
+/**
+ * Classe du dot UI selon le statut.
+ * @param {string} status
+ * @returns {string}
+ */
 function dotClassByStatus(status) {
   if (status === "COMPLETE") return "bg-gf-success";
   if (status === "PARTIAL") return "bg-yellow-400";
   return "bg-gf-border";
 }
 
+/**
+ * Libellé UI selon le statut.
+ * @param {string} status
+ * @returns {string}
+ */
 function labelByStatus(status) {
   if (status === "COMPLETE") return "Prod.Complète";
   if (status === "PARTIAL") return "Prod.Partielle";
   return "Prod.À faire";
 }
 
+/**
+ * Classe UI selon la priorité.
+ * @param {string} priority
+ * @returns {string}
+ */
 function priorityClass(priority) {
   if (priority === "URGENT") return "text-gf-danger";
   if (priority === "INTERMEDIAIRE") return "text-yellow-600";
@@ -29,6 +44,13 @@ function priorityClass(priority) {
   return "text-gf-muted";
 }
 
+/**
+ * ProductionOrderCard (UI).
+ * - Card accordéon (production / expéditions)
+ * - Stepper + actions + commentaires
+ * @param {any} props
+ * @returns {import("react").JSX.Element}
+ */
 export default function ProductionOrderCard({
   order,
   expanded,
@@ -55,7 +77,6 @@ export default function ProductionOrderCard({
   commentsOpen: commentsOpenProp,
   onCommentsOpenChange,
 }) {
-  // contrôlé (si fourni), sinon local
   const [commentsOpenLocal, setCommentsOpenLocal] = useState(false);
   const commentsOpen =
     typeof commentsOpenProp === "boolean" ? commentsOpenProp : commentsOpenLocal;
@@ -76,6 +97,10 @@ export default function ProductionOrderCard({
 
   const commentsRef = useRef(null);
 
+  /**
+   * Ouvre la card si besoin et scroll jusqu'au thread commentaires.
+   * @returns {void}
+   */
   function openCardAndScrollToComments() {
     if (!expanded) onToggle?.();
     setCommentsOpen(true);
@@ -243,10 +268,8 @@ export default function ProductionOrderCard({
               orderId={order?.id}
               open={true}
               onCountsChange={onCountsChange}
-              // contrôle ouverture depuis parent/enveloppe
               collapsed={!commentsOpen}
               onCollapsedChange={(isCollapsed) => setCommentsOpen(!isCollapsed)}
-              // IMPORTANT: on garde le header du thread, donc pas de header custom ici
               showHeader={true}
             />
           </div>
