@@ -1,5 +1,17 @@
+/**
+ * @file backend/src/controllers/shipmentsStats.controller.js
+ * @description Contrôleur stats expéditions : agrégats 7j / 30j.
+ */
 const shipmentsRepository = require("../repositories/shipments.repository");
 
+/**
+ * Retourne les stats expéditions (commandes distinctes + totaux par catégorie).
+ * Route: GET /orders/shipments/stats
+ *
+ * @param {import("express").Request} req
+ * @param {import("express").Response} res
+ * @returns {Promise<void>}
+ */
 async function getShipmentStats(req, res) {
   try {
     const [weekOrders, weekTotals, monthOrders, monthTotals] =

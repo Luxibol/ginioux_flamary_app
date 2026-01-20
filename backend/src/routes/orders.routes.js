@@ -1,3 +1,7 @@
+/**
+ * @file backend/src/routes/orders.routes.js
+ * @description Routes /orders : commandes, production, expéditions, historique, commentaires.
+ */
 const express = require("express");
 
 const { requireAuth } = require("../middlewares/auth.middleware");
@@ -16,7 +20,7 @@ const orderCommentsController = require("../controllers/orderComments.controller
 
 const router = express.Router();
 
-// Toutes les routes /orders sont protégées
+// Toutes les routes /orders nécessitent une authentification.
 router.use(requireAuth);
 
 router.get(
@@ -31,16 +35,14 @@ router.post(
   orderCommentsController.postOrderComment,
 );
 
-/* =========================
-   PRODUCTION (ADMIN + PRODUCTION)
-========================= */
+/* === PRODUCTION (ADMIN, PRODUCTION) === */
+
 router.get(
   "/production",
   requireRole("ADMIN", "PRODUCTION"),
   productionController.getProductionOrders,
 );
 
-// Production - Expéditions à charger
 router.get(
   "/shipments/stats",
   requireRole("ADMIN", "PRODUCTION"),
@@ -80,18 +82,16 @@ router.get(
   productionController.getProducedCount,
 );
 
-/* =========================
-   MIXTE (ADMIN + BUREAU + PRODUCTION)
-========================= */
+/* === MIXTE (ADMIN, BUREAU, PRODUCTION) === */
+
 router.get(
   "/:id/shipments",
   requireRole("ADMIN", "BUREAU", "PRODUCTION"),
   orderShipmentsController.getOrderShipments,
 );
 
-/* =========================
-   BUREAU (ADMIN + BUREAU)
-========================= */
+/* === BUREAU (ADMIN, BUREAU) === */
+
 router.get(
   "/active",
   requireRole("ADMIN", "BUREAU"),

@@ -1,6 +1,14 @@
-// backend/src/repositories/products.repository.js
+/**
+ * @file backend/src/repositories/products.repository.js
+ * @description Repository produits : catalogue (CRUD) + recherche + usage (orders/shipments).
+ */
 const { pool } = require("../config/db");
 
+/**
+ * Retourne les produits actifs dont le pdf_label_exact est dans la liste.
+ * @param {string[]} labels
+ * @returns {Promise<object[]>}
+ */
 async function getProductsByPdfLabels(labels) {
   const norm = (s) => String(s ?? "").trim();
   if (!Array.isArray(labels) || labels.length === 0) return [];
@@ -20,6 +28,12 @@ async function getProductsByPdfLabels(labels) {
   return rows;
 }
 
+/**
+ * Recherche simple par libellé PDF (autocomplete).
+ * @param {string} q
+ * @param {number} [limit=10]
+ * @returns {Promise<object[]>}
+ */
 async function searchProducts(q, limit = 10) {
   const like = `%${q}%`;
   const lim = Math.min(Math.max(parseInt(limit, 10) || 10, 1), 20);
@@ -32,12 +46,17 @@ async function searchProducts(q, limit = 10) {
     ORDER BY pdf_label_exact ASC
     LIMIT ?
     `,
-    [like, lim]
+    [like, lim],
   );
 
   return rows;
 }
 
+/**
+ * Liste paginée du catalogue produits (filtres + usage_count).
+ * @param {{q?:string|null, category?:string|null, active?:0|1|null, limit?:number, offset?:number}} [filters]
+ * @returns {Promise<object[]>}
+ */
 async function listProducts({
   q = null,
   category = null,
@@ -87,6 +106,11 @@ async function listProducts({
   return rows;
 }
 
+/**
+ * Crée un produit dans products_catalog et retourne la ligne créée.
+ * @param {{pdf_label_exact:string, category:string, weight_per_unit_kg:number|null, is_active?:0|1}} payload
+ * @returns {Promise<object|null>}
+ */
 async function createProduct({
   pdf_label_exact,
   category,
@@ -98,17 +122,23 @@ async function createProduct({
     INSERT INTO products_catalog (pdf_label_exact, category, weight_per_unit_kg, is_active)
     VALUES (?, ?, ?, ?)
     `,
-    [pdf_label_exact, category, weight_per_unit_kg, is_active]
+    [pdf_label_exact, category, weight_per_unit_kg, is_active],
   );
 
   const id = r.insertId;
   const [rows] = await pool.query(
     `SELECT id, pdf_label_exact, category, weight_per_unit_kg, is_active FROM products_catalog WHERE id = ? LIMIT 1`,
-    [id]
+    [id],
   );
   return rows[0] || null;
 }
 
+/**
+ * Met à jour un produit (patch) et retourne la ligne mise à jour.
+ * @param {number} id
+ * @param {object} patch
+ * @returns {Promise<object|null>}
+ */
 async function patchProduct(id, patch) {
   const sets = [];
   const params = [];
@@ -135,25 +165,30 @@ async function patchProduct(id, patch) {
   params.push(id);
   const [r] = await pool.query(
     `UPDATE products_catalog SET ${sets.join(", ")} WHERE id = ? LIMIT 1`,
-    params
+    params,
   );
   if (r.affectedRows === 0) return null;
 
   const [rows] = await pool.query(
     `SELECT id, pdf_label_exact, category, weight_per_unit_kg, is_active FROM products_catalog WHERE id = ? LIMIT 1`,
-    [id]
+    [id],
   );
   return rows[0] || null;
 }
 
+/**
+ * Compte les références d'un produit (order_products + shipment_lines).
+ * @param {number} id
+ * @returns {Promise<{order_products:number, shipment_lines:number}>}
+ */
 async function getUsage(id) {
   const [[op]] = await pool.query(
     `SELECT COUNT(*) AS c FROM order_products WHERE product_id = ?`,
-    [id]
+    [id],
   );
   const [[sl]] = await pool.query(
     `SELECT COUNT(*) AS c FROM shipment_lines WHERE product_id = ?`,
-    [id]
+    [id],
   );
   return {
     order_products: Number(op?.c || 0),
@@ -161,11 +196,16 @@ async function getUsage(id) {
   };
 }
 
+/**
+ * Supprime un produit uniquement s'il n'est référencé nulle part.
+ * @param {number} id
+ * @returns {Promise<{notFound?:true, deleted?:boolean, usage?:{order_products:number, shipment_lines:number}}>}
+ */
 async function deleteProductIfUnused(id) {
-  // existe ?
+  // Vérifie existence du produit.
   const [exists] = await pool.query(
     `SELECT id FROM products_catalog WHERE id = ? LIMIT 1`,
-    [id]
+    [id],
   );
   if (exists.length === 0) return { notFound: true };
 
@@ -178,7 +218,7 @@ async function deleteProductIfUnused(id) {
 
   const [r] = await pool.query(
     `DELETE FROM products_catalog WHERE id = ? LIMIT 1`,
-    [id]
+    [id],
   );
   return { deleted: r.affectedRows > 0, usage };
 }

@@ -1,5 +1,14 @@
+/**
+ * @file backend/src/repositories/refreshTokens.repository.js
+ * @description Repository refresh tokens : création, recherche valide, révocation, rotation.
+ */
 const { pool } = require("../config/db");
 
+/**
+ * Crée un refresh token (stocké en hash).
+ * @param {{userId:number, tokenHash:string, expiresAt:Date, ip?:string|null, userAgent?:string|null}} payload
+ * @returns {Promise<number>} id du token créé
+ */
 async function createToken({ userId, tokenHash, expiresAt, ip, userAgent }) {
   const [res] = await pool.query(
     `INSERT INTO refresh_tokens (user_id, token_hash, expires_at, ip, user_agent)
@@ -9,6 +18,11 @@ async function createToken({ userId, tokenHash, expiresAt, ip, userAgent }) {
   return res.insertId;
 }
 
+/**
+ * Retourne un refresh token valide (non révoqué, non expiré) à partir de son hash.
+ * @param {string} tokenHash
+ * @returns {Promise<object|null>}
+ */
 async function findValidByHash(tokenHash) {
   const [rows] = await pool.query(
     `SELECT id, user_id, token_hash, expires_at, revoked_at, replaced_by_hash
@@ -27,6 +41,11 @@ async function findValidByHash(tokenHash) {
   return t;
 }
 
+/**
+ * Révoque un refresh token par id.
+ * @param {number} id
+ * @returns {Promise<boolean>}
+ */
 async function revokeToken(id) {
   const [res] = await pool.query(
     `UPDATE refresh_tokens
@@ -37,6 +56,11 @@ async function revokeToken(id) {
   return res.affectedRows === 1;
 }
 
+/**
+ * Révoque un token et enregistre le hash remplaçant (rotation).
+ * @param {{id:number, newHash:string}} payload
+ * @returns {Promise<boolean>}
+ */
 async function rotateToken({ id, newHash }) {
   const [res] = await pool.query(
     `UPDATE refresh_tokens
@@ -47,6 +71,12 @@ async function rotateToken({ id, newHash }) {
   );
   return res.affectedRows === 1;
 }
+
+/**
+ * Révoque tous les refresh tokens actifs d'un utilisateur.
+ * @param {number} userId
+ * @returns {Promise<void>}
+ */
 async function revokeAllForUser(userId) {
   await pool.query(
     `UPDATE refresh_tokens

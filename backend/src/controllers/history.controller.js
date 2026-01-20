@@ -1,3 +1,7 @@
+/**
+ * @file backend/src/controllers/history.controller.js
+ * @description Contrôleur historique : liste des commandes archivées + détail d'une commande.
+ */
 const historyRepository = require("../repositories/history.repository");
 
 const ALLOWED_PERIODS = ["ALL", "7D", "30D", "90D"];
@@ -9,6 +13,14 @@ function periodToDays(period) {
   return null;
 }
 
+/**
+ * Liste les commandes archivées.
+ * Route: GET /orders/archived
+ *
+ * @param {import("express").Request} req
+ * @param {import("express").Response} res
+ * @returns {Promise<void>}
+ */
 async function getArchivedOrders(req, res) {
   try {
     const q = (req.query.q || "").trim();
@@ -31,6 +43,14 @@ async function getArchivedOrders(req, res) {
   }
 }
 
+/**
+ * Retourne le détail historique d'une commande archivée.
+ * Route: GET /orders/:id/history
+ *
+ * @param {import("express").Request} req
+ * @param {import("express").Response} res
+ * @returns {Promise<void>}
+ */
 async function getArchivedOrderHistory(req, res) {
   try {
     const id = Number(req.params.id);

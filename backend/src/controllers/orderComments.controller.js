@@ -1,12 +1,18 @@
+/**
+ * @file backend/src/controllers/orderComments.controller.js
+ * @description Contrôleur commentaires de commande : liste + création + gestion “lu/non-lu”.
+ */
 const ordersRepository = require("../repositories/orders.repository");
 const orderCommentsRepository = require("../repositories/orderComments.repository");
 const { asInt } = require("../utils/parse");
 
 /**
- * GET /orders/:id/comments
- * - retourne la liste des commentaires
- * - marque comme "lu" pour le user courant
- * - renvoie aussi messagesCount + unreadCount
+ * Liste les commentaires d'une commande et marque comme lus pour l'utilisateur courant.
+ * Route: GET /orders/:id/comments
+ *
+ * @param {import("express").Request} req
+ * @param {import("express").Response} res
+ * @returns {Promise<void>}
  */
 async function getOrderComments(req, res) {
   try {
@@ -38,11 +44,13 @@ async function getOrderComments(req, res) {
 }
 
 /**
- * POST /orders/:id/comments
+ * Ajoute un commentaire à une commande, marque comme lu pour l'auteur, renvoie liste + compteurs.
+ * Route: POST /orders/:id/comments
  * Body: { content }
- * - ajoute un commentaire (Bureau/Production/Admin)
- * - marque lu pour l'auteur
- * - renvoie liste + compteurs à jour
+ *
+ * @param {import("express").Request} req
+ * @param {import("express").Response} res
+ * @returns {Promise<void>}
  */
 async function postOrderComment(req, res) {
   try {

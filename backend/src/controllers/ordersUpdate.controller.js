@@ -1,9 +1,6 @@
 /**
- * Contrôleur commandes : mise à jour partielle d'une commande.
- * Gère :
- * - champs de commande (arc, client, dates, priorité)
- * - lignes produits (insert / update / delete via synchronisation)
- * Applique des validations pour éviter des incohérences (quantités, produits, ARC unique).
+ * @file backend/src/controllers/ordersUpdate.controller.js
+ * @description Contrôleur commandes : mise à jour partielle (métadonnées + synchronisation des lignes).
  */
 const ordersRepository = require("../repositories/orders.repository");
 const productsRepository = require("../repositories/products.repository");
@@ -21,21 +18,16 @@ function asInt(v) {
 }
 
 /**
- * PATCH /orders/:id
- * Body : champs à modifier + éventuellement `lines` (tableau complet des lignes attendues).
- *
- * Règles :
- * - ARC unique (409 si déjà utilisé par une autre commande)
+ * Met à jour partiellement une commande (métadonnées + synchronisation des lignes).
+ * Route: PATCH /orders/:id
+ * - ARC unique
  * - dates au format YYYY-MM-DD
  * - priority dans une whitelist
- * - lines : quantity entier >= 0
- * - lines : productId obligatoire, ou label résolvable via le catalogue produits
+ * - lines = état attendu (insert/update/delete), quantité entière >= 0
  *
- * Réponses :
- * - 200 : { status, order, lines }
- * - 400 : requête invalide
- * - 404 : commande introuvable
- * - 409 : conflit métier (ex: suppression/remplacement interdit si déjà prêt/expédié)
+ * @param {import("express").Request} req
+ * @param {import("express").Response} res
+ * @returns {Promise<void>}
  */
 async function patchOrderMeta(req, res) {
   try {
@@ -122,14 +114,13 @@ async function patchOrderMeta(req, res) {
       // Si le front envoie un label au lieu d'un productId, on le résout via le catalogue (libellé PDF exact).
       const toResolve = Array.from(
         new Set(
-          lines.filter((l) => !l.productId && l.label).map((l) => l.label)
-        )
+          lines.filter((l) => !l.productId && l.label).map((l) => l.label),
+        ),
       );
 
       if (toResolve.length > 0) {
-        const prods = await productsRepository.getProductsByPdfLabels(
-          toResolve
-        );
+        const prods =
+          await productsRepository.getProductsByPdfLabels(toResolve);
         const map = new Map(prods.map((p) => [p.pdf_label_exact, p.id]));
 
         for (const l of lines) {
@@ -158,7 +149,7 @@ async function patchOrderMeta(req, res) {
       return res.status(400).json({ error: "Aucun champ à modifier" });
     }
 
-    // Synchronisation des lignes : suppression des lignes absentes, update des existantes, insertion des nouvelles.
+    // `lines` représente l'état attendu : le repository synchronise insert/update/delete dans une transaction.
     await ordersRepository.updateOrderAndLinesById(id, patch, lines);
 
     const order = await ordersRepository.findOrderById(id);

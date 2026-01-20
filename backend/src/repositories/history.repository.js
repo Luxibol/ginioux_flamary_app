@@ -1,9 +1,13 @@
+/**
+ * @file backend/src/repositories/history.repository.js
+ * @description Repository historique : commandes archivées + détail (lignes + expéditions).
+ */
 const { pool } = require("../config/db");
 
 /**
- * Liste commandes archivées (orders.is_archived = 1)
- * + dernière expédition (MAX shipments.departed_at)
- * + filtrage "période" optionnel basé sur departed_at
+ * Liste des commandes archivées (avec dernière date de départ).
+ * @param {{q?:string|null, days?:number|null}} [filters]
+ * @returns {Promise<object[]>}
  */
 async function findArchivedOrders({ q = null, days = null } = {}) {
   const where = ["o.is_archived = 1"];
@@ -46,11 +50,9 @@ async function findArchivedOrders({ q = null, days = null } = {}) {
 }
 
 /**
- * Détail historique :
- * - order
- * - lignes (ordered/shipped)
- * - expéditions (shipments + shipment_lines)
- * - recap (shipped_total / ordered_total + nb expéditions)
+ * Retourne l'historique complet d'une commande (order + lignes + expéditions + récap).
+ * @param {number} orderId
+ * @returns {Promise<object|null>}
  */
 async function getArchivedOrderHistory(orderId) {
   // 1) commande (on accepte même si non archivée, mais l’écran "historique" l’appellera sur une archivée)
@@ -63,7 +65,7 @@ async function getArchivedOrderHistory(orderId) {
     WHERE id = ?
     LIMIT 1
     `,
-    [orderId]
+    [orderId],
   );
   const order = orderRows[0];
   if (!order) return null;
@@ -82,7 +84,7 @@ async function getArchivedOrderHistory(orderId) {
     WHERE op.order_id = ?
     ORDER BY op.id ASC
     `,
-    [orderId]
+    [orderId],
   );
 
   // 3) shipments
@@ -93,7 +95,7 @@ async function getArchivedOrderHistory(orderId) {
     WHERE order_id = ?
     ORDER BY departed_at DESC, id DESC
     `,
-    [orderId]
+    [orderId],
   );
 
   // 4) shipment_lines (en 1 requête)
@@ -113,7 +115,7 @@ async function getArchivedOrderHistory(orderId) {
       WHERE sl.shipment_id IN (?)
       ORDER BY sl.shipment_id DESC, sl.id ASC
       `,
-      [shipmentIds]
+      [shipmentIds],
     );
 
     for (const l of shipLines) {
@@ -136,11 +138,11 @@ async function getArchivedOrderHistory(orderId) {
   // 5) recap
   const orderedTotal = lines.reduce(
     (acc, l) => acc + Number(l.quantity_ordered || 0),
-    0
+    0,
   );
   const shippedTotal = lines.reduce(
     (acc, l) => acc + Number(l.quantity_shipped || 0),
-    0
+    0,
   );
 
   return {

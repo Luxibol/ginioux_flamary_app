@@ -1,7 +1,18 @@
+/**
+ * @file backend/src/middlewares/auth.middleware.js
+ * @description Middleware d'authentification JWT : vérifie le token Bearer et hydrate req.user.
+ */
 const jwt = require("jsonwebtoken");
 
 const ALLOWED_ROLES = new Set(["ADMIN", "BUREAU", "PRODUCTION"]);
 
+/**
+ * Vérifie le JWT (Authorization: Bearer) et attache {id, role} à req.user.
+ * @param {import("express").Request} req
+ * @param {import("express").Response} res
+ * @param {import("express").NextFunction} next
+ * @returns {void}
+ */
 function requireAuth(req, res, next) {
   try {
     const header = String(req.headers.authorization || "");

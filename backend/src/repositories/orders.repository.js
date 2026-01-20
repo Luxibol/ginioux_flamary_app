@@ -1,16 +1,15 @@
 /**
- * Repository commandes : accès BDD aux commandes et à leurs lignes.
- * Inclut des opérations transactionnelles (création, suppression, mise à jour avec synchronisation des lignes).
+ * @file backend/src/repositories/orders.repository.js
+ * @description Repository commandes : accès BDD (commandes, lignes, production, expéditions, compteurs).
  */
 const { pool } = require("../config/db");
 const productsRepository = require("./products.repository");
 const orderCommentsRepository = require("./orderComments.repository");
 
 /**
- * Retourne la commande si un ARC existe déjà, sinon null.
- *
- * @param {string} arc - Numéro d'ARC à vérifier.
- * @returns {Promise<object|null>} Première ligne trouvée ou null.
+ * Cherche une commande par ARC.
+ * @param {string} arc
+ * @returns {Promise<{id:number, arc:string} | null>}
  */
 async function findOrderByArc(arc) {
   const [rows] = await pool.query("SELECT id, arc FROM orders WHERE arc = ?", [
@@ -119,10 +118,13 @@ async function createOrderWithLines(orderData, orderProducts) {
 }
 
 /**
- * Crée une commande à partir d'une prévisualisation (import PDF).
- * - Valide ARC / date / quantités
- * - Résout les produits via le libellé PDF exact (products_catalog)
- * - Refuse si des libellés sont inconnus (422) ou si l'ARC existe déjà (skipped)
+ * Crée une commande à partir d'un preview d'import PDF.
+ * - Retourne {action:"skipped"} si l'ARC existe déjà
+ * - Lance une erreur code=422 si données invalides / libellés inconnus
+ *
+ * @param {object} preview
+ * @param {{createdByUserId?: number|null, internalComment?: string}} [options]
+ * @returns {Promise<{action:"created", orderId:number, arc:string} | {action:"skipped", existingOrderId:number, arc:string}>}
  */
 async function createOrderFromPreview(
   preview,
@@ -228,7 +230,14 @@ async function createOrderFromPreview(
   return { action: "created", orderId, arc };
 }
 
-// Filtre d'état "métier" calculé à partir des statuts production/expédition.
+/**
+ * Liste bureau : commandes actives (non archivées) + état métier dérivé des statuts production/expédition.
+ * Ajoute les compteurs messages/unread pour l'utilisateur (userId requis).
+ *
+ * @param {{q?:string|null, priority?:string|null, state?:string|null, limit?:number, offset?:number}} [filters]
+ * @param {{userId:number}} ctx
+ * @returns {Promise<object[]>}
+ */
 async function findActiveOrders(
   { q = null, priority = null, state = null, limit = 50, offset = 0 } = {},
   { userId } = {},
@@ -323,6 +332,12 @@ async function findActiveOrders(
   return rows;
 }
 
+/**
+ * Récupère une commande par ID.
+ *
+ * @param {number} id
+ * @returns {Promise<object|null>}
+ */
 async function findOrderById(id) {
   const [rows] = await pool.query(
     `
@@ -349,6 +364,12 @@ async function findOrderById(id) {
   return rows[0] || null;
 }
 
+/**
+ * Récupère les lignes produits d'une commande.
+ *
+ * @param {number} orderId
+ * @returns {Promise<object[]>}
+ */
 async function findOrderLinesByOrderId(orderId) {
   const [rows] = await pool.query(
     `
@@ -374,6 +395,13 @@ async function findOrderLinesByOrderId(orderId) {
   return rows;
 }
 
+/**
+ * Met à jour des champs simples d'une commande (meta).
+ *
+ * @param {number} id
+ * @param {{priority?: string, pickupDate?: (string|null), orderDate?: string}} patch
+ * @returns {Promise<boolean>} true si au moins une ligne a été modifiée
+ */
 async function updateOrderMetaById(id, { priority, pickupDate, orderDate }) {
   const sets = [];
   const params = [];
@@ -408,7 +436,11 @@ async function updateOrderMetaById(id, { priority, pickupDate, orderDate }) {
   return result.affectedRows > 0;
 }
 
-// Transaction : suppression des lignes puis de la commande (évite les orphelins).
+/**
+ * Supprime une commande et ses lignes dans une transaction (évite les enregistrements orphelins).
+ * @param {number} orderId
+ * @returns {Promise<boolean>}
+ */
 async function deleteOrderById(orderId) {
   const connection = await pool.getConnection();
 
@@ -440,6 +472,11 @@ async function deleteOrderById(orderId) {
  * - lignes absentes => supprimées (si autorisé)
  * - lignes avec id => mises à jour
  * - lignes sans id => insérées
+ *
+ * @param {number} orderId
+ * @param {object} [patch]
+ * @param {object[]|null} [lines]
+ * @returns {Promise<boolean>}
  */
 async function updateOrderAndLinesById(orderId, patch = {}, lines = null) {
   const connection = await pool.getConnection();
@@ -741,6 +778,14 @@ async function recalcAndUpdateProductionStatus(connection, orderId) {
   return productionStatus;
 }
 
+/**
+ * Borne une valeur entière entre min et max.
+ *
+ * @param {number} n
+ * @param {number} min
+ * @param {number} max
+ * @returns {number}
+ */
 function clampInt(n, min, max) {
   const v = Number(n);
   if (!Number.isFinite(v)) return min;
@@ -748,8 +793,11 @@ function clampInt(n, min, max) {
 }
 
 /**
- * Met à jour la quantité prête d'une ligne (order_products.quantity_ready),
- * invalide la validation de production, puis recalcule orders.production_status.
+ * Met à jour quantity_ready d'une ligne, invalide la validation production, puis recalcule production_status.
+ * @param {number} orderId
+ * @param {number} lineId
+ * @param {number} readyQty
+ * @returns {Promise<{notFound?:boolean, status?:string, productionStatus?:string, order?:object, lines?:object[]}>}
  */
 async function updateOrderLineReady(orderId, lineId, readyQty) {
   const connection = await pool.getConnection();
@@ -817,8 +865,11 @@ async function updateOrderLineReady(orderId, lineId, readyQty) {
 }
 
 /**
- * Recalcule expedition_status à partir des shipped vs ordered
- * et met à jour orders.expedition_status.
+ * Recalcule expedition_status à partir des shipped vs ordered et met à jour orders.expedition_status.
+ *
+ * @param {import("mysql2/promise").PoolConnection} connection
+ * @param {number} orderId
+ * @returns {Promise<"NON_EXPEDIEE"|"EXP_PARTIELLE"|"EXP_COMPLETE">}
  */
 async function recalcAndUpdateExpeditionStatus(connection, orderId) {
   const [aggRows] = await connection.query(
@@ -853,14 +904,12 @@ async function recalcAndUpdateExpeditionStatus(connection, orderId) {
 }
 
 /**
- * Liste production : Expéditions à charger.
- * Règle : commande affichée si au moins une quantité est chargeable
- * (ready > shipped sur au moins une ligne).
+ * Liste production : expéditions à charger (ready > shipped).
+ * Ajoute chargeable_total, loaded_total, loading_status, et compteurs de commentaires.
  *
- * Ajoute :
- * - chargeable_total = Σ max(0, ready - shipped)
- * - loaded_total     = Σ loaded
- * - loading_status   = TODO | PARTIAL | COMPLETE
+ * @param {{q?:string|null, limit?:number, offset?:number}} [filters]
+ * @param {{userId:number}} ctx
+ * @returns {Promise<object[]>}
  */
 async function findProductionShipments(
   { q = null, limit = 50, offset = 0 } = {},
@@ -953,8 +1002,12 @@ async function findProductionShipments(
 }
 
 /**
- * Met à jour quantity_loaded d'une ligne (chargé camion).
+ * Met à jour quantity_loaded (chargé camion).
  * Borne : 0 <= loaded <= (ready - shipped)
+ * @param {number} orderId
+ * @param {number} lineId
+ * @param {number} loadedQty
+ * @returns {Promise<{notFound?:boolean, status?:string, order?:object, lines?:object[]}>}
  */
 async function updateOrderLineLoaded(orderId, lineId, loadedQty) {
   const connection = await pool.getConnection();
@@ -1012,8 +1065,10 @@ async function updateOrderLineLoaded(orderId, lineId, loadedQty) {
 }
 
 /**
- * Départ camion : commit ce qui est loaded -> shipped, reset loaded,
- * crée un shipment visible bureau.
+ * Déclare un départ camion : loaded -> shipped, reset loaded, crée un shipment, recalcule expedition_status.
+ * @param {number} orderId
+ * @param {{createdByUserId?: number|null}} [options]
+ * @returns {Promise<object>}
  */
 async function departTruck(orderId, { createdByUserId = null } = {}) {
   const connection = await pool.getConnection();
@@ -1126,6 +1181,12 @@ async function departTruck(orderId, { createdByUserId = null } = {}) {
   }
 }
 
+/**
+ * Récupère les départs camion (shipments) d'une commande + leurs lignes.
+ *
+ * @param {number} orderId
+ * @returns {Promise<Array<{id:number, departed_at:any, lines:object[]}>>}
+ */
 async function findShipmentsByOrderId(orderId) {
   const [shipments] = await pool.query(
     `
@@ -1245,6 +1306,12 @@ async function sumProducedTotals({ days = null } = {}) {
   return totals;
 }
 
+/**
+ * Compte les commandes actives (non archivées) avec filtres bureau.
+ *
+ * @param {{q?:string|null, priority?:string|null, state?:string|null}} [filters]
+ * @returns {Promise<number>}
+ */
 async function countActiveOrders({
   q = null,
   priority = null,

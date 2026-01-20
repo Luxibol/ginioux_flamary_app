@@ -1,3 +1,7 @@
+/**
+ * @file backend/src/routes/auth.routes.js
+ * @description Routes /auth : login, refresh, logout, changement de mot de passe (rate-limit login).
+ */
 const express = require("express");
 const rateLimit = require("express-rate-limit");
 const { requireAuth } = require("../middlewares/auth.middleware");
@@ -10,6 +14,7 @@ const {
 
 const router = express.Router();
 
+// Protection brute-force : limite les tentatives de connexion.
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 10,

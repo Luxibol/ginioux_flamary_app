@@ -1,5 +1,14 @@
+/**
+ * @file backend/src/repositories/orderComments.repository.js
+ * @description Repository commentaires : lecture/écriture + compteurs + gestion “lu/non-lu”.
+ */
 const { pool } = require("../config/db");
 
+/**
+ * Liste les commentaires d'une commande (ordre chronologique).
+ * @param {number} orderId
+ * @returns {Promise<object[]>}
+ */
 async function listByOrderId(orderId) {
   const [rows] = await pool.query(
     `
@@ -21,6 +30,11 @@ async function listByOrderId(orderId) {
   return rows;
 }
 
+/**
+ * Crée un commentaire pour une commande.
+ * @param {{orderId:number, authorId:number, content:string}} payload
+ * @returns {Promise<number>} id du commentaire créé
+ */
 async function create({ orderId, authorId, content }) {
   const [r] = await pool.query(
     `
@@ -32,6 +46,12 @@ async function create({ orderId, authorId, content }) {
   return r.insertId;
 }
 
+/**
+ * Marque les commentaires d'une commande comme lus pour un utilisateur.
+ * Upsert sur order_comment_reads (last_read_at).
+ * @param {{orderId:number, userId:number}} payload
+ * @returns {Promise<void>}
+ */
 async function markRead({ orderId, userId }) {
   await pool.query(
     `
@@ -43,6 +63,11 @@ async function markRead({ orderId, userId }) {
   );
 }
 
+/**
+ * Retourne les compteurs de commentaires pour une commande (total + non lus pour userId).
+ * @param {{orderId:number, userId:number}} payload
+ * @returns {Promise<{messagesCount:number, unreadCount:number}>}
+ */
 async function getCountsForOrder({ orderId, userId }) {
   const [[row]] = await pool.query(
     `
