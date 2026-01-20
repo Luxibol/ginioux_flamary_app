@@ -1,5 +1,13 @@
+/**
+ * Bureau - List Block (UI).
+ */
 import { Link } from "react-router-dom";
 
+/**
+ * Bloc de liste (Bureau) avec lien optionnel.
+ * @param {{ title: string, items?: string[], linkTo?: string, linkLabel?: string }} props
+ * @returns {import("react").JSX.Element}
+ */
 export default function BureauListBlock({ title, items = [], linkTo, linkLabel }) {
   return (
     <div className="w-full">

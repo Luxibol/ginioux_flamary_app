@@ -5,6 +5,10 @@
 import { RouterProvider } from "react-router-dom";
 import { router } from "./router.jsx";
 
+/**
+ * App (root).
+ * @returns {import("react").JSX.Element}
+ */
 export default function App() {
   return <RouterProvider router={router} />;
 }

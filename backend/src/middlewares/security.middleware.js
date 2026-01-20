@@ -1,3 +1,7 @@
+/**
+ * @file backend/src/middlewares/security.middleware.js
+ * @description Middlewares sécurité : CORS (allowlist), Helmet, HPP, rate-limit, limites payload.
+ */
 const helmet = require("helmet");
 const cors = require("cors");
 const rateLimit = require("express-rate-limit");
@@ -31,26 +35,31 @@ function buildCorsOptions() {
 
     credentials: true,
 
-    // important (preflight OPTIONS)
+    // Preflight (OPTIONS) + méthodes autorisées.
     methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
 
-    // si un jour on veux lire des headers côté front
+    // Optionnel : headers exposés au front (si besoin).
     // exposedHeaders: ["Content-Length"],
   };
 }
 
+/**
+ * Applique un ensemble de middlewares de sécurité à l'application Express.
+ * @param {import("express").Express} app
+ * @returns {void}
+ */
 function applySecurity(app) {
-  // utile en prod derrière proxy (Render, etc.)
+  // Requis derrière proxy (Render, etc.) pour IP / rate-limit correct.
   app.set("trust proxy", 1);
 
-  // masque Express
+  // Masque le header "X-Powered-By".
   app.disable("x-powered-by");
 
-  // bloque certaines attaques param pollution
+  // Protège contre la pollution des paramètres (hpp).
   app.use(hpp());
 
-  // headers sécurité (API-only: CSP pas indispensable)
+  // Headers de sécurité (API-only : CSP désactivée).
   app.use(
     helmet({
       contentSecurityPolicy: false,
@@ -61,7 +70,7 @@ function applySecurity(app) {
   // CORS
   app.use(cors(buildCorsOptions()));
 
-  // rate limit global
+  // Rate limit global (anti-abus).
   app.use(
     rateLimit({
       windowMs: 15 * 60 * 1000,
@@ -71,7 +80,7 @@ function applySecurity(app) {
     }),
   );
 
-  // limites payload
+  // Limites de payload (anti-DoS).
   app.use(require("express").json({ limit: "1mb" }));
   app.use(require("express").urlencoded({ extended: false, limit: "1mb" }));
 }

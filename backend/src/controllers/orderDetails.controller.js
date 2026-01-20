@@ -1,18 +1,16 @@
 /**
- * Contrôleur commandes : récupération du détail d'une commande + ses lignes.
+ * @file backend/src/controllers/orderDetails.controller.js
+ * @description Contrôleur commandes : détail d'une commande + lignes associées.
  */
 const ordersRepository = require("../repositories/orders.repository");
 
 /**
- * GET /orders/:id
- * Retourne :
- * - order : informations commande
- * - lines : lignes produits associées
+ * Retourne le détail d'une commande et ses lignes.
+ * Route: GET /orders/:id
  *
- * Réponses :
- * - 200 : { order, lines }
- * - 400 : ID invalide
- * - 404 : commande introuvable
+ * @param {import("express").Request} req
+ * @param {import("express").Response} res
+ * @returns {Promise<void>}
  */
 async function getOrderDetails(req, res) {
   try {

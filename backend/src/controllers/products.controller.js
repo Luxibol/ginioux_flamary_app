@@ -1,4 +1,7 @@
-// backend/src/controllers/products.controller.js
+/**
+ * @file backend/src/controllers/products.controller.js
+ * @description Contrôleur produits : recherche + CRUD catalogue (admin/bureau).
+ */
 const productsRepository = require("../repositories/products.repository");
 
 function asInt(v) {
@@ -13,7 +16,12 @@ function asBool01(v) {
 }
 
 /**
- * GET /products/search?q=...&limit=...
+ * Recherche de produits (autocomplétion) par libellé PDF.
+ * Route: GET /products/search
+ *
+ * @param {import("express").Request} req
+ * @param {import("express").Response} res
+ * @returns {Promise<void>}
  */
 async function searchProducts(req, res) {
   try {
@@ -31,8 +39,12 @@ async function searchProducts(req, res) {
 }
 
 /**
- * GET /products?q=&category=&active=&limit=&offset=
- * Retour: { count, filters, data }
+ * Liste des produits avec filtres + pagination.
+ * Route: GET /products
+ *
+ * @param {import("express").Request} req
+ * @param {import("express").Response} res
+ * @returns {Promise<void>}
  */
 async function listProducts(req, res) {
   try {
@@ -63,8 +75,12 @@ async function listProducts(req, res) {
 }
 
 /**
- * POST /products
- * Body: { pdf_label_exact, category, weight_per_unit_kg, is_active? }
+ * Crée un produit du catalogue.
+ * Route: POST /products
+ *
+ * @param {import("express").Request} req
+ * @param {import("express").Response} res
+ * @returns {Promise<void>}
  */
 async function createProduct(req, res) {
   try {
@@ -105,8 +121,12 @@ async function createProduct(req, res) {
 }
 
 /**
- * PATCH /products/:id
- * Body partiel: { pdf_label_exact?, category?, weight_per_unit_kg?, is_active? }
+ * Met à jour partiellement un produit.
+ * Route: PATCH /products/:id
+ *
+ * @param {import("express").Request} req
+ * @param {import("express").Response} res
+ * @returns {Promise<void>}
  */
 async function patchProduct(req, res) {
   try {
@@ -163,9 +183,12 @@ async function patchProduct(req, res) {
 }
 
 /**
- * DELETE /products/:id
- * Supprime seulement si aucune référence (order_products + shipment_lines).
- * Sinon -> 409 + suggestion de désactiver.
+ * Supprime un produit si non référencé (sinon 409).
+ * Route: DELETE /products/:id
+ *
+ * @param {import("express").Request} req
+ * @param {import("express").Response} res
+ * @returns {Promise<void>}
  */
 async function deleteProduct(req, res) {
   try {

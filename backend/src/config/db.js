@@ -1,12 +1,11 @@
 /**
- * Configuration BDD (MySQL via mysql2/promise)
- * Exporte :
- * - pool : pool de connexions
- * - testConnection : probe simple pour /health/db
+ * @file backend/src/config/db.js
+ * @description Configuration MySQL (mysql2/promise) : pool + probe de connexion.
  */
 const mysql = require("mysql2/promise");
 const dotenv = require("dotenv");
 
+// Charge les variables d'environnement (.env).
 dotenv.config();
 
 const pool = mysql.createPool({

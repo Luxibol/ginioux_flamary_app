@@ -1,12 +1,20 @@
 /**
  * Header mobile générique (sticky)
  * - Logo
- * - Label (placeholder user + zone)
+ * - Label (utilisateur + zone)
  * - Burger menu
  */
 import logo from "../../assets/pictures/logo.png";
 import { Menu } from "lucide-react";
 
+/**
+ * Header mobile (sticky) avec bouton menu.
+ * @param {object} props
+ * @param {string} props.label Libellé affiché (utilisateur / zone)
+ * @param {boolean} props.isOpen État du menu
+ * @param {()=>void} props.onToggle Toggle menu
+ * @returns {import("react").JSX.Element}
+ */
 function MobileHeader({ label, isOpen, onToggle }) {
   return (
     <header className="sticky top-0 z-50 h-16 bg-gf-surface border-b border-gf-border">

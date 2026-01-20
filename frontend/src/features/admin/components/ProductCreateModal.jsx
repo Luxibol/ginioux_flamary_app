@@ -1,6 +1,25 @@
-// src/features/admin/components/ProductCreateModal.jsx
+/**
+ * Modale — Admin Produits : création.
+ */
 import { CATEGORIES } from "../utils/adminProducts.utils.js";
 
+/**
+ * Modale de création d'un produit.
+ * @param {object} props
+ * @param {boolean} props.open Affiche/masque la modale
+ * @param {boolean} props.loading Désactive les actions pendant une requête
+ * @param {string} props.fLabel Libellé PDF exact
+ * @param {(v:string)=>void} props.setFLabel Setter libellé
+ * @param {string} props.fCategory Catégorie
+ * @param {(v:string)=>void} props.setFCategory Setter catégorie
+ * @param {string} props.fWeight Poids (kg) saisi
+ * @param {(v:string)=>void} props.setFWeight Setter poids
+ * @param {boolean} props.fActive Actif/inactif
+ * @param {(v:boolean)=>void} props.setFActive Setter actif
+ * @param {()=>void} props.onClose Fermeture
+ * @param {()=>void} props.onSubmit Validation
+ * @returns {import("react").JSX.Element|null}
+ */
 export default function ProductCreateModal({
   open,
   loading,

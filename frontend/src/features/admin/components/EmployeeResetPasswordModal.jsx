@@ -1,11 +1,32 @@
+/**
+ * Modale — Admin Employés : réinitialisation du mot de passe.
+ */
+
+/**
+ * Copie une valeur dans le presse-papier (si disponible).
+ * @param {string} text
+ * @returns {void}
+ */
 function copyToClipboard(text) {
   try {
     navigator.clipboard?.writeText(String(text));
   } catch {
-    // noop
+    // Clipboard non disponible
   }
 }
 
+/**
+ * Modale de réinitialisation de mot de passe.
+ * @param {object} props
+ * @param {boolean} props.open
+ * @param {boolean} props.loading
+ * @param {string} props.error
+ * @param {string} props.titleLine Ligne d'identification (nom + login)
+ * @param {string} props.tempPassword Mot de passe temporaire généré
+ * @param {()=>void} props.onClose
+ * @param {()=>void} props.onCopy Callback après copie (optionnel)
+ * @returns {import("react").JSX.Element|null}
+ */
 export default function EmployeeResetPasswordModal({
   open,
   loading,

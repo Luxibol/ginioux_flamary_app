@@ -1,5 +1,13 @@
+/**
+ * Production - Formatters & builders (labels, statuts, groupes).
+ */
 import { BIGBAG_MIN_KG, GROUP_ORDER } from "./productionOrders.constants.js";
 
+/**
+ * Libellé UI pour la priorité.
+ * @param {string} p
+ * @returns {string}
+ */
 export function priorityLabel(p) {
   if (p === "URGENT") return "Urgent";
   if (p === "INTERMEDIAIRE") return "Intermédiaire";
@@ -7,12 +15,22 @@ export function priorityLabel(p) {
   return "—";
 }
 
+/**
+ * Map statut production backend -> clé UI.
+ * @param {string} ps
+ * @returns {"COMPLETE"|"PARTIAL"|"TODO"}
+ */
 export function statusFromProductionStatus(ps) {
   if (ps === "PROD_COMPLETE") return "COMPLETE";
   if (ps === "PROD_PARTIELLE") return "PARTIAL";
   return "TODO";
 }
 
+/**
+ * Formate une date ISO (YYYY-MM-DD) en FR (DD/MM/YYYY).
+ * @param {string} iso
+ * @returns {string}
+ */
 export function formatDateFR(iso) {
   if (!iso) return "-/--/----";
   const [y, m, d] = String(iso).split("-");
@@ -20,11 +38,21 @@ export function formatDateFR(iso) {
   return `${d}/${m}/${y}`;
 }
 
+/**
+ * Convertit en nombre (fallback 0).
+ * @param {unknown} v
+ * @returns {number}
+ */
 export function asNumber(v) {
   const n = Number(v);
   return Number.isFinite(n) ? n : 0;
 }
 
+/**
+ * Extrait (code) + spec + label nettoyé depuis un libellé PDF.
+ * @param {unknown} labelRaw
+ * @returns {{ code: string, label: string, spec: string }}
+ */
 export function parseLabelParts(labelRaw) {
   const label = String(labelRaw ?? "").trim();
 
@@ -44,6 +72,12 @@ export function parseLabelParts(labelRaw) {
   return { code, label: cleanLabel, spec };
 }
 
+/**
+ * Détermine le groupe UI d'une ligne (BigBag/SmallBag/Roche).
+ * @param {unknown} categoryRaw
+ * @param {unknown} weightKg
+ * @returns {"BigBag"|"SmallBag"|"Roche"}
+ */
 export function groupNameFromLine(categoryRaw, weightKg) {
   const category = String(categoryRaw ?? "").toUpperCase();
   const w = Number(weightKg) || 0;
@@ -53,6 +87,11 @@ export function groupNameFromLine(categoryRaw, weightKg) {
   return "Roche";
 }
 
+/**
+ * Construit les groupes UI à partir des lignes API.
+ * @param {any[]} lines
+ * @returns {any[]}
+ */
 export function buildGroupsFromLines(lines) {
   const groupsMap = new Map();
 
@@ -78,10 +117,15 @@ export function buildGroupsFromLines(lines) {
   }
 
   return Array.from(groupsMap.values()).sort(
-    (a, b) => (GROUP_ORDER[a.name] ?? 99) - (GROUP_ORDER[b.name] ?? 99)
+    (a, b) => (GROUP_ORDER[a.name] ?? 99) - (GROUP_ORDER[b.name] ?? 99),
   );
 }
 
+/**
+ * Construit le résumé d'une card à partir des groupes.
+ * @param {any[]} groups
+ * @returns {string}
+ */
 export function buildSummaryFromGroups(groups) {
   const counts = {};
   groups.forEach((g) => {

@@ -1,3 +1,7 @@
+/**
+ * @file backend/src/app.js
+ * @description Configuration Express : middlewares, routes, gestion erreurs.
+ */
 const express = require("express");
 
 const healthRoutes = require("./routes/health.routes");
@@ -12,6 +16,7 @@ const { applySecurity } = require("./middlewares/security.middleware");
 
 const app = express();
 applySecurity(app);
+// Lecture des cookies (refresh token).
 app.use(cookieParser());
 
 app.use("/admin/users", adminUsersRoutes);
@@ -21,6 +26,7 @@ app.use("/pdf", pdfRoutes);
 app.use("/orders", ordersRoutes);
 app.use("/products", productsRoutes);
 
+// Traduit les erreurs CORS (origin non autorisée / non configuré) en 403 JSON.
 app.use((err, req, res, next) => {
   const msg = String(err?.message || "");
   if (

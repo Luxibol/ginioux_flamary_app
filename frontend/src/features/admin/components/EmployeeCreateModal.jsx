@@ -1,13 +1,44 @@
+/**
+ * Modale — Admin Employés : création (+ affichage du mot de passe temporaire).
+ */
 import { ROLES } from "../utils/adminEmployees.utils.js";
 
+/**
+ * Copie une valeur dans le presse-papier (si disponible).
+ * @param {string} text
+ * @returns {void}
+ */
 function copyToClipboard(text) {
   try {
     navigator.clipboard?.writeText(String(text));
   } catch {
-    // noop
+    // Clipboard non disponible
   }
 }
 
+/**
+ * Modale de création d'un employé.
+ * - Après création, affiche le mot de passe temporaire à transmettre.
+ * @param {object} props
+ * @param {boolean} props.open
+ * @param {boolean} props.loading
+ * @param {string} props.error
+ * @param {string} props.fFirstName
+ * @param {(v:string)=>void} props.setFFirstName
+ * @param {string} props.fLastName
+ * @param {(v:string)=>void} props.setFLastName
+ * @param {string} props.fLogin
+ * @param {(v:string)=>void} props.setFLogin
+ * @param {string} props.fRole
+ * @param {(v:string)=>void} props.setFRole
+ * @param {boolean} props.fActive
+ * @param {(v:boolean)=>void} props.setFActive
+ * @param {string} props.createdTempPassword
+ * @param {()=>void} props.onClearTempPassword
+ * @param {()=>void} props.onClose
+ * @param {()=>void} props.onSubmit
+ * @returns {import("react").JSX.Element|null}
+ */
 export default function EmployeeCreateModal({
   open,
   loading,

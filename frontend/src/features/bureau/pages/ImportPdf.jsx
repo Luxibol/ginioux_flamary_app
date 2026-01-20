@@ -17,6 +17,12 @@ import {
 import { pushMessage as pushMessageUtil } from "../utils/importPdf.messages.js";
 import { buildImportErrorMessage } from "../mappers/importPdf.mappers.js";
 
+/**
+ * ImportPdf (page).
+ * - Upload PDF + preview + édition via modale
+ * - Confirmation / annulation (cleanup serveur)
+ * @returns {import("react").JSX.Element}
+ */
 export default function ImportPdf() {
   const inputRef = useRef(null);
 
@@ -30,14 +36,23 @@ export default function ImportPdf() {
 
   const [messages, setMessages] = useState([]); // success | warning | error
 
-  // Ouvre le sélecteur de fichier (reset la valeur pour permettre de re-sélectionner le même PDF).
+  /**
+   * Ouvre le sélecteur de fichier.
+   * Réinitialise la valeur pour permettre de re-sélectionner le même PDF.
+   * @returns {void}
+   */
   const openPicker = () => {
     if (!inputRef.current) return;
     inputRef.current.value = "";
     inputRef.current.click();
   };
 
-  // Ajoute un message (success|warning|error) en tête de liste, avec une limite (voir util pushMessageUtil).
+  /**
+   * Ajoute un message (success|warning|error) en tête de liste, avec une limite.
+   * @param {"success"|"warning"|"error"} type
+   * @param {string} text
+   * @returns {void}
+   */
   const pushMessage = (type, text) => {
     setMessages((prev) => pushMessageUtil(prev, type, text));
   };
@@ -48,6 +63,8 @@ export default function ImportPdf() {
    * - stocke importId + preview + dedupe
    * - bloque si la commande existe déjà (dédoublonnage ARC)
    * - ouvre la modale si tout est OK
+   * @param {FileList|File[]} files
+   * @returns {Promise<void>}
    */
   const handleFiles = async (files) => {
     const file = files?.[0];
@@ -85,6 +102,8 @@ export default function ImportPdf() {
   /**
    * Ferme la modale et nettoie l'état local.
    * Par défaut, annule aussi la preview côté serveur (DELETE /pdf/:importId).
+   * @param {boolean} [cancelOnServer=true]
+   * @returns {Promise<void>}
    */
   const closeModal = async (cancelOnServer = true) => {
     setModalOpen(false);
@@ -103,6 +122,8 @@ export default function ImportPdf() {
    * - envoie les données (modifiées ou non) à /pdf/:importId/confirm
    * - gère les retours (created / skipped / erreurs)
    * - ferme la modale et purge la preview si nécessaire
+   * @param {unknown} payloadFromModal
+   * @returns {Promise<void>}
    */
   const confirm = async (payloadFromModal) => {
     try {

@@ -1,5 +1,5 @@
 /**
- * SEO minimal (SPA) :
+ * SEO minimal :
  * - document.title
  * - meta description (optionnel)
  * - canonical (optionnel)
@@ -8,6 +8,12 @@
  */
 import { useEffect } from "react";
 
+/**
+ * Crée ou met à jour une meta name="...".
+ * @param {string} name Nom de la meta
+ * @param {string} content Contenu
+ * @returns {void}
+ */
 function upsertMeta(name, content) {
   if (!content) return;
   const head = document.head;
@@ -22,6 +28,11 @@ function upsertMeta(name, content) {
   el.setAttribute("content", content);
 }
 
+/**
+ * Crée ou met à jour la balise canonical.
+ * @param {string} href URL canonique absolue
+ * @returns {void}
+ */
 function upsertCanonical(href) {
   if (!href) return;
   const head = document.head;
@@ -36,12 +47,19 @@ function upsertCanonical(href) {
   el.setAttribute("href", href);
 }
 
+/**
+ * SEO minimal (SPA) : title / description / canonical.
+ * @param {object} props
+ * @param {string} [props.title] Titre document
+ * @param {string} [props.description] Meta description
+ * @param {string} [props.canonical] URL canonique (relative "/..." ou absolue)
+ * @returns {null}
+ */
 export default function Seo({ title, description, canonical }) {
   useEffect(() => {
     if (title) document.title = title;
     if (description) upsertMeta("description", description);
 
-    // canonical : on accepte une valeur relative (ex: "/bureau")
     if (canonical) {
       const href = canonical.startsWith("http")
         ? canonical

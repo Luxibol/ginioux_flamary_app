@@ -1,21 +1,31 @@
 /**
- * Client HTTP minimal :
- * - Construit l'URL API à partir de VITE_API_BASE_URL
- * - Normalise les erreurs (throw Error avec status + data)
- * - Auto-refresh sur 401 (1 fois) via cookie httpOnly /auth/refresh
+ * Client HTTP (API)
+ * - Construit l'URL à partir de VITE_API_BASE_URL
+ * - Ajoute le token Bearer si présent
+ * - Normalise les erreurs (status + data)
+ * - Auto-refresh sur 401 (1 retry) via /auth/refresh (cookie httpOnly)
  *
- * Ne définit pas Content-Type automatiquement pour ne pas casser les uploads FormData.
+ * Note : ne force pas Content-Type si FormData (uploads).
  */
 const base = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
 
 import { getToken, setToken, clearToken } from "./auth.storage.js";
 
-/** Construit l'URL complète de l'API. */
+/**
+ * Construit l'URL complète de l'API.
+ * @param {string} path Chemin API (ex: "/orders/active")
+ * @returns {string}
+ */
 export function apiUrl(path) {
   return `${base}${path}`;
 }
 
-/** Erreur enrichie */
+/**
+ * Construit une erreur enrichie (status + data).
+ * @param {Response} res Réponse fetch
+ * @param {any} data Corps JSON parsé (si disponible)
+ * @returns {Error}
+ */
 function buildHttpError(res, data) {
   const err = new Error(data?.error || "Erreur API");
   err.status = res.status;
@@ -23,7 +33,7 @@ function buildHttpError(res, data) {
   return err;
 }
 
-// Verrou: si plusieurs requêtes prennent 401 en même temps => 1 seul refresh
+// Verrou : si plusieurs requêtes prennent 401 en même temps, un seul refresh est déclenché.
 let refreshInFlight = null;
 
 function isAuthEndpoint(path) {
@@ -65,7 +75,7 @@ async function refreshAccessToken() {
   if (refreshInFlight) return refreshInFlight;
 
   refreshInFlight = (async () => {
-    // appel direct /auth/refresh (cookie httpOnly)
+    // Refresh via cookie httpOnly (pas de token dans le body).
     const res = await doFetch("/auth/refresh", {
       method: "POST",
     });
@@ -83,10 +93,13 @@ async function refreshAccessToken() {
 }
 
 /**
- * Wrapper fetch:
- * - parse JSON
- * - throw enrichi si non-OK
- * - auto refresh + retry 1 fois sur 401
+ * Exécute une requête API (JSON) avec gestion d'erreurs.
+ * - Parse JSON
+ * - Throw enrichi si non-OK
+ * - Auto-refresh sur 401 (1 retry) hors endpoints auth
+ * @param {string} path Chemin API
+ * @param {object} [options] Options fetch
+ * @returns {Promise<any>}
  */
 export async function apiFetch(path, options = {}) {
   try {

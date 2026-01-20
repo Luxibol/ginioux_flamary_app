@@ -1,3 +1,7 @@
+/**
+ * Production - Dashboard
+ * - KPI (à produire / à charger) + stats expéditions (semaine/mois)
+ */
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -10,6 +14,11 @@ import {
 
 import { getUser } from "../../../services/auth.storage.js";
 
+/**
+ * Détermine la famille produit pour les totaux (BIGBAG / ROCHE / OTHER).
+ * @param {any} line
+ * @returns {"BIGBAG"|"ROCHE"|"OTHER"}
+ */
 function normalizeFamily(line) {
   const cat = String(line?.category ?? "").toUpperCase().trim();
   if (cat === "ROCHE") return "ROCHE";
@@ -21,6 +30,12 @@ function normalizeFamily(line) {
   return "OTHER";
 }
 
+/**
+ * Calcule des totaux (bigbag/roche) à partir d'un échantillon de commandes.
+ * @param {number[]} orderIds
+ * @param {{ limit?: number, mode?: "ORDERED"|"READY"|"SHIPPED" }} [options]
+ * @returns {Promise<{ bigbag: number, roche: number }>}
+ */
 async function computeTotalsFromOrders(orderIds, { limit = 25, mode = "ORDERED" } = {}) {
   const ids = Array.isArray(orderIds) ? orderIds.slice(0, limit) : [];
   let bigbag = 0;
@@ -59,6 +74,11 @@ async function computeTotalsFromOrders(orderIds, { limit = 25, mode = "ORDERED" 
   return { bigbag, roche };
 }
 
+/**
+ * Carte UI (Dashboard production).
+ * @param {{ title: string, children: import("react").ReactNode }} props
+ * @returns {import("react").JSX.Element}
+ */
 function Card({ title, children }) {
   return (
     <div className="gf-card shadow-sm p-4">
@@ -68,6 +88,12 @@ function Card({ title, children }) {
   );
 }
 
+/**
+ * Dashboard Production (page).
+ * - Charge KPI + stats au montage
+ * - Gère loading / error
+ * @returns {import("react").JSX.Element}
+ */
 export default function Dashboard() {
   const navigate = useNavigate();
 
@@ -94,6 +120,10 @@ export default function Dashboard() {
   useEffect(() => {
     let alive = true;
 
+    /**
+     * Charge les KPI et stats du dashboard production.
+     * @returns {Promise<void>}
+     */
     async function run() {
       setLoading(true);
       setError("");

@@ -9,6 +9,11 @@ import { useNavigate } from "react-router-dom";
 import { logoutAndRedirect } from "../../services/auth.logout.js";
 import { getUser } from "../../services/auth.storage.js";
 
+/**
+ * Formate un rôle pour l'affichage.
+ * @param {string} role Rôle brut
+ * @returns {string}
+ */
 function formatRole(role) {
   if (role === "ADMIN") return "Admin";
   if (role === "BUREAU") return "Bureau";
@@ -16,6 +21,12 @@ function formatRole(role) {
   return role || "—";
 }
 
+/**
+ * Header global (desktop).
+ * - Logo
+ * - Utilisateur courant + déconnexion
+ * @returns {import("react").JSX.Element}
+ */
 function Header() {
   const navigate = useNavigate();
   const user = getUser();

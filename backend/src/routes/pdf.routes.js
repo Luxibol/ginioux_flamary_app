@@ -1,12 +1,7 @@
 /**
- * Routes d'import PDF
- * - /pdf/preview : analyse le PDF et renvoie une prévisualisation (aucune écriture en base)
- * - /pdf/:importId/confirm : valide la prévisualisation et crée la commande en base
- * - /pdf/:importId (DELETE) : annule une prévisualisation
- *
- * Note : les prévisualisations sont stockées en mémoire (Map) avec TTL.
+ * @file backend/src/routes/pdf.routes.js
+ * @description Import PDF : preview en mémoire (TTL) + confirmation (écriture BDD).
  */
-
 const express = require("express");
 const multer = require("multer");
 const pdfParse = require("pdf-parse");
@@ -16,9 +11,11 @@ const ordersRepository = require("../repositories/orders.repository");
 const productsRepository = require("../repositories/products.repository");
 const { requireAuth } = require("../middlewares/auth.middleware");
 const { requireRole } = require("../middlewares/rbac.middleware");
+const { asInt } = require("../utils/parse");
 
 const router = express.Router();
 
+// Import PDF réservé au Bureau/Admin (création commande).
 router.use(requireAuth, requireRole("ADMIN", "BUREAU"));
 
 const PREVIEW_TTL_MS = 15 * 60 * 1000; // 15 minutes
@@ -32,20 +29,6 @@ function isIsoDate(v) {
   return typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v);
 }
 
-function asInt(v) {
-  const n = Number(v);
-  if (!Number.isFinite(n)) return null;
-  return Math.trunc(n);
-}
-
-/**
- * Valide et normalise la prévisualisation envoyée par le front.
- * Objectif : éviter d'écrire en base des données mal formées ou incohérentes.
- * - ARC obligatoire
- * - orderDate au format YYYY-MM-DD
- * - priorité dans une whitelist
- * - products : tableau, pdfLabel obligatoire, quantity entier >= 0 (0 ignoré)
- */
 function sanitizePreview(input) {
   const src = input || {};
 
@@ -121,7 +104,6 @@ function sanitizePreview(input) {
   };
 }
 
-// Nettoyage périodique des previews expirées (évite que la Map grossisse indéfiniment)
 function cleanupExpiredPreviews() {
   const now = Date.now();
   for (const [id, item] of previewStore.entries()) {
@@ -129,7 +111,7 @@ function cleanupExpiredPreviews() {
   }
 }
 
-// Toutes les 60s : purge des previews expirées (n'empêche pas le process de se fermer)
+// Purge périodique des previews expirées (Map + TTL).
 setInterval(cleanupExpiredPreviews, 60 * 1000).unref?.();
 
 function newImportId() {
@@ -307,7 +289,7 @@ router.post("/:importId/confirm", async (req, res) => {
       action: "created",
       orderId: result.orderId,
       arc: result.arc,
-      internalCommentSaved: Boolean(internalComment), // internalComment : prévu pour plus tard (ex: table comments), non persisté actuellement
+      internalCommentSaved: Boolean(internalComment),
     });
   } catch (err) {
     console.error("Erreur confirm import:", err);

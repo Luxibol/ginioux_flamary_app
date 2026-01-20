@@ -1,3 +1,9 @@
+/**
+ * Page — Changement de mot de passe
+ * - Formulaire de définition d'un nouveau mot de passe
+ * - Met à jour la session (must_change_password=false)
+ * - Redirection vers la zone correspondant au rôle
+ */
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import logo from "../../assets/pictures/logo.png";
@@ -7,6 +13,10 @@ import { landingPathForRole } from "../../utils/roleRouting.js";
 import AuthLayout from "../../components/auth/AuthLayout.jsx";
 import Seo from "../../components/seo/Seo.jsx";
 
+/**
+ * Page de changement de mot de passe (obligatoire au premier login).
+ * @returns {import("react").JSX.Element}
+ */
 export default function ChangePasswordPage() {
   const navigate = useNavigate();
   const auth = getAuth();
@@ -28,11 +38,11 @@ export default function ChangePasswordPage() {
 
       await changePassword({ new_password: p1 });
 
-      // met à jour le user en storage (must_change_password = false)
+      // Met à jour la session locale (must_change_password=false)
       if (auth?.token && auth?.user) {
         setAuth(
           { token: auth.token, user: { ...auth.user, must_change_password: false } },
-          { persist: "local" } // simple : on garde local ici
+          { persist: "local" }
         );
       }
 

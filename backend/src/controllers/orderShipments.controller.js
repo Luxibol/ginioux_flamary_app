@@ -1,5 +1,17 @@
+/**
+ * @file backend/src/controllers/orderShipments.controller.js
+ * @description Contrôleur expéditions d’une commande : liste des départs camion (shipments).
+ */
 const ordersRepository = require("../repositories/orders.repository");
 
+/**
+ * Retourne la liste des expéditions (shipments) d'une commande.
+ * Route: GET /orders/:id/shipments
+ *
+ * @param {import("express").Request} req
+ * @param {import("express").Response} res
+ * @returns {Promise<void>}
+ */
 async function getOrderShipments(req, res) {
   try {
     const id = Number(req.params.id);

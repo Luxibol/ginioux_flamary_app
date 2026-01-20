@@ -5,7 +5,7 @@
  * - Stepper "Chargés" branché sur PATCH loaded
  * - Bouton "Tout charger" : met loaded = (ready - shipped) sur chaque ligne
  * - Bouton "Départ du camion" : valide le départ et refresh la liste
- * Note : commentaires pas branchés => on garde comments: []
+ *   Note : commentaires non branchés (comments: []).
  */
 import { useEffect, useRef, useState } from "react";
 import ProductionOrderCard from "../components/ProductionOrderCard.jsx";
@@ -29,6 +29,12 @@ import {
   runWithConcurrency,
 } from "../utils/productionUi.utils.js";
 
+/**
+ * Shipments Production (page).
+ * - Liste + accordéon (détails lazy)
+ * - MAJ "chargés" (PATCH) + départ camion
+ * @returns {import("react").JSX.Element}
+ */
 function Shipments() {
   const [orders, setOrders] = useState([]);
   const [expandedId, setExpandedId] = useState(null);
@@ -44,6 +50,12 @@ function Shipments() {
 
   const [commentsOpenByOrderId, setCommentsOpenByOrderId] = useState({});
 
+  /**
+   * Applique les compteurs messages/non-lus à une commande.
+   * @param {number} orderId
+   * @param {{ messagesCount?: number, unreadCount?: number }} counts
+   * @returns {void}
+   */
   const applyCounts = (orderId, counts) => {
     setOrders((prev) =>
       prev.map((o) =>
@@ -58,6 +70,10 @@ function Shipments() {
     );
   };
 
+  /**
+   * Réinitialise le cache des détails et les steppers.
+   * @returns {void}
+   */
   function resetDetailsCache() {
     detailsLoadedRef.current = new Set();
     setLoadedByLineId({});
@@ -68,6 +84,9 @@ function Shipments() {
    * - groups (avec max)
    * - loaded map (vérité BDD)
    * - totaux + summary (loadedTotal / chargeableTotal)
+   * @param {number} orderId
+   * @param {any[]} lines
+   * @returns {{ list: any[], groupsWithMax: any[], totals: any }}
    */
   function applyOrderUiFromLines(orderId, lines) {
     const list = Array.isArray(lines) ? lines : [];
@@ -106,6 +125,10 @@ function Shipments() {
     return { list, groupsWithMax, totals: t };
   }
 
+  /**
+   * Recharge la liste des expéditions à charger.
+   * @returns {Promise<void>}
+   */
   async function refreshList() {
     setLoading(true);
     setError("");
@@ -156,7 +179,8 @@ function Shipments() {
 
   /**
    * Charge les détails 1 seule fois par orderId (lazy).
-   * Retourne la liste des lignes (utile pour éviter un fetch doublon).
+   * @param {number} orderId
+   * @returns {Promise<any[]|null>}
    */
   async function ensureDetails(orderId) {
     if (detailsLoadedRef.current.has(orderId)) return null;
@@ -173,7 +197,11 @@ function Shipments() {
     }
   }
 
-  /** Relit la vérité BDD pour cet orderId et resynchronise UI. */
+  /**
+   * Relit la vérité BDD pour un orderId et resynchronise l'UI.
+   * @param {number} orderId
+   * @returns {Promise<any[]>}
+   */
   async function refreshOrderFromServer(orderId) {
     const fresh = await getOrderDetails(orderId);
     const freshLines = Array.isArray(fresh?.lines) ? fresh.lines : [];
@@ -228,7 +256,6 @@ function Shipments() {
                 }
                 onCountsChange={applyCounts}
                 onChangeReady={async (lineId, next) => {
-                  // optimistic stepper
                   setLoadedByLineId((prev) => ({ ...prev, [lineId]: next }));
 
                   try {
@@ -236,7 +263,6 @@ function Shipments() {
                     const apiLines = Array.isArray(res?.lines) ? res.lines : [];
                     applyOrderUiFromLines(order.id, apiLines);
                   } catch {
-                    // resync complet (groups + totaux + steppers)
                     await refreshOrderFromServer(order.id);
                   }
                 }}
@@ -245,7 +271,6 @@ function Shipments() {
                   setBulkByOrderId((p) => ({ ...p, [order.id]: true }));
 
                   try {
-                    // Si déjà chargé en cache, pas grave : on a besoin des lignes
                     const cached = await ensureDetails(order.id);
                     const baseLines = cached ?? (await refreshOrderFromServer(order.id));
 

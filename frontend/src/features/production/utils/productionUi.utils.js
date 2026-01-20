@@ -1,10 +1,13 @@
+/**
+ * Production - Utils (concurrency, bornes steppers, statuts expéditions).
+ */
 import { asNumber } from "./productionOrders.format.js";
 
 /**
  * Exécute une liste de "task factories" avec une concurrence limitée.
- * @param {Array<() => Promise<any>>} tasks
+ * @param {Array<() => Promise<unknown>>} tasks
  * @param {number} [concurrency=5]
- * @returns {Promise<{results:any[], errors:Array<{index:number, error:any}>}>}
+ * @returns {Promise<{ results: unknown[], errors: Array<{ index: number, error: unknown }> }>}
  */
 export async function runWithConcurrency(tasks, concurrency = 5) {
   const list = Array.isArray(tasks) ? tasks : [];
@@ -54,7 +57,7 @@ export function buildMinByIdFromLines(lines) {
     list.map((l) => [
       l.id,
       Math.max(0, Math.trunc(asNumber(l.quantity_shipped))),
-    ])
+    ]),
   );
 }
 
@@ -71,7 +74,7 @@ export function buildMaxLoadableByIdFromLines(lines) {
       const ready = asNumber(l.quantity_ready);
       const shipped = asNumber(l.quantity_shipped);
       return [l.id, Math.max(0, Math.trunc(ready - shipped))];
-    })
+    }),
   );
 }
 
@@ -104,7 +107,7 @@ export function computeShipmentUiFromLines(lines) {
 
   const loadedTotal = list.reduce(
     (acc, l) => acc + asNumber(l.quantity_loaded),
-    0
+    0,
   );
 
   const chargeableTotal = list.reduce((acc, l) => {

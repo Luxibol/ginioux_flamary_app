@@ -13,12 +13,13 @@ import { X, Trash2, Plus } from "lucide-react";
 import ProductAutocompleteInput from "./ProductAutocompleteInput.jsx";
 import { normalizeModalLines, normalizePriority, toISODate } from "../mappers/orderModal.mappers.js";
 
-// Valeurs "backend" attendues pour la priorité (on garde l'ordre du moins au plus important).
+// Priorités (backend)
 const PRIORITIES = ["NORMAL", "INTERMEDIAIRE", "URGENT"];
 
 /**
  * Champ input standardisé (label + styles).
- * But : éviter de répéter les classes Tailwind dans toute la modale.
+ * @param {{ label: string } & import("react").InputHTMLAttributes<HTMLInputElement>} props
+ * @returns {import("react").JSX.Element}
  */
 function Input({ label, ...props }) {
   return (
@@ -38,7 +39,8 @@ function Input({ label, ...props }) {
 
 /**
  * Select standardisé (label + styles).
- * Même objectif que <Input /> : cohérence UI et moins de duplication.
+ * @param {{ label: string, children: import("react").ReactNode } & import("react").SelectHTMLAttributes<HTMLSelectElement>} props
+ * @returns {import("react").JSX.Element}
  */
 function Select({ label, children, ...props }) {
   return (
@@ -59,13 +61,17 @@ function Select({ label, children, ...props }) {
 }
 
 /**
+ * OrderModal.
+ * - Contexte "import" : validation d'import PDF (édition complète)
+ * - Contexte "orders" : édition d'une commande existante
  * @param {object} props
- * @param {boolean} props.open Ouvre/ferme la modale
- * @param {Function} props.onClose Callback fermeture
- * @param {Function} props.onConfirm Callback validation (payload différent selon `context`)
- * @param {"import"|"orders"} [props.context="import"] Contexte d'utilisation
- * @param {any} props.data Données source (import preview ou orderDetails mappé)
- * @param {string|null} props.warning Message d'avertissement (ex: dédoublonnage ARC)
+ * @param {boolean} props.open
+ * @param {() => void} props.onClose
+ * @param {(payload: any) => void} props.onConfirm
+ * @param {"import"|"orders"} [props.context="import"]
+ * @param {any} props.data
+ * @param {string|null} [props.warning]
+ * @returns {import("react").JSX.Element|null}
  */
 export default function OrderModal({
   open,
@@ -75,8 +81,6 @@ export default function OrderModal({
   data,
   warning,
 }) {
-  // Initialise le formulaire à partir de `data` (import ou details commande).
-  // On convertit les dates en ISO (YYYY-MM-DD) et on normalise la priorité.
   const initialForm = useMemo(() => {
     const arc = data?.arc ?? data?.orderRef ?? "";
     const orderDate = toISODate(data?.orderDate ?? data?.dateCommande ?? "");
@@ -97,8 +101,6 @@ export default function OrderModal({
     };
   }, [data]);
 
-  // `form` : champs de commande (client/arc/dates/priorité/commentaire)
-  // `lines` : lignes produits (libellé + productId + quantité)
   const [form, setForm] = useState(() => initialForm);
   const [lines, setLines] = useState(() => normalizeModalLines(data));
 
@@ -129,6 +131,7 @@ export default function OrderModal({
    * - "import" : { preview, internalComment } -> POST /pdf/:importId/confirm
    *
    * On force les quantités en entiers (troncature) pour éviter NaN / décimales.
+   * @returns {void}
    */
   const confirm = () => {
     const linesClean = lines.map((l) => ({

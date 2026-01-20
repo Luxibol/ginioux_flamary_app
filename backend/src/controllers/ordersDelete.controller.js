@@ -1,15 +1,16 @@
 /**
- * Contrôleur commandes : suppression d'une commande.
- * Supprime la commande et ses lignes (via transaction côté repository).
+ * @file backend/src/controllers/ordersDelete.controller.js
+ * @description Contrôleur commandes : suppression d'une commande (transaction repository).
  */
 const ordersRepository = require("../repositories/orders.repository");
 
 /**
- * DELETE /orders/:id
- * Réponses :
- * - 204 : supprimée
- * - 400 : ID invalide
- * - 404 : commande introuvable
+ * Supprime une commande (et ses lignes via transaction repository).
+ * Route: DELETE /orders/:id
+ *
+ * @param {import("express").Request} req
+ * @param {import("express").Response} res
+ * @returns {Promise<void>}
  */
 async function deleteOrder(req, res) {
   try {

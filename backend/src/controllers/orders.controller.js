@@ -1,6 +1,6 @@
 /**
- * Contrôleur commandes : récupération de la liste des commandes actives.
- * Supporte filtres (q, priority, state) + pagination (limit/offset).
+ * @file backend/src/controllers/orders.controller.js
+ * @description Contrôleur commandes : liste des commandes actives + validation production.
  */
 const ordersRepository = require("../repositories/orders.repository");
 
@@ -13,15 +13,14 @@ const ALLOWED_STATES = [
 ];
 
 /**
- * GET /orders/active
- * Query :
- * - q : recherche (ARC ou nom client)
- * - priority : URGENT | INTERMEDIAIRE | NORMAL
- * - state : EN_PREPARATION | PRETE_A_EXPEDIER | PARTIELLEMENT_EXPEDIEE | EXPEDIEE
- * - limit / offset : pagination
+ * Liste des commandes actives avec filtres et pagination.
+ * Route: GET /orders/active
+ * Query: q, priority, state, limit, offset
+ * Response: { count, total, filters, data }
  *
- * Retour : { count, filters, data }
- * Note : count = nombre d'éléments retournés (pas un total global).
+ * @param {import("express").Request} req
+ * @param {import("express").Response} res
+ * @returns {Promise<void>}
  */
 async function getActiveOrders(req, res) {
   try {
@@ -65,8 +64,12 @@ async function getActiveOrders(req, res) {
 }
 
 /**
- * POST /orders/:id/production-validate
- * Valide la production d'une commande (si PROD_COMPLETE).
+ * Valide la production d'une commande si elle est éligible.
+ * Route: POST /orders/:id/production-validate
+ *
+ * @param {import("express").Request} req
+ * @param {import("express").Response} res
+ * @returns {Promise<void>}
  */
 async function postProductionValidate(req, res) {
   try {

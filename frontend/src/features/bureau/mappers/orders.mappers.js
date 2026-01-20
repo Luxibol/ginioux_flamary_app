@@ -7,6 +7,8 @@
 /**
  * Transforme la réponse API (order + lines) en structure utilisée par la modale.
  * Convertit les champs snake_case -> camelCase et normalise les valeurs numériques.
+ * @param {any} details
+ * @returns {any}
  */
 export function mapOrderDetailsToModal(details) {
   const order = details?.order ?? {};
@@ -39,6 +41,8 @@ export function mapOrderDetailsToModal(details) {
 /**
  * Transforme l'état de la modale en payload attendu par PATCH /orders/:id.
  * Remarque : `pickupDate` est envoyé à null si vide.
+ * @param {any} payload
+ * @returns {any}
  */
 export function mapModalToPatchPayload(payload) {
   return {

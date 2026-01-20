@@ -1,6 +1,14 @@
+/**
+ * Page — Admin Produits
+ * - Wrapper SEO + rendu de la page de gestion des produits
+ */
 import Seo from "../../components/seo/Seo.jsx";
 import AdminProducts from "../../features/admin/pages/AdminProducts.jsx";
 
+/**
+ * Wrapper de page Admin Produits (SEO).
+ * @returns {import("react").JSX.Element}
+ */
 export default function AdminProductsPage() {
   return (
     <>

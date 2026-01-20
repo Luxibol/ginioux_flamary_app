@@ -1,3 +1,6 @@
+/**
+ * Tableau des commandes urgentes (dashboard).
+ */
 import {
   formatDateFr,
   priorityClass,
@@ -5,6 +8,13 @@ import {
   formatOrderStateLabel,
 } from "../utils/dashboard.format.js";
 
+/**
+ * Affiche un tableau de commandes urgentes (3 lignes max côté dashboard).
+ * @param {object} props
+ * @param {Array<object>} props.rows
+ * @param {(order: object) => void} [props.onView] Callback "Voir" (navigation côté parent).
+ * @returns {import("react").JSX.Element}
+ */
 export default function UrgentTable({ rows, onView }) {
   return (
     <div className="rounded-2xl border border-gf-border bg-gf-surface overflow-hidden">

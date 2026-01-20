@@ -1,3 +1,15 @@
+/**
+ * KPI Card (dashboard) : titre + valeur + lignes de détail.
+ */
+
+/**
+ * Carte KPI utilisée sur les dashboards.
+ * @param {object} props
+ * @param {string} props.title
+ * @param {string|number} props.value
+ * @param {Array<string|number>} [props.lines]
+ * @returns {import("react").JSX.Element}
+ */
 export default function KpiCard({ title, value, lines = [] }) {
   return (
     <div className="w-full max-w-[260px] rounded-2xl border border-gf-border bg-gf-bg px-4 py-4 text-center">

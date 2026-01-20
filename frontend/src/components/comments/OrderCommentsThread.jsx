@@ -1,7 +1,28 @@
+/**
+ * Commentaires — Thread commande
+ * - Charge / affiche les commentaires d'une commande
+ * - Mode lecture seule optionnel + ajout d'un commentaire
+ * - Pliable (collapsible) : contrôlé par le parent ou en local
+ */
 import { useEffect, useState } from "react";
 import { Plus, ChevronDown, ChevronUp } from "lucide-react";
 import { getOrderComments, postOrderComment } from "../../services/orders.api.js";
 
+/**
+ * Thread de commentaires d'une commande.
+ * @param {object} props
+ * @param {number|string} props.orderId Identifiant commande
+ * @param {boolean} [props.open=true] Active l'affichage + le chargement
+ * @param {(orderId: any, counts: {messagesCount:number, unreadCount:number}) => void} [props.onCountsChange]
+ * @param {string} [props.className=""] Classe CSS additionnelle
+ * @param {boolean} [props.readOnly=false] Désactive l'ajout de commentaire
+ * @param {boolean} [props.showHeader=true] Affiche l'en-tête
+ * @param {boolean} [props.collapsible=true] Autorise le repli/dépli
+ * @param {boolean} [props.defaultCollapsed=true] État initial (si non contrôlé)
+ * @param {boolean} [props.collapsed] État contrôlé par le parent (optionnel)
+ * @param {(collapsed:boolean)=>void} [props.onCollapsedChange] Callback changement état repli
+ * @returns {import("react").JSX.Element|null}
+ */
 export default function OrderCommentsThread({
   orderId,
   open = true,
@@ -14,7 +35,7 @@ export default function OrderCommentsThread({
   collapsible = true,
   defaultCollapsed = true,
 
-  // ✅ NEW: contrôlé par le parent (si fourni)
+  // État plié : contrôlé par le parent si fourni
   collapsed: collapsedProp,
   onCollapsedChange,
 }) {
@@ -28,7 +49,7 @@ export default function OrderCommentsThread({
 
   const [content, setContent] = useState("");
 
-  // ✅ local fallback si pas contrôlé
+  // État local (utilisé si le parent ne contrôle pas "collapsed")
   const [collapsedLocal, setCollapsedLocal] = useState(Boolean(defaultCollapsed));
 
   const collapsed =
@@ -87,7 +108,7 @@ export default function OrderCommentsThread({
       onCountsChange?.(orderId, { messagesCount: mc, unreadCount: uc });
 
       setContent("");
-      setCollapsed(false); // ✅ ouvrir après envoi
+      setCollapsed(false); // Ouvre le thread après envoi
     } catch (e) {
       setError(e?.message || "Erreur ajout commentaire.");
     } finally {

@@ -1,33 +1,38 @@
+/**
+ * @file backend/src/controllers/shipmentsBureau.controller.js
+ * @description Contrôleur expéditions (Bureau) : liste des expéditions à accuser + ACK + archivage si complet.
+ */
 const { pool } = require("../config/db");
 const shipmentsRepo = require("../repositories/shipments.repository");
-
-function asInt(v) {
-  const n = Number(v);
-  if (!Number.isFinite(n)) return null;
-  return Math.trunc(n);
-}
+const { asInt } = require("../utils/parse");
 
 /**
- * GET /orders/bureau/shipments/pending
- * Retourne les commandes avec shipments non ack + détails shipments + remaining + recap.
+ * Retourne les commandes avec expéditions non accusées + détails (shipments, remaining, recap).
+ * Route: GET /orders/bureau/shipments/pending
+ *
+ * @param {import("express").Request} req
+ * @param {import("express").Response} res
+ * @returns {Promise<void>}
  */
 async function getPending(req, res) {
   try {
-    const userId = req.user?.id ?? null; // si ton auth met req.user
-    const orders = await shipmentsRepo.findBureauPendingOrders({ userId });
+    const userId = req.user?.id ?? null;
 
+    const orders = await shipmentsRepo.findBureauPendingOrders({ userId });
     const orderIds = orders.map((o) => o.id);
 
-    const shipRows =
-      await shipmentsRepo.findPendingShipmentsWithLines(orderIds);
-    const remainingRows = await shipmentsRepo.findRemainingByOrder(orderIds);
-    const recapRows = await shipmentsRepo.findRecapTotals(orderIds);
+    const [shipRows, remainingRows, recapRows] = await Promise.all([
+      shipmentsRepo.findPendingShipmentsWithLines(orderIds),
+      shipmentsRepo.findRemainingByOrder(orderIds),
+      shipmentsRepo.findRecapTotals(orderIds),
+    ]);
 
-    // Indexations
+    // Index shipments -> order -> shipment
     const shipmentsByOrder = new Map();
     for (const r of shipRows) {
       if (!shipmentsByOrder.has(r.order_id))
         shipmentsByOrder.set(r.order_id, new Map());
+
       const mapByShipment = shipmentsByOrder.get(r.order_id);
 
       if (!mapByShipment.has(r.shipment_id)) {
@@ -37,6 +42,7 @@ async function getPending(req, res) {
           lines: [],
         });
       }
+
       mapByShipment.get(r.shipment_id).lines.push({
         product_id: r.product_id,
         label: r.label,
@@ -46,6 +52,7 @@ async function getPending(req, res) {
       });
     }
 
+    // Index remaining -> order
     const remainingByOrder = new Map();
     for (const r of remainingRows) {
       if (!remainingByOrder.has(r.order_id))
@@ -59,6 +66,7 @@ async function getPending(req, res) {
       });
     }
 
+    // Index recap -> order
     const recapByOrder = new Map();
     for (const r of recapRows) {
       recapByOrder.set(r.order_id, {
@@ -100,16 +108,19 @@ async function getPending(req, res) {
 }
 
 /**
- * POST /orders/:orderId/shipments/ack
- * Ack tous les shipments non ack de la commande.
- * Archive la commande si elle est EXP_COMPLETE.
+ * Accuse réception (bureau) : ACK tous les shipments non ACK d'une commande.
+ * Archive la commande si expedition_status = EXP_COMPLETE.
+ * Route: POST /orders/:orderId/shipments/ack
+ *
+ * @param {import("express").Request} req
+ * @param {import("express").Response} res
+ * @returns {Promise<void>}
  */
 async function postAckForOrder(req, res) {
   const connection = await pool.getConnection();
   try {
     const orderId = asInt(req.params.orderId);
     if (!orderId || orderId <= 0) {
-      connection.release();
       return res.status(400).json({ error: "Paramètres invalides." });
     }
 
@@ -118,9 +129,7 @@ async function postAckForOrder(req, res) {
     const acked = await shipmentsRepo.ackPendingShipmentsForOrder(
       connection,
       orderId,
-      {
-        bureauAckBy: null, // plus tard: req.user?.id
-      },
+      { bureauAckBy: null }, // plus tard: req.user?.id
     );
 
     const archived = await shipmentsRepo.archiveOrderIfComplete(

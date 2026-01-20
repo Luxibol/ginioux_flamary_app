@@ -14,7 +14,7 @@ import OrderExpandedPanel from "../components/OrderExpandedPanel.jsx";
 import { formatDateFr, priorityClass, priorityLabel } from "../utils/orders.format.js";
 import {mapModalToPatchPayload, mapOrderDetailsToModal } from "../mappers/orders.mappers.js";
 
-// Options UI pour filtres (valeurs backend attendues dans query params).
+// Options UI : filtres
 const PRIORITIES = [
   { value: "", label: "Priorité (toutes)" },
   { value: "URGENT", label: "Urgent" },
@@ -30,6 +30,13 @@ const STATES = [
   { value: "EXPEDIEE", label: "Expédiée" },
 ];
 
+/**
+ * Orders (page).
+ * - Liste + filtres
+ * - Détails lazy-load (accordéon) + cache
+ * - Édition via modale, suppression
+ * @returns {import("react").JSX.Element}
+ */
 export default function Orders() {
   const [q, setQ] = useState("");
   const [priority, setPriority] = useState("");
@@ -47,11 +54,17 @@ export default function Orders() {
   const [selectedOrder, setSelectedOrder] = useState(null);
 
   const [expandedId, setExpandedId] = useState(null);
-  // Cache des détails par commande (évite de re-fetch quand on replie/déplie la même ligne).
+  /** Cache des détails par commande (évite le re-fetch). */
   const [detailsById, setDetailsById] = useState({});
   const [detailsLoadingId, setDetailsLoadingId] = useState(null);
   const [commentsOpenById, setCommentsOpenById] = useState({});
 
+  /**
+   * Applique les compteurs messages/non-lus à une commande en liste.
+   * @param {number} orderId
+   * @param {{ messagesCount?: number, unreadCount?: number }} counts
+   * @returns {void}
+   */
   const applyCounts = (orderId, counts) => {
     setRows((prev) =>
       prev.map((o) =>
@@ -69,6 +82,8 @@ export default function Orders() {
   /**
    * Ouvre/ferme l'accordéon d'une commande.
    * Si ouverture : charge les détails uniquement la première fois (lazy-load) puis met en cache.
+   * @param {any} o
+   * @returns {Promise<void>}
   */
   const toggleRow = async (o) => {
     const next = expandedId === o.id ? null : o.id;
@@ -96,6 +111,8 @@ export default function Orders() {
 
   /**
    * Supprime une commande (avec confirmation UI), puis recharge la liste.
+   * @param {any} o
+   * @returns {Promise<void>}
   */
   const onDelete = async (o) => {
     if (!confirm(`Supprimer la commande ${o.arc} ?`)) return;
@@ -120,7 +137,9 @@ export default function Orders() {
    * Ouvre la modale d'édition :
    * - fetch détails
    * - map API -> modèle de modale
-  */
+   * @param {any} o
+   * @returns {Promise<void>} 
+   */
   const openEdit = async (o) => {
     try {
       setLoading(true);
@@ -139,7 +158,8 @@ export default function Orders() {
   /**
     * Charge la liste des commandes actives selon les filtres.
     * Reset aussi l'accordéon + le cache détails pour repartir sur une liste propre.
-  */
+    * @returns {Promise<void>}
+    */
   const load = async () => {
     try {
       setLoading(true);
@@ -166,7 +186,6 @@ export default function Orders() {
   // Recharge automatiquement quand les filtres changent (hors recherche texte).
   useEffect(() => {
     load();
-    // On ne met pas `load` en dépendance pour éviter une boucle (load est recréée à chaque render).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [priority, state]);
 
@@ -175,7 +194,9 @@ export default function Orders() {
    * - PATCH la commande
    * - reload la liste
    * - recharge les détails de la commande pour garder le cache à jour
-  */
+   * @param {unknown} payload
+   * @returns {Promise<void>}
+    */
   const handleConfirmModal = async (payload) => {
     try {
       setLoading(true);
@@ -324,7 +345,6 @@ export default function Orders() {
                   const details = detailsById[o.id];
                   const loadingDetails = detailsLoadingId === o.id;
 
-                  // Chaque carte = une commande ; clic sur la ligne => toggle accordéon + chargement des détails si besoin.
                   return (
                     <div
                       key={o.id}
@@ -386,7 +406,7 @@ export default function Orders() {
                                   ) : null}
                                 </button>
                               ) : (
-                                // place réservée, invisible
+                                // placeholder
                                 <span className="pointer-events-none opacity-0">
                                   <Mail className="h-4 w-4" />
                                 </span>

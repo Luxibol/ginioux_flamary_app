@@ -1,4 +1,8 @@
-// Seuil pour distinguer BigBag vs SmallBag (kg par unité)
+/**
+ * Production - Constantes (groupes / seuils).
+ */
+
+// Seuil BigBag vs SmallBag (kg/unité)
 export const BIGBAG_MIN_KG = 500;
 
 export const GROUP_ORDER = {

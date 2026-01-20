@@ -1,3 +1,9 @@
+/**
+ * Page — Connexion
+ * - Formulaire de login + persistance (local/session)
+ * - Redirection selon rôle ou changement de mot de passe requis
+ * - Modale "mot de passe oublié" (info)
+ */
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import logo from "../../assets/pictures/logo.png";
@@ -7,6 +13,13 @@ import { landingPathForRole } from "../../utils/roleRouting.js";
 import AuthLayout from "../../components/auth/AuthLayout.jsx";
 import Seo from "../../components/seo/Seo.jsx";
 
+/**
+ * Modale d'information "mot de passe oublié".
+ * @param {object} props
+ * @param {boolean} props.open Affiche/masque la modale
+ * @param {()=>void} props.onClose Fermeture
+ * @returns {import("react").JSX.Element|null}
+ */
 function ForgotPasswordModal({ open, onClose }) {
   if (!open) return null;
 
@@ -40,6 +53,10 @@ function ForgotPasswordModal({ open, onClose }) {
   );
 }
 
+/**
+ * Page de connexion.
+ * @returns {import("react").JSX.Element}
+ */
 export default function LoginPage() {
   const navigate = useNavigate();
 
@@ -66,7 +83,7 @@ export default function LoginPage() {
         password,
       });
 
-      // stocke token + user
+      // Stocke la session (token + user) en localStorage ou sessionStorage
       setAuth(
         { token: res.token, user: res.user },
         { persist: remember ? "local" : "session" }

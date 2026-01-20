@@ -1,14 +1,14 @@
 /**
- * API "imports PDF" :
- * - previewImport : upload PDF -> preview + importId
- * - confirmImport : valide la preview -> création commande
- * - cancelImport : annule le preview côté serveur (nettoyage)
+ * Import PDF (API)
+ * - Prévisualisation (parsing) sans écriture en base
+ * - Confirmation : création de commande depuis la preview
+ * - Annulation : nettoyage serveur (preview)
  */
-import { apiFetch } from "./apiClient";
+import { apiFetch } from "./apiClient.js";
 
 /**
  * Prévisualise l'import d'un PDF (parsing) sans écriture en base.
- * ⚠️ Ne pas fixer Content-Type : le navigateur gère le boundary multipart/form-data.
+ * - Ne pas fixer Content-Type : le navigateur gère le boundary multipart/form-data.
  * @param {File} file PDF à analyser
  * @returns {Promise<any>}
  */
@@ -24,7 +24,7 @@ export async function previewImport(file) {
 
 /**
  * Confirme l'import d'une preview (écriture en base).
- * Cette fonction encapsule l'erreur pour renvoyer un format stable à l'UI : { ok, status, data }.
+ * - Retourne un format stable pour l'UI : { ok, status, data }.
  * @param {string} importId Identifiant de preview
  * @param {{ preview?: object, internalComment?: string }} payload Données envoyées au backend
  * @returns {Promise<{ok:boolean, status:number, data:any}>}

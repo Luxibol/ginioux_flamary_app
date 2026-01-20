@@ -1,3 +1,9 @@
+/**
+ * Admin — Employés
+ * - Liste des comptes (activation / désactivation)
+ * - Création, édition et reset mot de passe
+ * - Table desktop + cards mobile
+ */
 import { useEffect, useState } from "react";
 import { Plus, RefreshCw, Pencil, KeyRound } from "lucide-react";
 
@@ -8,6 +14,10 @@ import EmployeeCreateModal from "../components/EmployeeCreateModal.jsx";
 import EmployeeEditModal from "../components/EmployeeEditModal.jsx";
 import EmployeeResetPasswordModal from "../components/EmployeeResetPasswordModal.jsx";
 
+/**
+ * Page de gestion des employés (Admin).
+ * @returns {import("react").JSX.Element}
+ */
 export default function AdminEmployees() {
   // Data
   const [rows, setRows] = useState([]);
@@ -62,7 +72,7 @@ export default function AdminEmployees() {
     }
   }
 
-  // Reload auto sur role/active (q = Enter)
+  // Chargement initial
   useEffect(() => {
     load();
   }, []);
@@ -360,7 +370,7 @@ export default function AdminEmployees() {
         setFActive={setFActive}
         createdTempPassword={createdTempPassword}
         onClearTempPassword={() => {
-          // reset form quand on referme
+          // Réinitialise le formulaire
           setCreatedTempPassword("");
           setFFirstName("");
           setFLastName("");

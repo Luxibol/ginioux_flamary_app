@@ -1,9 +1,15 @@
+/**
+ * Bureau — Historique
+ * - Liste des commandes archivées (recherche + période)
+ * - Détails d’une commande au clic (lazy load + cache)
+ */
 import { useEffect, useState } from "react";
 import { ChevronDown, ChevronUp, RefreshCw } from "lucide-react";
 import { getArchivedOrders, getArchivedOrderHistory } from "../../../services/history.api.js";
 import { formatDateFr, priorityClass, priorityLabel } from "../utils/orders.format.js";
 import OrderCommentsThread from "../../../components/comments/OrderCommentsThread.jsx";
 
+/** Options de filtre de période (côté API historique). */
 const PERIODS = [
   { value: "ALL", label: "Tout" },
   { value: "7D", label: "7 jours" },
@@ -11,6 +17,11 @@ const PERIODS = [
   { value: "90D", label: "90 jours" },
 ];
 
+/**
+ * Formate une date/heure ISO pour l’UI (jj/mm/aaaa).
+ * @param {string|Date|null|undefined} v Valeur date
+ * @returns {string} Date formatée ou "—"
+ */
 function formatDateTimeFr(v) {
   if (!v) return "—";
   const d = new Date(v);
@@ -18,6 +29,10 @@ function formatDateTimeFr(v) {
   return d.toLocaleDateString("fr-FR", { year: "numeric", month: "2-digit", day: "2-digit" });
 }
 
+/**
+ * Page Historique (Bureau).
+ * @returns {import("react").JSX.Element}
+ */
 export default function HistoryBureau() {
   const [q, setQ] = useState("");
   const [period, setPeriod] = useState("ALL");
@@ -32,6 +47,11 @@ export default function HistoryBureau() {
   const [detailsById, setDetailsById] = useState({});
   const [detailsLoadingId, setDetailsLoadingId] = useState(null);
 
+  /**
+   * Charge la liste des commandes archivées selon q + period.
+   * Réinitialise l’expansion et le cache des détails.
+   * @returns {Promise<void>}
+   */
   const load = async () => {
     try {
       setLoading(true);
@@ -54,11 +74,17 @@ export default function HistoryBureau() {
     }
   };
 
+  // Rechargement automatique quand la période change (recherche via Entrée).
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [period]);
 
+  /**
+   * Ouvre/ferme une ligne et charge les détails au premier expand.
+   * @param {object} o Commande (row)
+   * @returns {Promise<void>}
+   */
   const toggleRow = async (o) => {
     const next = expandedId === o.id ? null : o.id;
     setExpandedId(next);

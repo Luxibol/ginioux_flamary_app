@@ -1,19 +1,25 @@
-// src/features/admin/components/ProductEditModal.jsx
+/**
+ * Modale — Admin Produits : édition.
+ */
+
 import { CATEGORIES } from "../utils/adminProducts.utils.js";
 
 /**
- * Modale - Édition d'un produit
- *
- * Props:
- * - open: boolean -> affiche/masque la modale
- * - loading: boolean -> désactive les actions pendant une requête
- * - editId: number|null -> id du produit en cours d’édition (affiché en header)
- * - eLabel, setELabel: champ libellé PDF
- * - eCategory, setECategory: champ catégorie
- * - eWeight, setEWeight: champ poids (string, conversion faite côté page)
- * - eActive, setEActive: champ actif (boolean)
- * - onClose: fermeture modale
- * - onSubmit: validation (typiquement onSaveEdit)
+ * Modale d'édition d'un produit.
+ * @param {object} props
+ * @param {boolean} props.open Affiche/masque la modale
+ * @param {boolean} props.loading Désactive les actions pendant une requête
+ * @param {string} props.eLabel Libellé PDF exact
+ * @param {(v:string)=>void} props.setELabel Setter libellé
+ * @param {string} props.eCategory Catégorie
+ * @param {(v:string)=>void} props.setECategory Setter catégorie
+ * @param {string} props.eWeight Poids (kg) saisi
+ * @param {(v:string)=>void} props.setEWeight Setter poids
+ * @param {boolean} props.eActive Actif/inactif
+ * @param {(v:boolean)=>void} props.setEActive Setter actif
+ * @param {()=>void} props.onClose Fermeture
+ * @param {()=>void} props.onSubmit Validation
+ * @returns {import("react").JSX.Element|null}
  */
 export default function ProductEditModal({
   open,
@@ -29,7 +35,7 @@ export default function ProductEditModal({
   onClose,
   onSubmit,
 }) {
-  // Si pas ouvert -> on ne rend rien (évite overlay + listeners inutiles)
+  
   if (!open) return null;
 
   return (

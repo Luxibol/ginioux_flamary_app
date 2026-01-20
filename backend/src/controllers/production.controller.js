@@ -1,8 +1,8 @@
 /**
- * Contrôleur Production
- * - GET /orders/production : commandes à produire
- * - PATCH /orders/:orderId/lines/:lineId/ready : MAJ quantité prête d'une ligne
+ * @file backend/src/controllers/production.controller.js
+ * @description Contrôleur production : commandes à produire + expéditions à charger + compteurs.
  */
+
 const ordersRepository = require("../repositories/orders.repository");
 
 function asInt(v) {
@@ -11,8 +11,6 @@ function asInt(v) {
   return Math.trunc(n);
 }
 
-const ALLOWED_PERIODS = ["ALL", "7D", "30D", "90D"];
-
 function periodToDays(period) {
   if (period === "7D") return 7;
   if (period === "30D") return 30;
@@ -20,6 +18,14 @@ function periodToDays(period) {
   return null;
 }
 
+/**
+ * Liste les commandes à produire (filtres + pagination).
+ * Route: GET /orders/production
+ *
+ * @param {import("express").Request} req
+ * @param {import("express").Response} res
+ * @returns {Promise<void>}
+ */
 async function getProductionOrders(req, res) {
   try {
     const q = (req.query.q || "").trim();
@@ -50,6 +56,14 @@ async function getProductionOrders(req, res) {
   }
 }
 
+/**
+ * Met à jour la quantité "prête" d'une ligne de commande.
+ * Route: PATCH /orders/:orderId/lines/:lineId/ready
+ *
+ * @param {import("express").Request} req
+ * @param {import("express").Response} res
+ * @returns {Promise<void>}
+ */
 async function patchOrderLineReady(req, res) {
   try {
     const orderId = asInt(req.params.orderId);
@@ -84,6 +98,14 @@ async function patchOrderLineReady(req, res) {
   }
 }
 
+/**
+ * Liste les expéditions à charger (filtres + pagination).
+ * Route: GET /orders/shipments
+ *
+ * @param {import("express").Request} req
+ * @param {import("express").Response} res
+ * @returns {Promise<void>}
+ */
 async function getProductionShipments(req, res) {
   try {
     const q = (req.query.q || "").trim();
@@ -114,6 +136,14 @@ async function getProductionShipments(req, res) {
   }
 }
 
+/**
+ * Met à jour la quantité "chargée" d'une ligne (expédition).
+ * Route: PATCH /orders/:orderId/lines/:lineId/loaded
+ *
+ * @param {import("express").Request} req
+ * @param {import("express").Response} res
+ * @returns {Promise<void>}
+ */
 async function patchOrderLineLoaded(req, res) {
   try {
     const orderId = asInt(req.params.orderId);
@@ -148,6 +178,14 @@ async function patchOrderLineLoaded(req, res) {
   }
 }
 
+/**
+ * Déclare un départ camion pour une commande.
+ * Route: POST /orders/:orderId/shipments/depart
+ *
+ * @param {import("express").Request} req
+ * @param {import("express").Response} res
+ * @returns {Promise<void>}
+ */
 async function postDepartTruck(req, res) {
   try {
     const orderId = asInt(req.params.orderId);
@@ -171,6 +209,14 @@ async function postDepartTruck(req, res) {
   }
 }
 
+/**
+ * Retourne les compteurs/volumes produits sur une période.
+ * Route: GET /orders/produced
+ *
+ * @param {import("express").Request} req
+ * @param {import("express").Response} res
+ * @returns {Promise<void>}
+ */
 async function getProducedCount(req, res) {
   try {
     const period = String(req.query.period || "7D").toUpperCase();

@@ -1,6 +1,6 @@
 /**
- * Routes produits
- * - GET /products/search?q=... : recherche de produits (par libellé PDF)
+ * @file backend/src/routes/products.routes.js
+ * @description Routes Produits : recherche + CRUD (admin/bureau).
  */
 const express = require("express");
 const productsController = require("../controllers/products.controller");
@@ -18,22 +18,22 @@ router.get("/search", productsController.searchProducts);
 router.get(
   "/",
   requireRole("ADMIN", "BUREAU"),
-  productsController.listProducts
+  productsController.listProducts,
 );
 router.post(
   "/",
   requireRole("ADMIN", "BUREAU"),
-  productsController.createProduct
+  productsController.createProduct,
 );
 router.patch(
   "/:id",
   requireRole("ADMIN", "BUREAU"),
-  productsController.patchProduct
+  productsController.patchProduct,
 );
 router.delete(
   "/:id",
   requireRole("ADMIN", "BUREAU"),
-  productsController.deleteProduct
+  productsController.deleteProduct,
 );
 
 module.exports = router;

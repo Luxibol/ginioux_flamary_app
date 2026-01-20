@@ -1,11 +1,15 @@
+/**
+ * @file backend/src/repositories/shipments.repository.js
+ * @description Repository expéditions (Bureau/Stats) : commandes en attente d’ACK + détails + archivage + stats.
+ */
 const { pool } = require("../config/db");
 
 /**
- * Récupère les commandes ayant au moins un shipment non ack par le bureau.
- * Retourne des lignes "order header" avec last_departed_at.
+ * Liste les commandes ayant au moins une expédition non accusée réception (Bureau).
+ * Inclut messagesCount + unreadCount pour userId.
+ * @param {{userId:number}} payload
+ * @returns {Promise<object[]>}
  */
-// shipments.repository.js
-
 async function findBureauPendingOrders({ userId } = {}) {
   if (!userId)
     throw new Error("userId manquant pour les compteurs commentaires");
@@ -59,8 +63,9 @@ async function findBureauPendingOrders({ userId } = {}) {
 }
 
 /**
- * Récupère tous les shipments non ack + leurs lignes (pour une liste d'orders).
+ * Liste les expéditions non ACK (Bureau) + leurs lignes pour une liste de commandes.
  * @param {number[]} orderIds
+ * @returns {Promise<object[]>}
  */
 async function findPendingShipmentsWithLines(orderIds) {
   if (!Array.isArray(orderIds) || orderIds.length === 0) return [];
@@ -93,8 +98,9 @@ async function findPendingShipmentsWithLines(orderIds) {
 }
 
 /**
- * Récupère le "reste à expédier" par produit pour une liste d'orders.
+ * Liste le reste à expédier (ordered - shipped) par produit pour une liste de commandes.
  * @param {number[]} orderIds
+ * @returns {Promise<object[]>}
  */
 async function findRemainingByOrder(orderIds) {
   if (!Array.isArray(orderIds) || orderIds.length === 0) return [];
@@ -120,8 +126,9 @@ async function findRemainingByOrder(orderIds) {
 }
 
 /**
- * Récap totals shipped/ordered pour une liste d'orders.
+ * Retourne les totaux ordered/shipped pour une liste de commandes.
  * @param {number[]} orderIds
+ * @returns {Promise<object[]>}
  */
 async function findRecapTotals(orderIds) {
   if (!Array.isArray(orderIds) || orderIds.length === 0) return [];
@@ -143,8 +150,11 @@ async function findRecapTotals(orderIds) {
 }
 
 /**
- * Ack bureau : marque tous les shipments non ack d'une commande.
- * Retourne le nombre de shipments ack.
+ * Accuse réception côté Bureau : marque tous les shipments non ACK d'une commande.
+ * @param {import("mysql2/promise").PoolConnection} connection
+ * @param {number} orderId
+ * @param {{bureauAckBy:number|null}} options
+ * @returns {Promise<number>} nombre de shipments accusés
  */
 async function ackPendingShipmentsForOrder(
   connection,
@@ -166,8 +176,10 @@ async function ackPendingShipmentsForOrder(
 }
 
 /**
- * Archive la commande si EXP_COMPLETE.
- * Retourne true si archivée.
+ * Archive une commande si son expedition_status est EXP_COMPLETE.
+ * @param {import("mysql2/promise").PoolConnection} connection
+ * @param {number} orderId
+ * @returns {Promise<boolean>} true si archivée
  */
 async function archiveOrderIfComplete(connection, orderId) {
   const [r] = await connection.query(
@@ -184,6 +196,11 @@ async function archiveOrderIfComplete(connection, orderId) {
   return (r.affectedRows || 0) > 0;
 }
 
+/**
+ * Compte le nombre de commandes distinctes ayant eu un départ camion sur une période.
+ * @param {number} days
+ * @returns {Promise<number>}
+ */
 async function countDepartedDistinctOrdersSinceDays(days) {
   const [rows] = await pool.query(
     `
@@ -196,6 +213,11 @@ async function countDepartedDistinctOrdersSinceDays(days) {
   return Number(rows?.[0]?.c ?? 0);
 }
 
+/**
+ * Calcule les quantités expédiées par catégorie sur une période (BIGBAG/ROCHE).
+ * @param {number} days
+ * @returns {Promise<{bigbag:number, roche:number}>}
+ */
 async function sumDepartedTotalsSinceDays(days) {
   const [rows] = await pool.query(
     `

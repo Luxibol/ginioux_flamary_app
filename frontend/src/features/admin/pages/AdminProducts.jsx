@@ -1,3 +1,8 @@
+/**
+ * Admin — Produits
+ * - Liste + filtres (q, category, active)
+ * - Création / édition / activation / suppression
+ */
 import { useEffect, useState } from "react";
 import { Plus, Trash2, RefreshCw, Pencil } from "lucide-react";
 
@@ -14,18 +19,8 @@ import ProductEditModal from "../components/ProductEditModal.jsx";
 import ProductsFilters from "../components/ProductsFilters.jsx";
 
 /**
- * Page Admin - Gestion des produits
- *
- * Fonctions:
- * - Liste des produits (+ filtres)
- * - Création (modale)
- * - Modification (modale)
- * - Activation/Désactivation
- * - Suppression (si non référencé)
- *
- * Remarque UX:
- * - La recherche "q" est déclenchée à l'appui sur Entrée (via ProductsFilters)
- * - category/active déclenchent un reload automatiquement (useEffect)
+ * Page de gestion des produits (Admin).
+ * @returns {import("react").JSX.Element}
  */
 export default function AdminProducts() {
   // Filtres
@@ -57,7 +52,9 @@ export default function AdminProducts() {
   const [eActive, setEActive] = useState(true);
 
   /**
-   * Ouvre la modale d'édition en pré-remplissant les champs avec le produit sélectionné.
+   * Ouvre la modale d'édition et pré-remplit les champs.
+   * @param {object} p Produit sélectionné
+   * @returns {void}
    */
   function openEditModal(p) {
     setEditId(p.id);
@@ -69,9 +66,8 @@ export default function AdminProducts() {
   }
 
   /**
-   * Chargement de la liste des produits depuis l'API.
-   * - Utilise q/category/active comme filtres côté backend
-   * - Met à jour rows + count
+   * Charge la liste des produits selon les filtres.
+   * @returns {Promise<void>}
    */
   async function load() {
     try {
@@ -95,19 +91,15 @@ export default function AdminProducts() {
     }
   }
 
-  /**
-   * Rechargement automatique quand category/active changent.
-   * La recherche "q" est déclenchée manuellement (Entrée) via ProductsFilters.
-   */
+  // Rechargement automatique sur filtres (category/active)
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [category, active]);
 
   /**
-   * Création d'un produit via l'API.
-   * - Valide libellé et poids
-   * - Ferme la modale, reset le formulaire, recharge la liste
+   * Crée un produit puis recharge la liste.
+   * @returns {Promise<void>}
    */
   async function onCreate() {
     try {
@@ -127,7 +119,7 @@ export default function AdminProducts() {
         is_active: fActive ? 1 : 0,
       });
 
-      // reset formulaire
+      // Réinitialise le formulaire
       setOpenCreate(false);
       setFLabel("");
       setFCategory("AUTRE");
@@ -143,9 +135,8 @@ export default function AdminProducts() {
   }
 
   /**
-   * Sauvegarde des modifications (modale édition).
-   * - Patch partiel côté API
-   * - Ferme la modale et recharge
+   * Enregistre les modifications d'un produit puis recharge la liste.
+   * @returns {Promise<void>}
    */
   async function onSaveEdit() {
     try {
@@ -179,8 +170,9 @@ export default function AdminProducts() {
   }
 
   /**
-   * Toggle actif/inactif.
-   * - On envoie uniquement is_active, le backend patch.
+   * Active/désactive un produit.
+   * @param {object} p Produit
+   * @returns {Promise<void>}
    */
   async function onToggleActive(p) {
     try {
@@ -196,9 +188,9 @@ export default function AdminProducts() {
   }
 
   /**
-   * Suppression produit.
-   * - Confirm() côté UI
-   * - Backend renvoie 409 si produit référencé (message affiché via error)
+   * Supprime un produit (avec confirmation) puis recharge.
+   * @param {object} p Produit
+   * @returns {Promise<void>}
    */
   async function onDelete(p) {
     if (!confirm(`Supprimer le produit ?\n\n${p.pdf_label_exact}`)) return;

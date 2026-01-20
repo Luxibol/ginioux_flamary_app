@@ -1,6 +1,14 @@
+/**
+ * Page — Production Commandes
+ * - Wrapper SEO + rendu de la liste des commandes à produire
+ */
 import Seo from "../../components/seo/Seo.jsx";
 import Orders from "../../features/production/pages/Orders.jsx";
 
+/**
+ * Wrapper de page Production Commandes (SEO).
+ * @returns {import("react").JSX.Element}
+ */
 export default function ProductionOrdersPage() {
   return (
     <>

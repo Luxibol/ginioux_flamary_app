@@ -1,6 +1,15 @@
+/**
+ * Page — 404
+ * - Affiche une page introuvable avec liens de retour
+ * - Définit le SEO (title/description/canonical)
+ */
 import { Link } from "react-router-dom";
 import Seo from "../components/seo/Seo.jsx";
 
+/**
+ * Page 404 (Not Found).
+ * @returns {import("react").JSX.Element}
+ */
 export default function NotFoundPage() {
   return (
     <div className="min-h-screen bg-gf-bg p-6">

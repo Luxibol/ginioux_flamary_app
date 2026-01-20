@@ -1,3 +1,7 @@
+/**
+ * @file backend/src/controllers/auth.controller.js
+ * @description Auth : login JWT + refresh token (cookie), rotation, changement de mot de passe, logout.
+ */
 const bcrypt = require("bcrypt");
 const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
@@ -12,6 +16,11 @@ const {
   LEGACY_REFRESH_COOKIE_PATH,
 } = require("../config/auth.constants");
 
+/**
+ * Génère un JWT d'accès (sub=user.id, role=user.role).
+ * @param {{id:number, role:string}} user
+ * @returns {string}
+ */
 function signAccessToken(user) {
   const secret = process.env.JWT_SECRET;
   if (!secret) throw new Error("JWT_SECRET manquant dans .env");
@@ -22,7 +31,7 @@ function signAccessToken(user) {
 }
 
 function newRefreshToken() {
-  return crypto.randomBytes(64).toString("hex"); // 128 chars
+  return crypto.randomBytes(64).toString("hex"); // 128 caractères hex
 }
 
 function sha256Hex(value) {
@@ -62,6 +71,14 @@ function clearRefreshCookie(res) {
   });
 }
 
+/**
+ * Authentifie un utilisateur, émet un access token JWT et un refresh token en cookie (rotation).
+ * Route: POST /auth/login
+ *
+ * @param {import("express").Request} req
+ * @param {import("express").Response} res
+ * @returns {Promise<void>}
+ */
 async function login(req, res) {
   try {
     const loginInput = String(req.body.login || "")
@@ -120,6 +137,14 @@ async function login(req, res) {
   }
 }
 
+/**
+ * Change le mot de passe de l'utilisateur connecté.
+ * Route: POST /auth/change-password
+ *
+ * @param {import("express").Request} req
+ * @param {import("express").Response} res
+ * @returns {Promise<void>}
+ */
 async function changePassword(req, res) {
   try {
     const userId = req.user?.id;
@@ -142,6 +167,14 @@ async function changePassword(req, res) {
   }
 }
 
+/**
+ * Renouvelle un access token via refresh token (cookie) avec rotation anti-reuse.
+ * Route: POST /auth/refresh
+ *
+ * @param {import("express").Request} req
+ * @param {import("express").Response} res
+ * @returns {Promise<void>}
+ */
 async function refresh(req, res) {
   try {
     const token = req.cookies?.[REFRESH_COOKIE_NAME];
@@ -200,6 +233,14 @@ async function refresh(req, res) {
   }
 }
 
+/**
+ * Révoque le refresh token courant (si présent) et supprime le cookie.
+ * Route: POST /auth/logout
+ *
+ * @param {import("express").Request} req
+ * @param {import("express").Response} res
+ * @returns {Promise<void>}
+ */
 async function logout(req, res) {
   try {
     const token = req.cookies?.[REFRESH_COOKIE_NAME];

@@ -1,9 +1,13 @@
+/**
+ * @file backend/src/repositories/users.repository.js
+ * @description Repository users : accès BDD utilisateurs (auth, admin users, gestion comptes).
+ */
 const { pool } = require("../config/db");
 
 /**
  * Récupère un utilisateur par login.
  * @param {string} login
- * @returns {Promise<object|null>}
+ * @returns {Promise<object|null>} Utilisateur avec password_hash (auth), sinon null.
  */
 async function findByLogin(login) {
   const [rows] = await pool.query(
@@ -11,7 +15,7 @@ async function findByLogin(login) {
      FROM users
      WHERE login = ?
      LIMIT 1`,
-    [login]
+    [login],
   );
   return rows[0] || null;
 }
@@ -19,7 +23,7 @@ async function findByLogin(login) {
 /**
  * Récupère un utilisateur par id (sans password).
  * @param {number} id
- * @returns {Promise<object|null>}
+ * @returns {Promise<object|null>} Utilisateur sans password_hash, sinon null.
  */
 async function findById(id) {
   const [rows] = await pool.query(
@@ -27,7 +31,7 @@ async function findById(id) {
      FROM users
      WHERE id = ?
      LIMIT 1`,
-    [id]
+    [id],
   );
   return rows[0] || null;
 }
@@ -37,33 +41,45 @@ async function findById(id) {
  * @param {number} id
  * @param {string} passwordHash
  * @param {number} mustChange 0|1
+ * @returns {Promise<boolean>}
  */
 async function updatePassword(id, passwordHash, mustChange) {
   const [res] = await pool.query(
     `UPDATE users
      SET password_hash = ?, must_change_password = ?
      WHERE id = ?`,
-    [passwordHash, mustChange ? 1 : 0, id]
+    [passwordHash, mustChange ? 1 : 0, id],
   );
   return res.affectedRows === 1;
 }
 
+/**
+ * Vérifie si un login existe (option : exclure un userId).
+ * @param {string} login
+ * @param {{excludeUserId?: number}} [options]
+ * @returns {Promise<boolean>}
+ */
 async function existsLogin(login, { excludeUserId } = {}) {
   if (excludeUserId) {
     const [rows] = await pool.query(
       `SELECT 1 AS ok FROM users WHERE login = ? AND id <> ? LIMIT 1`,
-      [login, excludeUserId]
+      [login, excludeUserId],
     );
     return rows.length > 0;
   }
 
   const [rows] = await pool.query(
     `SELECT 1 AS ok FROM users WHERE login = ? LIMIT 1`,
-    [login]
+    [login],
   );
   return rows.length > 0;
 }
 
+/**
+ * Liste les utilisateurs avec filtres (q, role, active) + compteur total.
+ * @param {{q?:string, role?:string, active?:0|1}} [filters]
+ * @returns {Promise<{rows: object[], count: number}>}
+ */
 async function listUsers({ q, role, active } = {}) {
   const where = [];
   const params = [];
@@ -91,17 +107,22 @@ async function listUsers({ q, role, active } = {}) {
      FROM users
      ${whereSql}
      ORDER BY last_name ASC, first_name ASC`,
-    params
+    params,
   );
 
   const [c] = await pool.query(
     `SELECT COUNT(*) AS count FROM users ${whereSql}`,
-    params
+    params,
   );
 
   return { rows, count: Number(c[0]?.count || 0) };
 }
 
+/**
+ * Crée un utilisateur et retourne l'utilisateur créé (sans password_hash).
+ * @param {{first_name:string, last_name:string, login:string, password_hash:string, role:string, is_active:number|boolean, must_change_password:number|boolean}} payload
+ * @returns {Promise<object>}
+ */
 async function createUser({
   first_name,
   last_name,
@@ -122,7 +143,7 @@ async function createUser({
       role,
       is_active ? 1 : 0,
       must_change_password ? 1 : 0,
-    ]
+    ],
   );
 
   const id = res.insertId;
@@ -130,6 +151,12 @@ async function createUser({
   return user;
 }
 
+/**
+ * Met à jour partiellement un utilisateur (champs autorisés : first_name, last_name, login, role, is_active).
+ * @param {number} id
+ * @param {object} patch
+ * @returns {Promise<boolean>}
+ */
 async function patchUser(id, patch) {
   const fields = [];
   const params = [];
@@ -148,7 +175,7 @@ async function patchUser(id, patch) {
 
   const [res] = await pool.query(
     `UPDATE users SET ${fields.join(", ")} WHERE id = ?`,
-    params
+    params,
   );
 
   return res.affectedRows === 1;

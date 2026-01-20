@@ -1,3 +1,7 @@
+/**
+ * @file backend/src/controllers/adminUsers.controller.js
+ * @description Admin users : liste, création, édition, reset mot de passe (RBAC géré au niveau routes).
+ */
 const bcrypt = require("bcrypt");
 const crypto = require("crypto");
 const usersRepo = require("../repositories/users.repository");
@@ -29,7 +33,6 @@ async function ensureUniqueLogin(base) {
   let login = base;
   let i = 2;
 
-  // base vide => pas OK
   if (!login)
     throw new Error("Login automatique impossible (nom/prénom invalides).");
 
@@ -45,6 +48,10 @@ async function ensureUniqueLogin(base) {
   }
 }
 
+/**
+ * Génère un mot de passe temporaire lisible (sans caractères ambigus).
+ * @returns {string}
+ */
 function generateTempPassword() {
   // Style "G7-FR92-AB3Q" (3 groupes: 2-4-4)
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // sans 0/O/1/I
@@ -59,6 +66,14 @@ function generateTempPassword() {
   return `${pick(2)}-${pick(4)}-${pick(4)}`;
 }
 
+/**
+ * Liste les utilisateurs avec filtres (q, role, active).
+ * Route: GET /admin/users
+ *
+ * @param {import("express").Request} req
+ * @param {import("express").Response} res
+ * @returns {Promise<void>}
+ */
 async function listUsers(req, res) {
   try {
     const q = normStr(req.query.q);
@@ -85,6 +100,14 @@ async function listUsers(req, res) {
   }
 }
 
+/**
+ * Crée un utilisateur (login manuel ou auto) et renvoie un mot de passe temporaire (affiché 1 seule fois).
+ * Route: POST /admin/users
+ *
+ * @param {import("express").Request} req
+ * @param {import("express").Response} res
+ * @returns {Promise<void>}
+ */
 async function createUser(req, res) {
   try {
     const first_name = normStr(req.body.first_name);
@@ -139,6 +162,14 @@ async function createUser(req, res) {
   }
 }
 
+/**
+ * Met à jour partiellement un utilisateur (nom, prénom, role, active, login).
+ * Route: PATCH /admin/users/:id
+ *
+ * @param {import("express").Request} req
+ * @param {import("express").Response} res
+ * @returns {Promise<void>}
+ */
 async function patchUser(req, res) {
   try {
     const id = asInt(req.params.id);
@@ -196,6 +227,14 @@ async function patchUser(req, res) {
   }
 }
 
+/**
+ * Réinitialise le mot de passe d'un utilisateur : génère un temporaire et force le changement au prochain login.
+ * Route: POST /admin/users/:id/reset-password
+ *
+ * @param {import("express").Request} req
+ * @param {import("express").Response} res
+ * @returns {Promise<void>}
+ */
 async function resetPassword(req, res) {
   try {
     const id = asInt(req.params.id);
