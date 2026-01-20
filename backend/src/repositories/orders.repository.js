@@ -805,13 +805,23 @@ async function updateOrderLineReady(orderId, lineId, readyQty) {
   try {
     await connection.beginTransaction();
 
-    // 1) Vérifie la ligne et récupère la quantité commandée
+    // 🔒 Sérialise toutes les MAJ sur une même commande (évite le snapshot "stale")
+    const [orderLock] = await connection.query(
+      `SELECT id FROM orders WHERE id = ? FOR UPDATE`,
+      [orderId],
+    );
+    if (orderLock.length === 0) {
+      await connection.rollback();
+      return { notFound: true };
+    }
+
+    // 1) Vérifie la ligne + récupère ordered + shipped (et lock la ligne)
     const [lineRows] = await connection.query(
       `
-      SELECT quantity_ordered
+      SELECT quantity_ordered, quantity_shipped
       FROM order_products
       WHERE id = ? AND order_id = ?
-      LIMIT 1
+      FOR UPDATE
       `,
       [lineId, orderId],
     );
@@ -831,27 +841,24 @@ async function updateOrderLineReady(orderId, lineId, readyQty) {
       UPDATE order_products
       SET quantity_ready = ?
       WHERE id = ? AND order_id = ?
-      LIMIT 1
       `,
       [nextReady, lineId, orderId],
     );
 
     // 3) Toucher au ready invalide une validation précédente
     await connection.query(
-      `UPDATE orders SET production_validated_at = NULL WHERE id = ? LIMIT 1`,
+      `UPDATE orders SET production_validated_at = NULL WHERE id = ?`,
       [orderId],
     );
 
-    // 4) Recalc statut production
+    // 4) Recalc statut production (voit maintenant un état cohérent)
     const productionStatus = await recalcAndUpdateProductionStatus(
       connection,
       orderId,
     );
 
-    // 5) Commit (sinon rien n'est persisté)
     await connection.commit();
 
-    // 6) Retourne order + lines (utile côté front)
     const order = await findOrderById(orderId);
     const lines = await findOrderLinesByOrderId(orderId);
 

@@ -105,50 +105,45 @@ export default function ProductionOrderCard({
   return (
     <section className="rounded-2xl border border-gf-border bg-gf-surface shadow-sm overflow-hidden">
       {/* Header */}
-      <div
-        role="button"
-        tabIndex={0}
-        onClick={onToggle}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") onToggle?.();
-          if (e.key === " ") {
-            e.preventDefault();
-            onToggle?.();
-          }
-        }}
-        className="relative w-full select-none text-left px-4 py-3 pr-14 flex items-start gap-3"
-      >
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center justify-between gap-2">
-            <h2 className="text-[14px] font-semibold text-gf-title truncate">
-              {order?.company}
-            </h2>
-            <span className="inline-flex items-center gap-2 text-[12px] text-gf-subtitle shrink-0">
-              <span
-                className={[
-                  "h-2.5 w-2.5 rounded-full",
-                  dotClassByStatus(statusKey),
-                ].join(" ")}
-              />
-              {statusLabelOverride ?? labelByStatus(statusKey)}
-            </span>
+      <div className="relative">
+        {/* Zone cliquable (accordéon) = vrai bouton */}
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-expanded={!!expanded}
+          className="relative w-full select-none text-left px-4 py-3 pr-14 flex items-start gap-3"
+        >
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="text-[14px] font-semibold text-gf-title truncate">
+                {order?.company}
+              </h2>
+              <span className="inline-flex items-center gap-2 text-[12px] text-gf-subtitle shrink-0">
+                <span
+                  className={[
+                    "h-2.5 w-2.5 rounded-full",
+                    dotClassByStatus(statusKey),
+                  ].join(" ")}
+                />
+                {statusLabelOverride ?? labelByStatus(statusKey)}
+              </span>
+            </div>
+
+            <div className="mt-1 text-xs text-gf-text">
+              N° ARC <span className="text-gf-muted">{order?.arc}</span>
+            </div>
+
+            <div className="mt-0.5 text-xs text-gf-muted flex items-center gap-2 flex-wrap">
+              <span>Enlèvement : {order?.pickupDate ?? "—"}</span>
+              <span className={priorityClass(order?.priority)}>
+                - {order?.priorityLabel}
+              </span>
+            </div>
+
+            <div className="mt-0.5 text-xs text-gf-muted">{order?.summary}</div>
           </div>
 
-          <div className="mt-1 text-xs text-gf-text">
-            N° ARC <span className="text-gf-muted">{order?.arc}</span>
-          </div>
-
-          <div className="mt-0.5 text-xs text-gf-muted flex items-center gap-2 flex-wrap">
-            <span>Enlèvement : {order?.pickupDate ?? "—"}</span>
-            <span className={priorityClass(order?.priority)}>
-              - {order?.priorityLabel}
-            </span>
-          </div>
-
-          <div className="mt-0.5 text-xs text-gf-muted">{order?.summary}</div>
-        </div>
-
-        {/* Chevron (haut droite) */}
+          {/* Chevron (haut droite) */}
           <div className="absolute top-3 right-3">
             {expanded ? (
               <ChevronUp className="h-5 w-5 text-gf-muted" />
@@ -156,36 +151,37 @@ export default function ProductionOrderCard({
               <ChevronDown className="h-5 w-5 text-gf-muted" />
             )}
           </div>
+        </button>
 
-          {/* Enveloppe (bas droite) */}
-          <div className="absolute bottom-3 right-3">
-            <div className="relative h-9 w-9 grid place-items-center">
-              {hasComments ? (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    openCardAndScrollToComments();
-                  }}
-                  className="relative h-9 w-9 grid place-items-center rounded-lg hover:bg-gf-orange/10"
-                  aria-label="Voir les commentaires"
-                  title="Messages"
-                >
-                  <Mail className="h-5 w-5 text-gf-orange" />
-                  {unreadCount > 0 ? (
-                    <span className="absolute -top-1 -left-1 h-5 min-w-5 px-1 rounded-full bg-gf-orange text-white text-[10px] grid place-items-center">
-                      {unreadCount}
-                    </span>
-                  ) : null}
-                </button>
-              ) : (
-                // place réservée (invisible)
-                <span className="pointer-events-none opacity-0">
-                  <Mail className="h-5 w-5" />
-                </span>
-              )}
-            </div>
+        {/* Enveloppe (bas droite) => hors du bouton header */}
+        <div className="absolute bottom-3 right-3">
+          <div className="relative h-9 w-9 grid place-items-center">
+            {hasComments ? (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openCardAndScrollToComments();
+                }}
+                className="relative h-9 w-9 grid place-items-center rounded-lg hover:bg-gf-orange/10"
+                aria-label="Voir les commentaires"
+                title="Messages"
+              >
+                <Mail className="h-5 w-5 text-gf-orange" />
+                {unreadCount > 0 ? (
+                  <span className="absolute -top-1 -left-1 h-5 min-w-5 px-1 rounded-full bg-gf-orange text-white text-[10px] grid place-items-center">
+                    {unreadCount}
+                  </span>
+                ) : null}
+              </button>
+            ) : (
+              // place réservée (invisible)
+              <span className="pointer-events-none opacity-0">
+                <Mail className="h-5 w-5" />
+              </span>
+            )}
           </div>
+        </div>
       </div>
 
       {/* Body */}
