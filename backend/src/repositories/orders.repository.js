@@ -488,9 +488,10 @@ async function updateOrderAndLinesById(orderId, patch = {}, lines = null) {
 
     if (Array.isArray(lines)) {
       const [existing] = await connection.query(
-        `SELECT id, product_id, quantity_ready, quantity_shipped
-         FROM order_products
-         WHERE order_id = ?`,
+        `SELECT id, product_id, quantity_ready, quantity_shipped, quantity_loaded
+        FROM order_products
+        WHERE order_id = ?
+        FOR UPDATE`,
         [orderId],
       );
 
@@ -500,14 +501,15 @@ async function updateOrderAndLinesById(orderId, patch = {}, lines = null) {
       // 1) Suppressions (lignes absentes du payload)
       for (const ex of existing) {
         if (!incomingIds.has(ex.id)) {
-          if (
-            Number(ex.quantity_ready) > 0 ||
-            Number(ex.quantity_shipped) > 0
-          ) {
+          const shipped = Number(ex.quantity_shipped || 0);
+          const loaded = Number(ex.quantity_loaded || 0);
+
+          if (shipped > 0 || loaded > 0) {
             throw new Error(
-              "Impossible de supprimer une ligne déjà en préparation/expédiée.",
+              "Impossible de supprimer une ligne déjà expédiée (ou chargée camion).",
             );
           }
+          // ready peut être > 0 : OK (ligne produite supprimable si non expédiée)
 
           const [del] = await connection.query(
             `DELETE FROM order_products WHERE id = ? AND order_id = ? LIMIT 1`,
@@ -526,12 +528,17 @@ async function updateOrderAndLinesById(orderId, patch = {}, lines = null) {
 
           const ready = Number(ex.quantity_ready || 0);
           const shipped = Number(ex.quantity_shipped || 0);
+          const loaded = Number(ex.quantity_loaded || 0);
 
-          if (l.quantity < ready || l.quantity < shipped) {
+          const minAllowed = shipped + loaded; // engagé (expédié + déjà chargé)
+          if (l.quantity < minAllowed) {
             throw new Error(
-              "Quantité commandée ne peut pas être < quantité prête/expédiée.",
+              "Quantité commandée ne peut pas être < quantité expédiée/chargée.",
             );
           }
+
+          // Si on baisse la quantité commandée sous ready, on baisse ready aussi
+          const nextReady = Math.min(ready, l.quantity);
 
           if (
             Number(ex.product_id) !== Number(l.productId) &&
@@ -544,10 +551,10 @@ async function updateOrderAndLinesById(orderId, patch = {}, lines = null) {
 
           const [up] = await connection.query(
             `UPDATE order_products
-             SET product_id = ?, quantity_ordered = ?
-             WHERE id = ? AND order_id = ?
-             LIMIT 1`,
-            [l.productId, l.quantity, l.id, orderId],
+            SET product_id = ?, quantity_ordered = ?, quantity_ready = ?
+            WHERE id = ? AND order_id = ?
+            LIMIT 1`,
+            [l.productId, l.quantity, nextReady, l.id, orderId],
           );
           if (up.affectedRows === 0)
             throw new Error("Mise à jour ligne impossible");
@@ -569,6 +576,7 @@ async function updateOrderAndLinesById(orderId, patch = {}, lines = null) {
 
       // 3) Recalcul statut production APRÈS sync complète
       await recalcAndUpdateProductionStatus(connection, orderId);
+      await recalcAndUpdateExpeditionStatus(connection, orderId);
     }
 
     await connection.commit();
