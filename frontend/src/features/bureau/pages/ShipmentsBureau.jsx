@@ -6,6 +6,7 @@ import {
 } from "../../../services/shipments.api.js";
 import { formatDateFr } from "../utils/orders.format.js";
 import OrderCommentsThread from "../../../components/comments/OrderCommentsThread.jsx";
+import { formatKg, formatTons } from "../utils/weight.format.js";
 
 function formatDateTimeFr(v) {
   if (!v) return "—";
@@ -18,6 +19,21 @@ function formatDateTimeFr(v) {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+function sumPendingWeightKg(pendingShipments = []) {
+  let total = 0;
+
+  for (const s of pendingShipments || []) {
+    for (const l of s.lines || []) {
+      const qty = Number(l.quantity_loaded ?? 0);
+      const w = Number(l.weight_per_unit_kg ?? 0);
+      if (!Number.isFinite(qty) || !Number.isFinite(w)) continue;
+      total += qty * w;
+    }
+  }
+
+  return total;
 }
 
 function etatLabel(expeditionStatus) {
@@ -166,6 +182,7 @@ export default function ShipmentsBureau() {
                 {rows.map((r) => {
                   const o = r.order;
                   const isOpen = expandedId === o.id;
+                  const pendingWeightKg = sumPendingWeightKg(r.pending_shipments);
 
                   return (
                     <div
@@ -204,7 +221,6 @@ export default function ShipmentsBureau() {
 
                           <div className="flex justify-center items-center gap-2">
                             {/* Enveloppe + badge (place réservée) */}
-                            {/* Enveloppe */}
                             <div className="relative h-8 w-8 grid place-items-center">
                               {Number(o.messagesCount ?? 0) > 0 ? (
                                 <button
@@ -295,6 +311,17 @@ export default function ShipmentsBureau() {
                                   {r.recap?.shipped_total ?? 0} /{" "}
                                   {r.recap?.ordered_total ?? 0} expédiés
                                 </span>
+                                 <span className="text-gf-subtitle">
+                                    {" — "}
+                                    <span className="text-gf-title font-medium">
+                                      {formatKg(pendingWeightKg)}
+                                    </span>
+                                    {" ("}
+                                    <span className="text-gf-title font-medium">
+                                      {formatTons(pendingWeightKg)}
+                                    </span>
+                                    {")"}
+                                  </span>
                               </div>
                               <div className="mt-1">
                                 Jour d’enlèvement prévu :{" "}
