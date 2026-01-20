@@ -25,10 +25,10 @@ CREATE DATABASE IF NOT EXISTS `ginioux_flamary` DEFAULT CHARACTER SET utf8mb4 CO
 USE `ginioux_flamary`;
 
 -- Création d'un utilisateur local pour la base
-CREATE USER IF NOT EXISTS 'ginioux_flamary'@'localhost' IDENTIFIED BY 'MotDePasseSecurise';
+CREATE USER IF NOT EXISTS 'ginioux_flamary_app'@'localhost' IDENTIFIED BY 'MotDePasseSecurise';
 
 -- Attribution des privilèges sur la base `ginioux_flamary`
-GRANT ALL PRIVILEGES ON `ginioux_flamary`.* TO 'ginioux_flamary'@'localhost' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON `ginioux_flamary`.* TO 'ginioux_flamary_app'@'localhost' WITH GRANT OPTION;
 
 -- Appliquer les modifications de privilèges
 FLUSH PRIVILEGES;
