@@ -805,7 +805,7 @@ async function updateOrderLineReady(orderId, lineId, readyQty) {
   try {
     await connection.beginTransaction();
 
-    // 🔒 Sérialise toutes les MAJ sur une même commande (évite le snapshot "stale")
+    // Sérialise toutes les MAJ sur une même commande (évite le snapshot "stale")
     const [orderLock] = await connection.query(
       `SELECT id FROM orders WHERE id = ? FOR UPDATE`,
       [orderId],
