@@ -99,7 +99,7 @@ body {
     @apply opacity-60 cursor-not-allowed;
   }
 
-    .gf-btn-primary {
+  .gf-btn-primary {
     background: var(--color-gf-orange);
     color: #fff;
     border-color: transparent;
@@ -117,11 +117,9 @@ body {
     background: var(--color-gf-danger-hover);
   }
 
-
   .gf-btn:focus-visible {
     @apply ring-2 ring-gf-orange ring-offset-2;
   }
-
 
   /* Containers / cards */
   .gf-card {

@@ -8,7 +8,12 @@ import { Link } from "react-router-dom";
  * @param {{ title: string, items?: string[], linkTo?: string, linkLabel?: string }} props
  * @returns {import("react").JSX.Element}
  */
-export default function BureauListBlock({ title, items = [], linkTo, linkLabel }) {
+export default function BureauListBlock({
+  title,
+  items = [],
+  linkTo,
+  linkLabel,
+}) {
   return (
     <div className="w-full">
       <div className="gf-h3">{title}</div>
@@ -27,7 +32,10 @@ export default function BureauListBlock({ title, items = [], linkTo, linkLabel }
 
       {linkTo ? (
         <div className="mt-2">
-          <Link to={linkTo} className="text-xs font-medium text-gf-orange hover:underline">
+          <Link
+            to={linkTo}
+            className="text-xs font-medium text-gf-orange hover:underline"
+          >
             {linkLabel}
           </Link>
         </div>

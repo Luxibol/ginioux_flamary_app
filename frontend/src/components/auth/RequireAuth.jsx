@@ -18,7 +18,8 @@ function canAccessPath(role, path) {
   // Zone Admin
   if (path.startsWith("/admin")) {
     // Exception : Bureau peut accéder aux produits
-    if (path.startsWith("/admin/produits")) return role === "ADMIN" || role === "BUREAU";
+    if (path.startsWith("/admin/produits"))
+      return role === "ADMIN" || role === "BUREAU";
     // Employés : admin uniquement
     if (path.startsWith("/admin/employes")) return role === "ADMIN";
     // Dashboard admin : admin uniquement
@@ -31,7 +32,8 @@ function canAccessPath(role, path) {
   if (path.startsWith("/bureau")) return role === "ADMIN" || role === "BUREAU";
 
   // Zone Production (admin autorisé)
-  if (path.startsWith("/production")) return role === "ADMIN" || role === "PRODUCTION";
+  if (path.startsWith("/production"))
+    return role === "ADMIN" || role === "PRODUCTION";
 
   return true;
 }

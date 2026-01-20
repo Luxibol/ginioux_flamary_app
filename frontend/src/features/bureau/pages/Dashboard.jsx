@@ -52,21 +52,30 @@ export default function Dashboard() {
       setError("");
 
       try {
-        const [activeRes, urgentCountRes, urgentListRes, pendingRes, archivedRes] =
-          await Promise.all([
-            getActiveOrders({ limit: 1, offset: 0 }),
-            getActiveOrders({ priority: "URGENT", limit: 1, offset: 0 }),  // KPI urgent (total)
-            getActiveOrders({ priority: "URGENT", limit: 5, offset: 0 }),  // LISTE urgent (5)
-            getBureauPendingShipments(),
-            getArchivedOrders(),
-          ]);
+        const [
+          activeRes,
+          urgentCountRes,
+          urgentListRes,
+          pendingRes,
+          archivedRes,
+        ] = await Promise.all([
+          getActiveOrders({ limit: 1, offset: 0 }),
+          getActiveOrders({ priority: "URGENT", limit: 1, offset: 0 }), // KPI urgent (total)
+          getActiveOrders({ priority: "URGENT", limit: 5, offset: 0 }), // LISTE urgent (5)
+          getBureauPendingShipments(),
+          getArchivedOrders(),
+        ]);
         if (!alive) return;
 
         setActiveTotal(toNumber(activeRes?.total ?? activeRes?.count));
-        setUrgentTotal(toNumber(urgentCountRes?.total ?? urgentCountRes?.count));
+        setUrgentTotal(
+          toNumber(urgentCountRes?.total ?? urgentCountRes?.count),
+        );
         setPendingCount(toNumber(pendingRes?.count));
 
-        const uTop = Array.isArray(urgentListRes?.data) ? urgentListRes.data : [];
+        const uTop = Array.isArray(urgentListRes?.data)
+          ? urgentListRes.data
+          : [];
         setUrgentTop(uTop.slice(0, 5));
 
         const arch = Array.isArray(archivedRes?.data) ? archivedRes.data : [];
@@ -98,7 +107,7 @@ export default function Dashboard() {
   const archivedLines = useMemo(() => {
     return archivedTop.slice(0, 5).map((o) => {
       return `${o.arc || "—"} — ${o.client_name || "Client —"} — Expédiée le ${formatDateFr(
-        o.last_departed_at
+        o.last_departed_at,
       )}`;
     });
   }, [archivedTop]);
@@ -135,7 +144,11 @@ export default function Dashboard() {
         <div className="mt-5 rounded-md border border-gf-border bg-gf-bg px-8 pt-10 pb-8 min-h-[420px]">
           {/* KPI centrés */}
           <div className="flex flex-wrap justify-center gap-48">
-            <BureauKpiCard title="Commandes en cours" value={activeTotal} lines={["Actives"]} />
+            <BureauKpiCard
+              title="Commandes en cours"
+              value={activeTotal}
+              lines={["Actives"]}
+            />
             <BureauKpiCard
               title="Commandes urgentes"
               value={urgentTotal}

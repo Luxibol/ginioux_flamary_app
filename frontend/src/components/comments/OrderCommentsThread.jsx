@@ -6,7 +6,10 @@
  */
 import { useEffect, useState } from "react";
 import { Plus, ChevronDown, ChevronUp } from "lucide-react";
-import { getOrderComments, postOrderComment } from "../../services/orders.api.js";
+import {
+  getOrderComments,
+  postOrderComment,
+} from "../../services/orders.api.js";
 
 /**
  * Thread de commentaires d'une commande.
@@ -50,7 +53,9 @@ export default function OrderCommentsThread({
   const [content, setContent] = useState("");
 
   // État local (utilisé si le parent ne contrôle pas "collapsed")
-  const [collapsedLocal, setCollapsedLocal] = useState(Boolean(defaultCollapsed));
+  const [collapsedLocal, setCollapsedLocal] = useState(
+    Boolean(defaultCollapsed),
+  );
 
   const collapsed =
     typeof collapsedProp === "boolean" ? collapsedProp : collapsedLocal;
@@ -128,7 +133,9 @@ export default function OrderCommentsThread({
   const canToggle = showHeader && collapsible;
 
   return (
-    <div className={`rounded-lg bg-gf-bg p-3 ring-1 ring-gf-border ${className}`}>
+    <div
+      className={`rounded-lg bg-gf-bg p-3 ring-1 ring-gf-border ${className}`}
+    >
       {showHeader ? (
         <button
           type="button"
@@ -139,7 +146,9 @@ export default function OrderCommentsThread({
         >
           <div className="text-xs font-medium text-gf-title">
             Commentaires{" "}
-            <span className="text-gf-subtitle font-normal">({messagesCount})</span>
+            <span className="text-gf-subtitle font-normal">
+              ({messagesCount})
+            </span>
             {unreadCount > 0 ? (
               <span className="ml-2 text-[11px] text-gf-subtitle">
                 • Non lus : {unreadCount}
@@ -159,7 +168,9 @@ export default function OrderCommentsThread({
 
       {collapsed ? null : (
         <>
-          {error ? <div className="mt-2 text-xs text-gf-danger">{error}</div> : null}
+          {error ? (
+            <div className="mt-2 text-xs text-gf-danger">{error}</div>
+          ) : null}
 
           <div className="mt-3 space-y-2">
             {loading ? (

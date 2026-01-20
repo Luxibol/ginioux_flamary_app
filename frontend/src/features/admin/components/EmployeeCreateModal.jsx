@@ -68,20 +68,27 @@ export default function EmployeeCreateModal({
     <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
       <div className="w-full max-w-2xl rounded-2xl border border-gf-border bg-gf-surface shadow-sm">
         <div className="p-5 border-b border-gf-border">
-          <div className="text-sm font-semibold text-gf-title">Ajouter un employé</div>
+          <div className="text-sm font-semibold text-gf-title">
+            Ajouter un employé
+          </div>
           <div className="text-xs text-gf-subtitle mt-1">
             Nom + prénom + rôle. Identifiant optionnel (sinon auto).
           </div>
         </div>
 
         <div className="p-5">
-          {error ? <div className="mb-3 text-xs text-gf-danger">{error}</div> : null}
+          {error ? (
+            <div className="mb-3 text-xs text-gf-danger">{error}</div>
+          ) : null}
 
           {showTemp ? (
             <div className="rounded-xl border border-gf-border bg-gf-bg p-4">
-              <div className="text-xs font-semibold text-gf-title">Mot de passe temporaire</div>
+              <div className="text-xs font-semibold text-gf-title">
+                Mot de passe temporaire
+              </div>
               <div className="text-xs text-gf-subtitle mt-1">
-                À transmettre à l’employé. Changement obligatoire à la première connexion.
+                À transmettre à l’employé. Changement obligatoire à la première
+                connexion.
               </div>
 
               <div className="mt-3 flex items-center gap-2">
@@ -133,7 +140,9 @@ export default function EmployeeCreateModal({
               </div>
 
               <div className="col-span-6">
-                <div className="text-xs text-gf-subtitle mb-1">Identifiant (optionnel)</div>
+                <div className="text-xs text-gf-subtitle mb-1">
+                  Identifiant (optionnel)
+                </div>
                 <input
                   value={fLogin}
                   onChange={(e) => setFLogin(e.target.value)}

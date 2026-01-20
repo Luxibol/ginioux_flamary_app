@@ -11,7 +11,11 @@
 import { useMemo, useState } from "react";
 import { X, Trash2, Plus } from "lucide-react";
 import ProductAutocompleteInput from "./ProductAutocompleteInput.jsx";
-import { normalizeModalLines, normalizePriority, toISODate } from "../mappers/orderModal.mappers.js";
+import {
+  normalizeModalLines,
+  normalizePriority,
+  toISODate,
+} from "../mappers/orderModal.mappers.js";
 
 // Priorités (backend)
 const PRIORITIES = ["NORMAL", "INTERMEDIAIRE", "URGENT"];
@@ -278,9 +282,7 @@ export default function OrderModal({
           ) : null}
 
           <div className="mt-6 flex items-center justify-between">
-            <div className="gf-h3 mb-2">
-              Lignes de produits
-            </div>
+            <div className="gf-h3 mb-2">Lignes de produits</div>
             <button
               type="button"
               onClick={addLines}
@@ -343,11 +345,7 @@ export default function OrderModal({
           </div>
 
           <div className="flex justify-end gap-3 mt-6">
-            <button
-              type="button"
-              onClick={onClose}
-              className="gf-btn"
-            >
+            <button type="button" onClick={onClose} className="gf-btn">
               Annuler
             </button>
             <button

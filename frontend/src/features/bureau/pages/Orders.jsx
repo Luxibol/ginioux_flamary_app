@@ -4,15 +4,34 @@
  * - accordéon par ligne pour charger/afficher les détails (lazy-load + cache)
  * - édition via modale (PATCH)
  * - suppression (DELETE)
-*/
+ */
 import { useEffect, useState } from "react";
-import {RefreshCw, Mail, Pencil, Trash2, ChevronDown, ChevronUp } from "lucide-react";
+import {
+  RefreshCw,
+  Mail,
+  Pencil,
+  Trash2,
+  ChevronDown,
+  ChevronUp,
+} from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import OrderModal from "../components/OrderModal.jsx";
-import { getActiveOrders, getOrderDetails, patchOrderMeta, deleteOrder } from "../../../services/orders.api.js";
+import {
+  getActiveOrders,
+  getOrderDetails,
+  patchOrderMeta,
+  deleteOrder,
+} from "../../../services/orders.api.js";
 import OrderExpandedPanel from "../components/OrderExpandedPanel.jsx";
-import { formatDateFr, priorityClass, priorityLabel } from "../utils/orders.format.js";
-import {mapModalToPatchPayload, mapOrderDetailsToModal } from "../mappers/orders.mappers.js";
+import {
+  formatDateFr,
+  priorityClass,
+  priorityLabel,
+} from "../utils/orders.format.js";
+import {
+  mapModalToPatchPayload,
+  mapOrderDetailsToModal,
+} from "../mappers/orders.mappers.js";
 
 // Options UI : filtres
 const PRIORITIES = [
@@ -74,8 +93,8 @@ export default function Orders() {
               messagesCount: Number(counts?.messagesCount ?? 0),
               unreadCount: Number(counts?.unreadCount ?? 0),
             }
-          : o
-      )
+          : o,
+      ),
     );
   };
 
@@ -84,7 +103,7 @@ export default function Orders() {
    * Si ouverture : charge les détails uniquement la première fois (lazy-load) puis met en cache.
    * @param {any} o
    * @returns {Promise<void>}
-  */
+   */
   const toggleRow = async (o) => {
     const next = expandedId === o.id ? null : o.id;
     setExpandedId(next);
@@ -113,7 +132,7 @@ export default function Orders() {
    * Supprime une commande (avec confirmation UI), puis recharge la liste.
    * @param {any} o
    * @returns {Promise<void>}
-  */
+   */
   const onDelete = async (o) => {
     if (!confirm(`Supprimer la commande ${o.arc} ?`)) return;
 
@@ -138,7 +157,7 @@ export default function Orders() {
    * - fetch détails
    * - map API -> modèle de modale
    * @param {any} o
-   * @returns {Promise<void>} 
+   * @returns {Promise<void>}
    */
   const openEdit = async (o) => {
     try {
@@ -156,10 +175,10 @@ export default function Orders() {
   };
 
   /**
-    * Charge la liste des commandes actives selon les filtres.
-    * Reset aussi l'accordéon + le cache détails pour repartir sur une liste propre.
-    * @returns {Promise<void>}
-    */
+   * Charge la liste des commandes actives selon les filtres.
+   * Reset aussi l'accordéon + le cache détails pour repartir sur une liste propre.
+   * @returns {Promise<void>}
+   */
   const load = async () => {
     try {
       setLoading(true);
@@ -196,7 +215,7 @@ export default function Orders() {
    * - recharge les détails de la commande pour garder le cache à jour
    * @param {unknown} payload
    * @returns {Promise<void>}
-    */
+   */
   const handleConfirmModal = async (payload) => {
     try {
       setLoading(true);
@@ -395,7 +414,10 @@ export default function Orders() {
                                     if (expandedId !== o.id) toggleRow(o);
 
                                     // ouvrir commentaires
-                                    setCommentsOpenById((prev) => ({ ...prev, [o.id]: true }));
+                                    setCommentsOpenById((prev) => ({
+                                      ...prev,
+                                      [o.id]: true,
+                                    }));
                                   }}
                                 >
                                   <Mail className="h-4 w-4" />
@@ -465,7 +487,10 @@ export default function Orders() {
                               onCountsChange={applyCounts}
                               commentsOpen={Boolean(commentsOpenById[o.id])}
                               onCommentsOpenChange={(open) =>
-                                setCommentsOpenById((prev) => ({ ...prev, [o.id]: open }))
+                                setCommentsOpenById((prev) => ({
+                                  ...prev,
+                                  [o.id]: open,
+                                }))
                               }
                             />
                           )}
@@ -483,7 +508,10 @@ export default function Orders() {
       <OrderModal
         key={`${selectedOrder?.id ?? "new"}-${modalOpen}`}
         open={modalOpen}
-        onClose={() => { setModalOpen(false); setSelectedOrder(null); }}
+        onClose={() => {
+          setModalOpen(false);
+          setSelectedOrder(null);
+        }}
         onConfirm={handleConfirmModal}
         context="orders"
         data={selectedOrder}

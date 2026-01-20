@@ -10,9 +10,9 @@ import { searchProducts } from "../../../services/products.api";
 /**
  * Hook utilitaire : renvoie une version "debounced" d'une valeur.
  * Utile pour éviter de déclencher une recherche à chaque frappe.
- * @param {any} value 
- * @param {number} delay 
- * @returns {any} 
+ * @param {any} value
+ * @param {number} delay
+ * @returns {any}
  */
 function useDebouncedValue(value, delay = 250) {
   const [v, setV] = useState(value);
@@ -26,9 +26,9 @@ function useDebouncedValue(value, delay = 250) {
 /**
  * Input d'autocomplétion basé sur une recherche produit côté API.
  * @param {object} props
- * @param {string} props.value 
- * @param {(product: any) => void} props.onPick 
- * @param {(text: string) => void} props.onChangeText 
+ * @param {string} props.value
+ * @param {(product: any) => void} props.onPick
+ * @param {(text: string) => void} props.onChangeText
  * @returns {import("react").JSX.Element}
  */
 export default function ProductAutocompleteInput({
@@ -106,9 +106,7 @@ export default function ProductAutocompleteInput({
           ) : errorMsg ? (
             <div className="px-3 py-2 gf-error">{errorMsg}</div>
           ) : items.length === 0 ? (
-            <div className="px-3 py-2 gf-empty">
-              Aucun résultat
-            </div>
+            <div className="px-3 py-2 gf-empty">Aucun résultat</div>
           ) : (
             items.map((p) => (
               <button

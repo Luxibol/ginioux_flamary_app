@@ -46,11 +46,15 @@ export default function EmployeeEditModal({
     <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
       <div className="w-full max-w-2xl rounded-2xl border border-gf-border bg-gf-surface shadow-sm">
         <div className="p-5 border-b border-gf-border">
-          <div className="text-sm font-semibold text-gf-title">Modifier un employé</div>
+          <div className="text-sm font-semibold text-gf-title">
+            Modifier un employé
+          </div>
         </div>
 
         <div className="p-5">
-          {error ? <div className="mb-3 text-xs text-gf-danger">{error}</div> : null}
+          {error ? (
+            <div className="mb-3 text-xs text-gf-danger">{error}</div>
+          ) : null}
 
           <div className="grid grid-cols-12 gap-3">
             <div className="col-span-6">

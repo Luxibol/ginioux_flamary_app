@@ -20,7 +20,9 @@ import { getUser } from "../../../services/auth.storage.js";
  * @returns {"BIGBAG"|"ROCHE"|"OTHER"}
  */
 function normalizeFamily(line) {
-  const cat = String(line?.category ?? "").toUpperCase().trim();
+  const cat = String(line?.category ?? "")
+    .toUpperCase()
+    .trim();
   if (cat === "ROCHE") return "ROCHE";
   if (cat === "BIGBAG") return "BIGBAG";
 
@@ -36,7 +38,10 @@ function normalizeFamily(line) {
  * @param {{ limit?: number, mode?: "ORDERED"|"READY"|"SHIPPED" }} [options]
  * @returns {Promise<{ bigbag: number, roche: number }>}
  */
-async function computeTotalsFromOrders(orderIds, { limit = 25, mode = "ORDERED" } = {}) {
+async function computeTotalsFromOrders(
+  orderIds,
+  { limit = 25, mode = "ORDERED" } = {},
+) {
   const ids = Array.isArray(orderIds) ? orderIds.slice(0, limit) : [];
   let bigbag = 0;
   let roche = 0;
@@ -146,14 +151,20 @@ export default function Dashboard() {
         // Totaux à produire (quantity_ordered)
         (async () => {
           const ids = prodList.map((o) => o.id).filter(Boolean);
-          const totals = await computeTotalsFromOrders(ids, { limit: 25, mode: "ORDERED" });
+          const totals = await computeTotalsFromOrders(ids, {
+            limit: 25,
+            mode: "ORDERED",
+          });
           if (alive) setProduceTotals(totals);
         })();
 
         // Totaux à charger (reste prêt = ready - shipped)
         (async () => {
           const ids = shipList.map((o) => o.id).filter(Boolean);
-          const totals = await computeTotalsFromOrders(ids, { limit: 25, mode: "READY" });
+          const totals = await computeTotalsFromOrders(ids, {
+            limit: 25,
+            mode: "READY",
+          });
           if (alive) setToLoadTotals(totals);
         })();
 
@@ -176,7 +187,9 @@ export default function Dashboard() {
         });
       } catch (e) {
         if (!alive) return;
-        setError(e?.message || "Erreur lors du chargement du dashboard production.");
+        setError(
+          e?.message || "Erreur lors du chargement du dashboard production.",
+        );
       } finally {
         if (alive) setLoading(false);
       }
@@ -204,15 +217,23 @@ export default function Dashboard() {
         <div className="mt-1 text-xs text-gf-subtitle">
           Vue d&apos;ensemble des commandes et expéditions
         </div>
-        <div className="mt-2 font-semibold text-gf-orange">Bonjour {firstName}</div>
+        <div className="mt-2 font-semibold text-gf-orange">
+          Bonjour {firstName}
+        </div>
       </div>
 
       <div className="mt-4 space-y-4">
         <Card title="Commandes à produire">
-          <div className="text-center text-3xl font-semibold text-gf-title">{produceCount}</div>
-          <div className="mt-1 text-center text-xs text-gf-subtitle">Aujourd&apos;hui</div>
+          <div className="text-center text-3xl font-semibold text-gf-title">
+            {produceCount}
+          </div>
+          <div className="mt-1 text-center text-xs text-gf-subtitle">
+            Aujourd&apos;hui
+          </div>
 
-          <div className="mt-3 text-center text-xs text-gf-subtitle">{lineProduce}</div>
+          <div className="mt-3 text-center text-xs text-gf-subtitle">
+            {lineProduce}
+          </div>
 
           <button
             onClick={() => navigate("/production/commandes")}
@@ -223,10 +244,16 @@ export default function Dashboard() {
         </Card>
 
         <Card title="Expéditions à charger">
-          <div className="text-center text-3xl font-semibold text-gf-title">{shipmentsToLoadCount}</div>
-          <div className="mt-1 text-center text-xs text-gf-subtitle">Prêtes à charger</div>
+          <div className="text-center text-3xl font-semibold text-gf-title">
+            {shipmentsToLoadCount}
+          </div>
+          <div className="mt-1 text-center text-xs text-gf-subtitle">
+            Prêtes à charger
+          </div>
 
-          <div className="mt-3 text-center text-xs text-gf-subtitle">{lineLoad}</div>
+          <div className="mt-3 text-center text-xs text-gf-subtitle">
+            {lineLoad}
+          </div>
 
           <button
             onClick={() => navigate("/production/expeditions")}
@@ -237,11 +264,19 @@ export default function Dashboard() {
         </Card>
 
         <Card title="Expéditions effectuées">
-          <div className="text-center text-gf-orange font-semibold">Semaine : {stats.week.orders} commandes</div>
-          <div className="mt-1 text-center text-xs text-gf-subtitle">{weekLine}</div>
+          <div className="text-center text-gf-orange font-semibold">
+            Semaine : {stats.week.orders} commandes
+          </div>
+          <div className="mt-1 text-center text-xs text-gf-subtitle">
+            {weekLine}
+          </div>
 
-          <div className="mt-4 text-center text-gf-orange font-semibold">Mois : {stats.month.orders} commandes</div>
-          <div className="mt-1 text-center text-xs text-gf-subtitle">{monthLine}</div>
+          <div className="mt-4 text-center text-gf-orange font-semibold">
+            Mois : {stats.month.orders} commandes
+          </div>
+          <div className="mt-1 text-center text-xs text-gf-subtitle">
+            {monthLine}
+          </div>
         </Card>
       </div>
     </div>

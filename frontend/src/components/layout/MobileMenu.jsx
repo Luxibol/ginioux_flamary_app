@@ -56,7 +56,9 @@ function MobileMenu({ open, onClose, items }) {
                         "px-4 py-3 text-sm",
                         "hover:bg-gf-orange/10",
                         "flex items-center gap-3",
-                        isActive ? "text-gf-orange font-medium" : "text-gf-text",
+                        isActive
+                          ? "text-gf-orange font-medium"
+                          : "text-gf-text",
                       ].join(" ")
                     }
                   >
@@ -68,7 +70,8 @@ function MobileMenu({ open, onClose, items }) {
             })}
 
             <li>
-              <button aria-label="Se déconnecter"
+              <button
+                aria-label="Se déconnecter"
                 type="button"
                 onClick={() => {
                   onClose();

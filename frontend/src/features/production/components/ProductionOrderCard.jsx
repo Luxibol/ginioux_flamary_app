@@ -79,7 +79,9 @@ export default function ProductionOrderCard({
 }) {
   const [commentsOpenLocal, setCommentsOpenLocal] = useState(false);
   const commentsOpen =
-    typeof commentsOpenProp === "boolean" ? commentsOpenProp : commentsOpenLocal;
+    typeof commentsOpenProp === "boolean"
+      ? commentsOpenProp
+      : commentsOpenLocal;
 
   const setCommentsOpen = (v) => {
     const next = Boolean(v);
@@ -118,7 +120,7 @@ export default function ProductionOrderCard({
 
   const allReady = useMemo(() => {
     return groups.every((g) =>
-      g.lines.every((l) => (readyByLineId?.[l.id] ?? 0) >= l.total)
+      g.lines.every((l) => (readyByLineId?.[l.id] ?? 0) >= l.total),
     );
   }, [groups, readyByLineId]);
 
@@ -227,9 +229,11 @@ export default function ProductionOrderCard({
                   return (
                     <div key={line.id} className="space-y-1">
                       <div className="text-[11px] text-gf-muted leading-snug">
-                        {line.code && Number(line.code) !== 0 ? `(${line.code}) ` : ""}
-                         {line.label} 
-                         {line.spec ? ` ${line.spec}` : ""}
+                        {line.code && Number(line.code) !== 0
+                          ? `(${line.code}) `
+                          : ""}
+                        {line.label}
+                        {line.spec ? ` ${line.spec}` : ""}
                       </div>
 
                       <div className="flex items-center justify-between gap-3">

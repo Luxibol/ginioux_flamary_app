@@ -20,7 +20,7 @@ export default function AuthLayout({ children }) {
           backgroundImage: `url(${banner})`,
           backgroundRepeat: "no-repeat",
           backgroundSize: "100% auto",
-          backgroundPosition: "center", 
+          backgroundPosition: "center",
         }}
       />
 

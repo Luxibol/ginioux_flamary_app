@@ -41,8 +41,11 @@ export default function ChangePasswordPage() {
       // Met à jour la session locale (must_change_password=false)
       if (auth?.token && auth?.user) {
         setAuth(
-          { token: auth.token, user: { ...auth.user, must_change_password: false } },
-          { persist: "local" }
+          {
+            token: auth.token,
+            user: { ...auth.user, must_change_password: false },
+          },
+          { persist: "local" },
         );
       }
 
