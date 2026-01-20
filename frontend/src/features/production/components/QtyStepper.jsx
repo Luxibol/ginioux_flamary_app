@@ -1,7 +1,7 @@
 /**
  * Stepper quantité (mobile)
  * - +/- avec bornes min/max
- * - ✅ clic sur la valeur => saisie directe (input) pour aller vite (ex: 20)
+ * - clic sur la valeur => saisie directe (input) pour aller vite (ex: 20)
  */
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -19,7 +19,6 @@ export default function QtyStepper({
   onChange,
   disabled = false,
 
-  // ✅ NEW
   allowDirect = true,
 }) {
   const v = useMemo(() => (Number.isFinite(Number(value)) ? Math.trunc(Number(value)) : 0), [value]);
@@ -34,15 +33,10 @@ export default function QtyStepper({
     if (typeof onChange === "function") onChange(next);
   };
 
-  // ✅ édition directe
+  // édition directe
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(String(v));
   const inputRef = useRef(null);
-
-  // sync draft quand valeur externe change (et pas en mode edit)
-  useEffect(() => {
-    if (!editing) setDraft(String(v));
-  }, [v, editing]);
 
   useEffect(() => {
     if (editing) {
@@ -104,7 +98,10 @@ export default function QtyStepper({
           ) : (
             <button
               type="button"
-              onClick={() => setEditing(true)}
+              onClick={() => {
+                setDraft(String(v));
+                setEditing(true);
+              }}
               className="h-8 w-14 rounded-md border border-gf-border bg-white text-sm inline-flex items-center justify-center hover:bg-gf-orange/10"
               title="Cliquer pour saisir une valeur"
               aria-label={`${label} - valeur (cliquer pour saisir)`}
