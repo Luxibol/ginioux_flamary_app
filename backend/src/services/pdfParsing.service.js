@@ -25,7 +25,7 @@ function shouldIgnoreLabel(label) {
   const upper = label.toUpperCase();
 
   // Mots-clés à ignorer
-  const bannedKeywords = ["TRANSPORT", "REP ", "REP\u00A0"];
+  const bannedKeywords = ["TRANSPORT", "REP ", "REP\u00A0", "REP1", "TGAP"];
 
   return bannedKeywords.some((kw) => upper.includes(kw));
 }
