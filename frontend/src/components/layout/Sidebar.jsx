@@ -31,10 +31,23 @@ function Sidebar() {
 
   const adminItems = [
     ...(role === "ADMIN"
-      ? [{ to: "/admin", label: "Tableau de bord", icon: LayoutDashboard, end: true }]
+      ? [
+          {
+            to: "/admin",
+            label: "Tableau de bord",
+            icon: LayoutDashboard,
+            end: true,
+          },
+        ]
       : []),
     ...(canSeeAdminProducts
-      ? [{ to: "/admin/produits", label: "Gestion des produits", icon: Package }]
+      ? [
+          {
+            to: "/admin/produits",
+            label: "Gestion des produits",
+            icon: Package,
+          },
+        ]
       : []),
     ...(canSeeAdminEmployees
       ? [{ to: "/admin/employes", label: "Gestion des employés", icon: Users }]
@@ -44,9 +57,19 @@ function Sidebar() {
   const bureauItems = [
     ...(role === "ADMIN"
       ? []
-      : [{ to: "/bureau", label: "Tableau de bord", icon: LayoutDashboard, end: true }]
-    ),
-    { to: "/bureau/commandes", label: "Commandes en cours", icon: ClipboardList },
+      : [
+          {
+            to: "/bureau",
+            label: "Tableau de bord",
+            icon: LayoutDashboard,
+            end: true,
+          },
+        ]),
+    {
+      to: "/bureau/commandes",
+      label: "Commandes en cours",
+      icon: ClipboardList,
+    },
     { to: "/bureau/expeditions", label: "Expéditions", icon: Truck },
     { to: "/bureau/import", label: "Import PDF", icon: Paperclip },
     { to: "/bureau/historique", label: "Historique", icon: History },

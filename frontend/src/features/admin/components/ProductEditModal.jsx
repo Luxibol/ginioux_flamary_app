@@ -35,7 +35,6 @@ export default function ProductEditModal({
   onClose,
   onSubmit,
 }) {
-  
   if (!open) return null;
 
   return (
@@ -46,16 +45,16 @@ export default function ProductEditModal({
           <div className="text-sm font-semibold text-gf-title">
             Modifier un produit
           </div>
-          <div className="text-xs text-gf-subtitle mt-1 truncate">
-            {eLabel}
-          </div>
+          <div className="text-xs text-gf-subtitle mt-1 truncate">{eLabel}</div>
         </div>
 
         {/* Form */}
         <div className="p-5 grid grid-cols-12 gap-3">
           {/* Libellé */}
           <div className="col-span-12">
-            <div className="text-xs text-gf-subtitle mb-1">Libellé PDF exact</div>
+            <div className="text-xs text-gf-subtitle mb-1">
+              Libellé PDF exact
+            </div>
             <input
               value={eLabel}
               onChange={(e) => setELabel(e.target.value)}

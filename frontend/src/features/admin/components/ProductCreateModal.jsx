@@ -50,7 +50,9 @@ export default function ProductCreateModal({
 
         <div className="p-5 grid grid-cols-12 gap-3">
           <div className="col-span-12">
-            <div className="text-xs text-gf-subtitle mb-1">Libellé PDF exact</div>
+            <div className="text-xs text-gf-subtitle mb-1">
+              Libellé PDF exact
+            </div>
             <input
               value={fLabel}
               onChange={(e) => setFLabel(e.target.value)}

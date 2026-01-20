@@ -9,7 +9,7 @@
 import { createBrowserRouter, Navigate } from "react-router-dom";
 import AppLayout from "./components/layout/AppLayout.jsx";
 
-// AUTH 
+// AUTH
 import LoginPage from "./pages/auth/LoginPage.jsx";
 import ChangePasswordPage from "./pages/auth/ChangePasswordPage.jsx";
 import RequireAuth from "./components/auth/RequireAuth.jsx";

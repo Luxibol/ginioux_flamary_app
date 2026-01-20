@@ -7,7 +7,12 @@
 import { useEffect, useState } from "react";
 import { Plus, RefreshCw, Pencil, KeyRound } from "lucide-react";
 
-import { listUsers, createUser, patchUser, resetUserPassword } from "../../../services/adminUsers.api.js";
+import {
+  listUsers,
+  createUser,
+  patchUser,
+  resetUserPassword,
+} from "../../../services/adminUsers.api.js";
 import { formatFullName } from "../utils/adminEmployees.utils.js";
 
 import EmployeeCreateModal from "../components/EmployeeCreateModal.jsx";
@@ -51,7 +56,7 @@ export default function AdminEmployees() {
   const [resetTitle, setResetTitle] = useState("");
   const [resetTempPassword, setResetTempPassword] = useState("");
   const [resetError, setResetError] = useState("");
-  
+
   const [, setResetId] = useState(null);
 
   async function load() {
@@ -227,7 +232,10 @@ export default function AdminEmployees() {
           <div className="p-3">
             <div
               className="grid items-center px-4 py-3 gap-3 font-medium text-xs justify-items-center"
-              style={{ gridTemplateColumns: "minmax(260px,1fr) 180px 160px 140px 340px" }}
+              style={{
+                gridTemplateColumns:
+                  "minmax(260px,1fr) 180px 160px 140px 340px",
+              }}
             >
               <div className="justify-self-start">Employé</div>
               <div>Identifiant</div>
@@ -254,10 +262,13 @@ export default function AdminEmployees() {
                   <div
                     className="hidden md:grid items-center px-4 py-3 gap-3 text-xs hover:bg-gf-orange/5"
                     style={{
-                      gridTemplateColumns: "minmax(260px,1fr) 180px 160px 140px 340px",
+                      gridTemplateColumns:
+                        "minmax(260px,1fr) 180px 160px 140px 340px",
                     }}
                   >
-                    <div className="truncate text-gf-title font-medium">{formatFullName(u)}</div>
+                    <div className="truncate text-gf-title font-medium">
+                      {formatFullName(u)}
+                    </div>
                     <div className="text-center font-mono">{u.login}</div>
                     <div className="text-center">{u.role}</div>
 
@@ -267,7 +278,9 @@ export default function AdminEmployees() {
                         onClick={() => onToggleActive(u)}
                         className={[
                           "h-7 px-3 rounded-md text-[11px] font-medium",
-                          u.is_active ? "bg-gf-success text-white" : "bg-gf-border/50 text-gf-title",
+                          u.is_active
+                            ? "bg-gf-success text-white"
+                            : "bg-gf-border/50 text-gf-title",
                         ].join(" ")}
                         disabled={loading}
                         title="Activer / désactiver"
@@ -305,9 +318,15 @@ export default function AdminEmployees() {
                   <div className="md:hidden px-4 py-3 text-xs">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <div className="text-gf-title font-medium truncate">{formatFullName(u)}</div>
-                        <div className="mt-1 text-[11px] text-gf-subtitle font-mono">{u.login}</div>
-                        <div className="mt-1 text-[11px] text-gf-subtitle">{u.role}</div>
+                        <div className="text-gf-title font-medium truncate">
+                          {formatFullName(u)}
+                        </div>
+                        <div className="mt-1 text-[11px] text-gf-subtitle font-mono">
+                          {u.login}
+                        </div>
+                        <div className="mt-1 text-[11px] text-gf-subtitle">
+                          {u.role}
+                        </div>
                       </div>
 
                       <button
@@ -315,7 +334,9 @@ export default function AdminEmployees() {
                         onClick={() => onToggleActive(u)}
                         className={[
                           "h-7 px-3 rounded-md text-[11px] font-medium shrink-0",
-                          u.is_active ? "bg-gf-success text-white" : "bg-gf-border/50 text-gf-title",
+                          u.is_active
+                            ? "bg-gf-success text-white"
+                            : "bg-gf-border/50 text-gf-title",
                         ].join(" ")}
                         disabled={loading}
                         title="Activer / désactiver"

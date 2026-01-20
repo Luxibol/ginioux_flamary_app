@@ -41,7 +41,9 @@ function Header() {
       </div>
 
       <div className="flex items-center pr-6 gap-2 text-xs">
-        <span className="text-gf-text whitespace-nowrap">{firstName} - {roleLabel}</span>
+        <span className="text-gf-text whitespace-nowrap">
+          {firstName} - {roleLabel}
+        </span>
         <span className="text-gf-text"> | </span>
 
         <button

@@ -7,7 +7,12 @@
  * @param {{ title: string, value: import("react").ReactNode, lines?: string[], dot?: boolean }} props
  * @returns {import("react").JSX.Element}
  */
-export default function BureauKpiCard({ title, value, lines = [], dot = false }) {
+export default function BureauKpiCard({
+  title,
+  value,
+  lines = [],
+  dot = false,
+}) {
   return (
     <div className="w-full max-w-[240px] gf-card gf-card-pad text-center">
       <div className="text-xs font-medium text-gf-title">{title}</div>

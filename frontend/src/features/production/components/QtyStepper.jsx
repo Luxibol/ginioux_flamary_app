@@ -41,9 +41,18 @@ export default function QtyStepper({
 
   allowDirect = true,
 }) {
-  const v = useMemo(() => (Number.isFinite(Number(value)) ? Math.trunc(Number(value)) : 0), [value]);
-  const minV = useMemo(() => (Number.isFinite(Number(min)) ? Math.trunc(Number(min)) : 0), [min]);
-  const maxV = useMemo(() => (Number.isFinite(Number(max)) ? Math.trunc(Number(max)) : 0), [max]);
+  const v = useMemo(
+    () => (Number.isFinite(Number(value)) ? Math.trunc(Number(value)) : 0),
+    [value],
+  );
+  const minV = useMemo(
+    () => (Number.isFinite(Number(min)) ? Math.trunc(Number(min)) : 0),
+    [min],
+  );
+  const maxV = useMemo(
+    () => (Number.isFinite(Number(max)) ? Math.trunc(Number(max)) : 0),
+    [max],
+  );
 
   const decDisabled = disabled || v <= minV;
   const incDisabled = disabled || v >= maxV;

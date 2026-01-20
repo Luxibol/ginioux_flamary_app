@@ -39,7 +39,9 @@ export default function UrgentTable({ rows, onView }) {
       {/* Liste */}
       <div className="p-3 bg-gf-bg">
         {rows.length === 0 ? (
-          <div className="p-4 text-xs text-gf-subtitle">Aucune commande urgente.</div>
+          <div className="p-4 text-xs text-gf-subtitle">
+            Aucune commande urgente.
+          </div>
         ) : (
           <div className="space-y-3 text-xs">
             {rows.map((o) => (
@@ -50,7 +52,8 @@ export default function UrgentTable({ rows, onView }) {
                 <div
                   className="grid items-center px-4 py-3 gap-3 hover:bg-gf-orange/5 justify-items-center"
                   style={{
-                    gridTemplateColumns: "110px 1fr 120px 120px 120px 1fr 180px",
+                    gridTemplateColumns:
+                      "110px 1fr 120px 120px 120px 1fr 180px",
                   }}
                 >
                   <div className="font-medium text-gf-title">{o.arc}</div>
@@ -62,7 +65,9 @@ export default function UrgentTable({ rows, onView }) {
                     {priorityLabel(o.priority)}
                   </div>
 
-                  <div>{o.order_state_label || formatOrderStateLabel(o.state)}</div>
+                  <div>
+                    {o.order_state_label || formatOrderStateLabel(o.state)}
+                  </div>
 
                   <div className="flex justify-center items-center gap-2">
                     <button

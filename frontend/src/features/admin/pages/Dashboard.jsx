@@ -29,7 +29,9 @@ import { getUser } from "../../../services/auth.storage.js";
  */
 function normalizeFamily(line) {
   // Priorité : category
-  const cat = String(line?.category ?? "").toUpperCase().trim();
+  const cat = String(line?.category ?? "")
+    .toUpperCase()
+    .trim();
 
   if (cat === "ROCHE") return "ROCHE";
 
@@ -54,7 +56,7 @@ function normalizeFamily(line) {
  */
 async function computeTotalsFromOrders(
   orderIds,
-  { limit = 30, mode = "ORDERED" } = {}
+  { limit = 30, mode = "ORDERED" } = {},
 ) {
   const ids = Array.isArray(orderIds) ? orderIds.slice(0, limit) : [];
   let bigbag = 0;
@@ -75,7 +77,7 @@ async function computeTotalsFromOrders(
           mode === "SHIPPED"
             ? shipped
             : mode === "READY"
-              ? Math.max(ready - shipped, 0)          // Reste prêt (hors expédié)
+              ? Math.max(ready - shipped, 0) // Reste prêt (hors expédié)
               : mode === "DISPATCH"
                 ? shipped + Math.max(ready - shipped, 0) // Expédié + reste prêt
                 : Number(l.quantity_ordered ?? 0);
@@ -130,9 +132,18 @@ export default function Dashboard() {
   const [producedCount, setProducedCount] = useState(0);
 
   // Totaux BigBag/Roche (maquette)
-  const [topProduceTotals, setTopProduceTotals] = useState({ bigbag: 0, roche: 0 });
-  const [topTodayShipTotals, setTopTodayShipTotals] = useState({ bigbag: 0, roche: 0 });
-  const [bottomShipTotals, setBottomShipTotals] = useState({ bigbag: 0, roche: 0 });
+  const [topProduceTotals, setTopProduceTotals] = useState({
+    bigbag: 0,
+    roche: 0,
+  });
+  const [topTodayShipTotals, setTopTodayShipTotals] = useState({
+    bigbag: 0,
+    roche: 0,
+  });
+  const [bottomShipTotals, setBottomShipTotals] = useState({
+    bigbag: 0,
+    roche: 0,
+  });
 
   const activities = useMemo(() => {
     const items = [];
@@ -143,7 +154,9 @@ export default function Dashboard() {
 
     const firstArchived = archived7dRows[0];
     if (firstArchived) {
-      items.push(`Expédiée — ${firstArchived.arc} (${firstArchived.client_name ?? "—"})`);
+      items.push(
+        `Expédiée — ${firstArchived.arc} (${firstArchived.client_name ?? "—"})`,
+      );
     }
 
     return items;
@@ -172,12 +185,17 @@ export default function Dashboard() {
         // commandes à produire
         const prodList = Array.isArray(prodRes?.data) ? prodRes.data : [];
         setProduceCount(prodList.length);
-        setProduceUrgentCount(prodList.filter((o) => o.priority === "URGENT").length);
+        setProduceUrgentCount(
+          prodList.filter((o) => o.priority === "URGENT").length,
+        );
 
         // totaux à produire (quantity_ordered)
         (async () => {
           const ids = prodList.map((o) => o.id).filter(Boolean);
-          const totals = await computeTotalsFromOrders(ids, { limit: 30, mode: "ORDERED" });
+          const totals = await computeTotalsFromOrders(ids, {
+            limit: 30,
+            mode: "ORDERED",
+          });
           if (alive) setTopProduceTotals(totals);
         })();
 
@@ -186,17 +204,24 @@ export default function Dashboard() {
         setUrgentRows(urgList.slice(0, 3));
 
         // archived 7D + today
-        const arch7 = Array.isArray(archived7dRes?.data) ? archived7dRes.data : [];
+        const arch7 = Array.isArray(archived7dRes?.data)
+          ? archived7dRes.data
+          : [];
         setArchived7dRows(arch7);
 
         const today = new Date();
-        const todayOrders = arch7.filter((o) => sameDay(o.last_departed_at, today));
+        const todayOrders = arch7.filter((o) =>
+          sameDay(o.last_departed_at, today),
+        );
         setTodayArchivedCount(todayOrders.length);
 
         // totaux expédiés aujourd’hui (quantity_shipped)
         (async () => {
           const ids = todayOrders.map((o) => o.id).filter(Boolean);
-          const totals = await computeTotalsFromOrders(ids, { limit: 30, mode: "SHIPPED" });
+          const totals = await computeTotalsFromOrders(ids, {
+            limit: 30,
+            mode: "SHIPPED",
+          });
           if (alive) setTopTodayShipTotals(totals);
         })();
       } catch (e) {
@@ -230,13 +255,18 @@ export default function Dashboard() {
         if (!alive) return;
 
         // Expéditions effectuées (comme avant)
-        const archList = Array.isArray(archivedRes?.data) ? archivedRes.data : [];
+        const archList = Array.isArray(archivedRes?.data)
+          ? archivedRes.data
+          : [];
         setBottomArchivedCount(archList.length);
 
         // Totaux expédiés sur période (comme avant)
         (async () => {
           const ids = archList.map((o) => o.id).filter(Boolean);
-          const totals = await computeTotalsFromOrders(ids, { limit: 30, mode: "SHIPPED" });
+          const totals = await computeTotalsFromOrders(ids, {
+            limit: 30,
+            mode: "SHIPPED",
+          });
           if (alive) setBottomShipTotals(totals);
         })();
 
@@ -248,7 +278,6 @@ export default function Dashboard() {
           bigbag: Number(t?.bigbag ?? 0),
           roche: Number(t?.roche ?? 0),
         });
-
       } catch {
         if (!alive) return;
         setBottomArchivedCount(0);
@@ -265,8 +294,8 @@ export default function Dashboard() {
     };
   }, [periodBottom]);
 
-
-  if (loading) return <div className="p-6 text-xs text-gf-subtitle">Chargement…</div>;
+  if (loading)
+    return <div className="p-6 text-xs text-gf-subtitle">Chargement…</div>;
   if (error) return <div className="p-6 text-xs text-gf-danger">{error}</div>;
 
   const lineTopProduce = `${topProduceTotals.bigbag} BigBag - ${topProduceTotals.roche} Roche`;
@@ -275,7 +304,7 @@ export default function Dashboard() {
   const lineProduced = `${producedTotals.bigbag} BigBag - ${producedTotals.roche} Roche`;
 
   return (
-  <div className="p-4 md:p-6 bg-white md:bg-transparent">
+    <div className="p-4 md:p-6 bg-white md:bg-transparent">
       {/* DESKTOP */}
       <div className="hidden md:block">
         <div>
@@ -302,10 +331,11 @@ export default function Dashboard() {
           </div>
 
           <div className="mt-8">
-            <div className="gf-h3 mb-2">
-              Commandes urgentes
-            </div>
-            <UrgentTable rows={urgentRows} onView={() => navigate("/bureau/commandes")} />
+            <div className="gf-h3 mb-2">Commandes urgentes</div>
+            <UrgentTable
+              rows={urgentRows}
+              onView={() => navigate("/bureau/commandes")}
+            />
           </div>
 
           <div className="mt-6 grid grid-cols-2 gap-6">
@@ -326,18 +356,18 @@ export default function Dashboard() {
                 </select>
               </div>
               <div className="grid grid-cols-2 gap-3">
-              <MiniStat
-                title="Expéditions effectuées"
-                value={bottomArchivedCount}
-                subtitle={lineBottomShip}
-              />
+                <MiniStat
+                  title="Expéditions effectuées"
+                  value={bottomArchivedCount}
+                  subtitle={lineBottomShip}
+                />
 
-              <MiniStat
-                title="Commandes produites"
-                value={producedCount}
-                subtitle={lineProduced}
-              />
-            </div>
+                <MiniStat
+                  title="Commandes produites"
+                  value={producedCount}
+                  subtitle={lineProduced}
+                />
+              </div>
             </div>
             <div className="col-span-1">
               <ActivityList items={activities} />
@@ -349,7 +379,9 @@ export default function Dashboard() {
       {/* MOBILE */}
       <div className="md:hidden">
         <div className="p-0">
-          <div className="gf-h1 text-center">Tableau de bord administrateur</div>
+          <div className="gf-h1 text-center">
+            Tableau de bord administrateur
+          </div>
 
           <div className="mt-2 text-center text-gf-orange font-semibold">
             Bonjour {firstName || "Administrateur"}

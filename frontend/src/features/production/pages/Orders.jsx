@@ -48,7 +48,9 @@ function Orders() {
   const [bulkByOrderId, setBulkByOrderId] = useState({});
 
   const ordersRef = useRef([]);
-  useEffect(() => { ordersRef.current = orders; }, [orders]);
+  useEffect(() => {
+    ordersRef.current = orders;
+  }, [orders]);
 
   /**
    * Applique les compteurs messages/non-lus à une commande.
@@ -65,8 +67,8 @@ function Orders() {
               messagesCount: Number(counts?.messagesCount ?? 0),
               unreadCount: Number(counts?.unreadCount ?? 0),
             }
-          : o
-      )
+          : o,
+      ),
     );
   };
 
@@ -94,8 +96,8 @@ function Orders() {
 
     setOrders((prev) =>
       prev.map((o) =>
-        o.id === orderId ? { ...o, groups: groupsWithMin, summary } : o
-      )
+        o.id === orderId ? { ...o, groups: groupsWithMin, summary } : o,
+      ),
     );
 
     return { list, groupsWithMin, summary };
@@ -162,8 +164,9 @@ function Orders() {
         const next = { ...prev };
         groupsWithMin.forEach((g) =>
           g.lines.forEach((l) => {
-            if (next[l.id] === undefined) next[l.id] = asNumber(l._readyFromApi);
-          })
+            if (next[l.id] === undefined)
+              next[l.id] = asNumber(l._readyFromApi);
+          }),
         );
         return next;
       });
@@ -215,11 +218,12 @@ function Orders() {
                         ? {
                             ...o,
                             status: statusFromProductionStatus(
-                              res?.productionStatus ?? res?.order?.production_status
+                              res?.productionStatus ??
+                                res?.order?.production_status,
                             ),
                           }
-                        : o
-                    )
+                        : o,
+                    ),
                   );
 
                   syncReadyMapFromApiLines(lines);
@@ -236,24 +240,29 @@ function Orders() {
                 try {
                   await ensureDetails(order.id);
 
-                  const current = ordersRef.current.find((o) => o.id === order.id);
+                  const current = ordersRef.current.find(
+                    (o) => o.id === order.id,
+                  );
                   if (!current || current.groups.length === 0) return;
 
                   const linesToUpdate = current.groups.flatMap((g) => g.lines);
 
-                  const tasks = linesToUpdate.map((l) => () =>
-                    patchOrderLineReady(order.id, l.id, l.total)
+                  const tasks = linesToUpdate.map(
+                    (l) => () => patchOrderLineReady(order.id, l.id, l.total),
                   );
 
                   const { errors } = await runWithConcurrency(tasks, 5);
 
                   // vérité BDD : 1 seul fetch
-                  const { order: freshOrder, lines: freshLines } = await getOrderDetails(order.id);
+                  const { order: freshOrder, lines: freshLines } =
+                    await getOrderDetails(order.id);
                   const lines = Array.isArray(freshLines) ? freshLines : [];
 
                   const { groups, summary } = mapOrderDetailsToGroups(lines);
                   const minById = buildMinByIdFromLines(lines);
-                  const groupsWithMin = injectMinMaxIntoGroups(groups, { minById });
+                  const groupsWithMin = injectMinMaxIntoGroups(groups, {
+                    minById,
+                  });
 
                   setOrders((prev) =>
                     prev.map((o) =>
@@ -262,15 +271,19 @@ function Orders() {
                             ...o,
                             groups: groupsWithMin,
                             summary,
-                            status: statusFromProductionStatus(freshOrder?.production_status),
+                            status: statusFromProductionStatus(
+                              freshOrder?.production_status,
+                            ),
                           }
-                        : o
-                    )
+                        : o,
+                    ),
                   );
 
                   setReadyByLineId((prev) => {
                     const nextMap = { ...prev };
-                    lines.forEach((l) => (nextMap[l.id] = asNumber(l.quantity_ready)));
+                    lines.forEach(
+                      (l) => (nextMap[l.id] = asNumber(l.quantity_ready)),
+                    );
                     return nextMap;
                   });
 
@@ -291,13 +304,12 @@ function Orders() {
                 }
               }}
               markAllDisabled={!!bulkByOrderId[order.id]}
-
               primaryLabel="Production terminée"
               onPrimaryAction={async () => {
                 await postProductionValidate(order.id);
                 await refreshList();
                 setExpandedId(null);
-              }}            
+              }}
             />
           ))}
         </div>

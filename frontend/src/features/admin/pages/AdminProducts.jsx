@@ -253,20 +253,24 @@ export default function AdminProducts() {
 
       {/* Table */}
       <div className="mt-6 rounded-2xl border border-gf-border bg-gf-surface overflow-hidden">
-        {error ? <div className="p-4 text-xs text-gf-danger">{error}</div> : null}
+        {error ? (
+          <div className="p-4 text-xs text-gf-danger">{error}</div>
+        ) : null}
 
         {/* Header tableau */}
         <div className="bg-gf-bg text-gf-subtitle">
           <div
             className="grid items-center px-4 py-3 gap-3 font-medium text-xs justify-items-center"
-            style={{ gridTemplateColumns: "minmax(420px,1fr) 140px 120px 120px 220px" }}
+            style={{
+              gridTemplateColumns: "minmax(420px,1fr) 140px 120px 120px 220px",
+            }}
           >
             <div className="justify-self-start">Libellé PDF</div>
             <div>Catégorie</div>
             <div>Poids (kg)</div>
             <div>Actif</div>
             <div>Actions</div>
-          </div>      
+          </div>
         </div>
 
         {/* Rows */}
@@ -285,12 +289,17 @@ export default function AdminProducts() {
                   <div
                     className="grid items-center px-4 py-3 gap-3 text-xs hover:bg-gf-orange/5"
                     style={{
-                      gridTemplateColumns: "minmax(420px,1fr) 140px 120px 120px 220px",
+                      gridTemplateColumns:
+                        "minmax(420px,1fr) 140px 120px 120px 220px",
                     }}
                   >
-                    <div className="truncate text-gf-title font-medium">{p.pdf_label_exact}</div>
+                    <div className="truncate text-gf-title font-medium">
+                      {p.pdf_label_exact}
+                    </div>
                     <div className="text-center">{p.category || "—"}</div>
-                    <div className="text-center">{Number(p.weight_per_unit_kg ?? 0).toString()}</div>
+                    <div className="text-center">
+                      {Number(p.weight_per_unit_kg ?? 0).toString()}
+                    </div>
 
                     <div className="text-center">
                       <button

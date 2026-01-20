@@ -110,8 +110,8 @@ export default function ShipmentsBureau() {
                 unreadCount: Number(counts?.unreadCount ?? 0),
               },
             }
-          : r
-      )
+          : r,
+      ),
     );
   };
 
@@ -228,7 +228,9 @@ export default function ShipmentsBureau() {
                 {rows.map((r) => {
                   const o = r.order;
                   const isOpen = expandedId === o.id;
-                  const pendingWeightKg = sumPendingWeightKg(r.pending_shipments);
+                  const pendingWeightKg = sumPendingWeightKg(
+                    r.pending_shipments,
+                  );
 
                   return (
                     <div
@@ -259,7 +261,7 @@ export default function ShipmentsBureau() {
                           <div className="inline-flex items-center gap-2">
                             <span
                               className={`h-2 w-2 rounded-full ${etatDotClass(
-                                o.expedition_status
+                                o.expedition_status,
                               )}`}
                             />
                             <span>{etatLabel(o.expedition_status)}</span>
@@ -280,7 +282,10 @@ export default function ShipmentsBureau() {
                                     if (!isOpen) toggleRow(o.id);
 
                                     // ouvrir commentaires
-                                    setCommentsOpenById((prev) => ({ ...prev, [o.id]: true }));
+                                    setCommentsOpenById((prev) => ({
+                                      ...prev,
+                                      [o.id]: true,
+                                    }));
                                   }}
                                 >
                                   <Mail className="h-4 w-4" />
@@ -333,11 +338,14 @@ export default function ShipmentsBureau() {
                               {r.pending_shipments.map((s) => (
                                 <div key={s.id} className="text-gf-text">
                                   <div className="text-gf-subtitle">
-                                    Départ camion : {formatDateTimeFr(s.departed_at)}
+                                    Départ camion :{" "}
+                                    {formatDateTimeFr(s.departed_at)}
                                   </div>
                                   <ul className="list-disc pl-5 mt-1 space-y-1">
                                     {s.lines.map((l, idx) => (
-                                      <li key={`${s.id}-${l.product_id}-${idx}`}>
+                                      <li
+                                        key={`${s.id}-${l.product_id}-${idx}`}
+                                      >
                                         <span className="font-medium">
                                           {l.quantity_loaded}
                                         </span>{" "}
@@ -357,17 +365,17 @@ export default function ShipmentsBureau() {
                                   {r.recap?.shipped_total ?? 0} /{" "}
                                   {r.recap?.ordered_total ?? 0} expédiés
                                 </span>
-                                 <span className="text-gf-subtitle">
-                                    {" — "}
-                                    <span className="text-gf-title font-medium">
-                                      {formatKg(pendingWeightKg)}
-                                    </span>
-                                    {" ("}
-                                    <span className="text-gf-title font-medium">
-                                      {formatTons(pendingWeightKg)}
-                                    </span>
-                                    {")"}
+                                <span className="text-gf-subtitle">
+                                  {" — "}
+                                  <span className="text-gf-title font-medium">
+                                    {formatKg(pendingWeightKg)}
                                   </span>
+                                  {" ("}
+                                  <span className="text-gf-title font-medium">
+                                    {formatTons(pendingWeightKg)}
+                                  </span>
+                                  {")"}
+                                </span>
                               </div>
                               <div className="mt-1">
                                 Jour d’enlèvement prévu :{" "}
@@ -409,12 +417,13 @@ export default function ShipmentsBureau() {
                                 onCountsChange={applyCounts}
                                 collapsed={!commentsOpenById[o.id]}
                                 onCollapsedChange={(isCollapsed) =>
-                                  setCommentsOpenById((prev) => ({ ...prev, [o.id]: !isCollapsed }))
+                                  setCommentsOpenById((prev) => ({
+                                    ...prev,
+                                    [o.id]: !isCollapsed,
+                                  }))
                                 }
                               />
                             </div>
-
-
                           </div>
                         </div>
                       ) : null}

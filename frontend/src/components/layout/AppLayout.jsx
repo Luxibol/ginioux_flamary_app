@@ -49,30 +49,31 @@ function AppLayout() {
   }, []);
 
   const mode = useMemo(() => {
-      const p = location.pathname;
-      const role = user?.role;
+    const p = location.pathname;
+    const role = user?.role;
 
-      // Produits admin : desktop uniquement
-      if (p.startsWith("/admin/produits")) return "admin_desktop";
+    // Produits admin : desktop uniquement
+    if (p.startsWith("/admin/produits")) return "admin_desktop";
 
-      // Admin sur petit écran : conserve le mode admin
-      if (
-        role === "ADMIN" &&
-        isSmallScreen &&
-        (p.startsWith("/admin") || p.startsWith("/production"))
-      ) {
-        return "admin_mobile";
-      }
+    // Admin sur petit écran : conserve le mode admin
+    if (
+      role === "ADMIN" &&
+      isSmallScreen &&
+      (p.startsWith("/admin") || p.startsWith("/production"))
+    ) {
+      return "admin_mobile";
+    }
 
-      // Admin : mobile ou desktop selon taille écran
-      if (p.startsWith("/admin")) return isSmallScreen ? "admin_mobile" : "admin_desktop";
+    // Admin : mobile ou desktop selon taille écran
+    if (p.startsWith("/admin"))
+      return isSmallScreen ? "admin_mobile" : "admin_desktop";
 
-      // Production : mobile
-      if (p.startsWith("/production")) return "production";
+    // Production : mobile
+    if (p.startsWith("/production")) return "production";
 
-      // Bureau : desktop
-      return "bureau";
-    }, [location.pathname, isSmallScreen, user?.role]);
+    // Bureau : desktop
+    return "bureau";
+  }, [location.pathname, isSmallScreen, user?.role]);
 
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -82,12 +83,32 @@ function AppLayout() {
         label: who,
         items: [
           { kind: "section", label: "Administration" },
-          { to: "/admin", label: "Dashboard admin", end: true, icon: LayoutDashboard },
-          { to: "/admin/employes", label: "Gestion des employés", end: false, icon: Users },
+          {
+            to: "/admin",
+            label: "Dashboard admin",
+            end: true,
+            icon: LayoutDashboard,
+          },
+          {
+            to: "/admin/employes",
+            label: "Gestion des employés",
+            end: false,
+            icon: Users,
+          },
 
           { kind: "section", label: "Production" },
-          { to: "/production/commandes", label: "Commandes à produire", end: false, icon: ClipboardList },
-          { to: "/production/expeditions", label: "Expéditions à charger", end: false, icon: Truck },
+          {
+            to: "/production/commandes",
+            label: "Commandes à produire",
+            end: false,
+            icon: ClipboardList,
+          },
+          {
+            to: "/production/expeditions",
+            label: "Expéditions à charger",
+            end: false,
+            icon: Truck,
+          },
         ],
       };
     }
@@ -96,9 +117,24 @@ function AppLayout() {
       return {
         label: who,
         items: [
-          { to: "/production", label: "Tableau de bord", end: true, icon: LayoutDashboard },
-          { to: "/production/commandes", label: "Commandes à produire", end: false, icon: ClipboardList },
-          { to: "/production/expeditions", label: "Expéditions à charger", end: false, icon: Truck },
+          {
+            to: "/production",
+            label: "Tableau de bord",
+            end: true,
+            icon: LayoutDashboard,
+          },
+          {
+            to: "/production/commandes",
+            label: "Commandes à produire",
+            end: false,
+            icon: ClipboardList,
+          },
+          {
+            to: "/production/expeditions",
+            label: "Expéditions à charger",
+            end: false,
+            icon: Truck,
+          },
         ],
       };
     }
@@ -109,7 +145,10 @@ function AppLayout() {
   const isMobileLayout = mode === "admin_mobile" || mode === "production";
 
   // Garde-fou : produits indisponibles sur mobile
-  if (mode === "admin_mobile" && location.pathname.startsWith("/admin/produits")) {
+  if (
+    mode === "admin_mobile" &&
+    location.pathname.startsWith("/admin/produits")
+  ) {
     return (
       <div className="min-h-dvh bg-gf-bg text-gf-text overflow-hidden">
         <MobileHeader
@@ -124,7 +163,9 @@ function AppLayout() {
         />
         <main className="h-[calc(100dvh-4rem)] overflow-y-auto p-6">
           <div className="rounded-2xl border border-gf-border bg-gf-surface p-6">
-            <div className="text-sm font-semibold text-gf-title">Disponible sur PC</div>
+            <div className="text-sm font-semibold text-gf-title">
+              Disponible sur PC
+            </div>
             <div className="text-xs text-gf-subtitle mt-2">
               La gestion des produits est uniquement disponible sur ordinateur.
             </div>

@@ -36,15 +36,12 @@ function ForgotPasswordModal({ open, onClose }) {
             Mot de passe oublié
           </div>
           <div className="text-xs text-gf-subtitle mt-2">
-            Contactez votre administrateur pour réinitialiser votre mot de passe.
+            Contactez votre administrateur pour réinitialiser votre mot de
+            passe.
           </div>
         </div>
         <div className="p-5 flex justify-end">
-          <button
-            type="button"
-            onClick={onClose}
-            className="gf-btn"
-          >
+          <button type="button" onClick={onClose} className="gf-btn">
             Fermer
           </button>
         </div>
@@ -86,7 +83,7 @@ export default function LoginPage() {
       // Stocke la session (token + user) en localStorage ou sessionStorage
       setAuth(
         { token: res.token, user: res.user },
-        { persist: remember ? "local" : "session" }
+        { persist: remember ? "local" : "session" },
       );
 
       if (res.user?.must_change_password) {
@@ -126,7 +123,10 @@ export default function LoginPage() {
           ) : null}
 
           <div>
-            <label htmlFor="login" className="text-xs text-gf-subtitle mb-1 block">
+            <label
+              htmlFor="login"
+              className="text-xs text-gf-subtitle mb-1 block"
+            >
               Identifiant
             </label>
             <input
@@ -190,7 +190,10 @@ export default function LoginPage() {
         </form>
       </div>
 
-      <ForgotPasswordModal open={openForgot} onClose={() => setOpenForgot(false)} />
+      <ForgotPasswordModal
+        open={openForgot}
+        onClose={() => setOpenForgot(false)}
+      />
     </AuthLayout>
   );
 }

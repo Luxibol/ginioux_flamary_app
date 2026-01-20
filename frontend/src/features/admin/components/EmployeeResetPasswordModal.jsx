@@ -42,15 +42,20 @@ export default function EmployeeResetPasswordModal({
     <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
       <div className="w-full max-w-xl rounded-2xl border border-gf-border bg-gf-surface shadow-sm">
         <div className="p-5 border-b border-gf-border">
-          <div className="text-sm font-semibold text-gf-title">Réinitialiser le mot de passe</div>
+          <div className="text-sm font-semibold text-gf-title">
+            Réinitialiser le mot de passe
+          </div>
           <div className="text-xs text-gf-subtitle mt-1">{titleLine}</div>
         </div>
 
         <div className="p-5">
-          {error ? <div className="mb-3 text-xs text-gf-danger">{error}</div> : null}
+          {error ? (
+            <div className="mb-3 text-xs text-gf-danger">{error}</div>
+          ) : null}
 
           <div className="text-xs text-gf-subtitle">
-            Un mot de passe temporaire est généré. L’employé devra le changer à la première connexion.
+            Un mot de passe temporaire est généré. L’employé devra le changer à
+            la première connexion.
           </div>
 
           <div className="mt-3 flex items-center gap-2">

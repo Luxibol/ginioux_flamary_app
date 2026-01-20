@@ -65,8 +65,8 @@ function Shipments() {
               messagesCount: Number(counts?.messagesCount ?? 0),
               unreadCount: Number(counts?.unreadCount ?? 0),
             }
-          : o
-      )
+          : o,
+      ),
     );
   };
 
@@ -118,8 +118,8 @@ function Shipments() {
               chargeableTotal: t.chargeableTotal,
               summary: `Chargés ${t.loadedTotal}/${t.chargeableTotal}`,
             }
-          : o
-      )
+          : o,
+      ),
     );
 
     return { list, groupsWithMax, totals: t };
@@ -239,7 +239,10 @@ function Shipments() {
 
                     // si on ferme -> on ferme aussi commentaires
                     if (next === null) {
-                      setCommentsOpenByOrderId((m) => ({ ...m, [order.id]: false }));
+                      setCommentsOpenByOrderId((m) => ({
+                        ...m,
+                        [order.id]: false,
+                      }));
                     }
 
                     if (next === order.id) ensureDetails(order.id);
@@ -249,17 +252,23 @@ function Shipments() {
                 readyByLineId={loadedByLineId}
                 messagesCount={Number(order.messagesCount ?? 0)}
                 unreadCount={Number(order.unreadCount ?? 0)}
-
                 commentsOpen={Boolean(commentsOpenByOrderId[order.id])}
                 onCommentsOpenChange={(open) =>
-                  setCommentsOpenByOrderId((m) => ({ ...m, [order.id]: Boolean(open) }))
+                  setCommentsOpenByOrderId((m) => ({
+                    ...m,
+                    [order.id]: Boolean(open),
+                  }))
                 }
                 onCountsChange={applyCounts}
                 onChangeReady={async (lineId, next) => {
                   setLoadedByLineId((prev) => ({ ...prev, [lineId]: next }));
 
                   try {
-                    const res = await patchOrderLineLoaded(order.id, lineId, next);
+                    const res = await patchOrderLineLoaded(
+                      order.id,
+                      lineId,
+                      next,
+                    );
                     const apiLines = Array.isArray(res?.lines) ? res.lines : [];
                     applyOrderUiFromLines(order.id, apiLines);
                   } catch {
@@ -272,14 +281,18 @@ function Shipments() {
 
                   try {
                     const cached = await ensureDetails(order.id);
-                    const baseLines = cached ?? (await refreshOrderFromServer(order.id));
+                    const baseLines =
+                      cached ?? (await refreshOrderFromServer(order.id));
 
                     const list = Array.isArray(baseLines) ? baseLines : [];
 
                     const tasks = list.map((l) => () => {
                       const max = Math.max(
                         0,
-                        Math.trunc(asNumber(l.quantity_ready) - asNumber(l.quantity_shipped))
+                        Math.trunc(
+                          asNumber(l.quantity_ready) -
+                            asNumber(l.quantity_shipped),
+                        ),
                       );
                       return patchOrderLineLoaded(order.id, l.id, max);
                     });
@@ -303,7 +316,9 @@ function Shipments() {
                 stepperLabel="Chargés"
                 markAllLabel="Tout charger"
                 primaryLabel="Départ du camion"
-                primaryDisabled={loadedTotal <= 0 || !!departByOrderId[order.id]}
+                primaryDisabled={
+                  loadedTotal <= 0 || !!departByOrderId[order.id]
+                }
                 onPrimaryAction={async () => {
                   if (departByOrderId[order.id]) return;
                   setDepartByOrderId((p) => ({ ...p, [order.id]: true }));

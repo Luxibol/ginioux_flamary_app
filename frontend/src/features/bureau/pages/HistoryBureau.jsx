@@ -5,8 +5,15 @@
  */
 import { useEffect, useState } from "react";
 import { ChevronDown, ChevronUp, RefreshCw } from "lucide-react";
-import { getArchivedOrders, getArchivedOrderHistory } from "../../../services/history.api.js";
-import { formatDateFr, priorityClass, priorityLabel } from "../utils/orders.format.js";
+import {
+  getArchivedOrders,
+  getArchivedOrderHistory,
+} from "../../../services/history.api.js";
+import {
+  formatDateFr,
+  priorityClass,
+  priorityLabel,
+} from "../utils/orders.format.js";
 import OrderCommentsThread from "../../../components/comments/OrderCommentsThread.jsx";
 
 /** Options de filtre de période (côté API historique). */
@@ -26,7 +33,11 @@ function formatDateTimeFr(v) {
   if (!v) return "—";
   const d = new Date(v);
   if (Number.isNaN(d.getTime())) return "—";
-  return d.toLocaleDateString("fr-FR", { year: "numeric", month: "2-digit", day: "2-digit" });
+  return d.toLocaleDateString("fr-FR", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
 }
 
 /**
@@ -173,7 +184,8 @@ export default function HistoryBureau() {
                 <div
                   className="grid items-center px-4 py-3 gap-3 font-medium justify-items-center"
                   style={{
-                    gridTemplateColumns: "120px 1fr 120px 160px 120px 220px 40px",
+                    gridTemplateColumns:
+                      "120px 1fr 120px 160px 120px 220px 40px",
                   }}
                 >
                   <div>N° ARC</div>
@@ -214,12 +226,16 @@ export default function HistoryBureau() {
                               "120px 1fr 120px 160px 120px 220px 40px",
                           }}
                         >
-                          <div className="font-medium text-gf-title">{o.arc}</div>
+                          <div className="font-medium text-gf-title">
+                            {o.arc}
+                          </div>
                           <div className="justify-center">{o.client_name}</div>
                           <div>{formatDateFr(o.order_date)}</div>
                           <div>{formatDateTimeFr(o.last_departed_at)}</div>
 
-                          <div className={`font-medium ${priorityClass(o.priority)}`}>
+                          <div
+                            className={`font-medium ${priorityClass(o.priority)}`}
+                          >
                             {priorityLabel(o.priority)}
                           </div>
 
@@ -230,7 +246,11 @@ export default function HistoryBureau() {
                           </div>
 
                           <span className="text-gf-subtitle">
-                            {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                            {isOpen ? (
+                              <ChevronUp className="h-4 w-4" />
+                            ) : (
+                              <ChevronDown className="h-4 w-4" />
+                            )}
                           </span>
                         </div>
                       </div>
@@ -244,28 +264,41 @@ export default function HistoryBureau() {
                           ) : details ? (
                             <div className="px-4 py-4 space-y-4">
                               <div className="text-gf-title font-medium">
-                                Commande {details.order.arc} - {details.order.client_name}
+                                Commande {details.order.arc} -{" "}
+                                {details.order.client_name}
                               </div>
 
                               <div className="text-gf-subtitle">
-                                Créée le {formatDateFr(details.order.order_date)} — Dernière expédition le{" "}
-                                {formatDateTimeFr(details.recap?.last_departed_at)} — Jour d’enlèvement :{" "}
+                                Créée le{" "}
+                                {formatDateFr(details.order.order_date)} —
+                                Dernière expédition le{" "}
+                                {formatDateTimeFr(
+                                  details.recap?.last_departed_at,
+                                )}{" "}
+                                — Jour d’enlèvement :{" "}
                                 {formatDateFr(details.order.pickup_date)}
                                 <br />
                                 Récap :{" "}
                                 <span className="text-gf-title font-medium">
-                                  {details.recap?.shipped_total ?? 0} / {details.recap?.ordered_total ?? 0} expédiés
+                                  {details.recap?.shipped_total ?? 0} /{" "}
+                                  {details.recap?.ordered_total ?? 0} expédiés
                                 </span>{" "}
-                                — {details.recap?.shipments_count ?? 0} expédition(s)
+                                — {details.recap?.shipments_count ?? 0}{" "}
+                                expédition(s)
                               </div>
 
                               <div>
-                                <div className="text-gf-title font-medium mb-1">Lignes de commandes</div>
+                                <div className="text-gf-title font-medium mb-1">
+                                  Lignes de commandes
+                                </div>
                                 <ul className="list-disc pl-5 space-y-1 text-gf-text">
                                   {details.lines.map((l) => (
-                                    <li key={`${details.order.id}-${l.product_id}`}>
+                                    <li
+                                      key={`${details.order.id}-${l.product_id}`}
+                                    >
                                       <span className="font-medium">
-                                        {l.quantity_shipped} / {l.quantity_ordered}
+                                        {l.quantity_shipped} /{" "}
+                                        {l.quantity_ordered}
                                       </span>{" "}
                                       — {l.label}
                                     </li>
@@ -274,17 +307,25 @@ export default function HistoryBureau() {
                               </div>
 
                               <div>
-                                <div className="text-gf-title font-medium mb-1">Expéditions</div>
+                                <div className="text-gf-title font-medium mb-1">
+                                  Expéditions
+                                </div>
                                 <div className="space-y-3">
                                   {details.shipments.map((s, idx) => (
                                     <div key={s.id} className="text-gf-text">
                                       <div className="text-gf-subtitle font-medium">
-                                        Expédition {idx + 1} — {formatDateTimeFr(s.departed_at)}
+                                        Expédition {idx + 1} —{" "}
+                                        {formatDateTimeFr(s.departed_at)}
                                       </div>
                                       <ul className="list-disc pl-5 mt-1 space-y-1">
                                         {s.lines.map((x, i) => (
-                                          <li key={`${s.id}-${x.product_id}-${i}`}>
-                                            <span className="font-medium">{x.quantity_loaded}</span> — {x.label}
+                                          <li
+                                            key={`${s.id}-${x.product_id}-${i}`}
+                                          >
+                                            <span className="font-medium">
+                                              {x.quantity_loaded}
+                                            </span>{" "}
+                                            — {x.label}
                                           </li>
                                         ))}
                                       </ul>

@@ -225,9 +225,7 @@ export default function ImportPdf() {
       </div>
 
       <div className="mt-10 max-w-3xl mx-auto">
-        <div className="gf-h3">
-          Résultats récents
-        </div>
+        <div className="gf-h3">Résultats récents</div>
         <div className="gf-body text-gf-subtitle">
           Les commandes validées apparaissent automatiquement dans “Commandes en
           cours”.
@@ -235,9 +233,7 @@ export default function ImportPdf() {
 
         <ul className="mt-3 space-y-2">
           {messages.length === 0 ? (
-            <li className="gf-empty">
-              Aucun import validé pour le moment.
-            </li>
+            <li className="gf-empty">Aucun import validé pour le moment.</li>
           ) : (
             messages.map((m, idx) => (
               <li key={idx} className="flex items-start gap-2">
@@ -266,7 +262,7 @@ export default function ImportPdf() {
       </div>
 
       <OrderModal
-      // Force le remount de la modale entre deux imports (réinitialise son state interne).
+        // Force le remount de la modale entre deux imports (réinitialise son state interne).
         key={`${preview?.arc ?? "new"}-${modalOpen}`}
         open={modalOpen}
         onClose={() => closeModal(true)}
