@@ -101,6 +101,12 @@ npm run dev
 
 - Compte de démo : `admina` / `mdp12345`
 
+## Jeu d’essai / Import PDF (démo)
+
+- Pour tester l’import, utiliser un PDF de commande contenant un ARC “test”
+  (ex : `ARC-TEST-0001`).  
+  Si l’ARC existe déjà, l’import est ignoré (anti-doublon).
+
 ## Structure du dépôt
 
 - `backend/` : API Express + accès DB
