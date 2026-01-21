@@ -1,3 +1,9 @@
+## Livrables
+
+- Dossier de projet : docs/Dossier_ginioux_Flamary.pdf
+- Support de présentation : docs/Presentation.pdf
+- Dépôt : https://github.com/Luxibol/ginioux_flamary_app
+
 # Application Ginioux Flamary
 
 Application web interne avec 3 espaces :
