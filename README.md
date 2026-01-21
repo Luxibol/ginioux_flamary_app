@@ -30,7 +30,7 @@ Application web interne avec 3 espaces :
 Les scripts SQL sont dans `backend/db/` :
 
 - `ginioux_flamary.sql` : **structure** (tables + contraintes)
-- `donnes_ginioux_flamary.sql` : **données de démo** (utilisateurs + catalogue)
+- `donnees_ginioux_flamary.sql` : **données de démo** (utilisateurs + catalogue)
 
 Exemples d’import (MySQL CLI) :
 
@@ -39,7 +39,7 @@ Exemples d’import (MySQL CLI) :
 mysql -h localhost -P 3307 -u root -p < backend/db/ginioux_flamary.sql
 
 # 2) données (dans la base déjà créée)
-mysql -h localhost -P 3307 -u root -p ginioux_flamary < backend/db/donnes_ginioux_flamary.sql
+mysql -h localhost -P 3307 -u root -p ginioux_flamary < backend/db/donnees_ginioux_flamary.sql
 ```
 
 > Remarque : `3307` est un exemple (fréquent avec certains setups). Adapte selon ton MySQL/MariaDB.

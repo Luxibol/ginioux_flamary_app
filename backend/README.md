@@ -59,32 +59,66 @@ L’API écoute par défaut sur `http://localhost:4000`.
 
 ## Endpoints principaux
 
+> Base URL (local) : `http://localhost:4000`
+
 ### Santé
 
 - `GET /health`
+- `GET /health/db`
 
 ### Auth
 
 - `POST /auth/login`
 - `POST /auth/refresh`
 - `POST /auth/logout`
-- `GET /auth/me`
 - `POST /auth/change-password`
 
-### Commandes / Production / Expéditions
+### Import PDF (BUREAU/ADMIN)
 
-- `GET /orders` (connecté)
-- `GET /orders/:id` (connecté)
-- `PATCH /orders/:id/meta` (BUREAU/ADMIN)
-- `PATCH /orders/:id/production` (PRODUCTION)
-- `GET /shipments/pending` (BUREAU/ADMIN)
-- `POST /shipments/ack` (BUREAU/ADMIN)
-- `GET /history` (BUREAU/ADMIN)
+- `POST /pdf/preview` (form-data : `file`)
+- `POST /pdf/:importId/confirm` (body : `{ preview, internalComment }`)
+- `DELETE /pdf/:importId`
+
+### Commandes (BUREAU/ADMIN)
+
+- `GET /orders/active` (liste des commandes actives + filtres)
+- `GET /orders/:id` (détail commande + lignes)
+- `PATCH /orders/:id` (mise à jour commande + synchronisation lignes)
+- `DELETE /orders/:id`
+- `GET /orders/archived` (liste commandes archivées)
+- `GET /orders/:id/history` (détail “historique” d’une commande)
+
+### Production / Expéditions (PRODUCTION/ADMIN)
+
+- `GET /orders/production` (commandes à produire)
+- `PATCH /orders/:orderId/lines/:lineId/ready` (déclarer une quantité prête)
+- `POST /orders/:id/production-validate` (valider une production complète)
+
+- `GET /orders/shipments` (expéditions à charger / préparation départ camion)
+- `PATCH /orders/:orderId/lines/:lineId/loaded` (quantité chargée camion)
+- `POST /orders/:orderId/shipments/depart` (départ camion)
+
+- `GET /orders/shipments/stats` (stats expéditions – si activé)
+- `GET /orders/produced` (ADMIN : indicateurs production – si activé)
+
+### Expéditions côté Bureau (BUREAU/ADMIN)
+
+- `GET /orders/bureau/shipments/pending` (expéditions à accuser réception)
+- `POST /orders/:orderId/shipments/ack` (accusé de réception Bureau)
+
+### Commentaires (connecté)
+
+- `GET /orders/:id/comments`
+- `POST /orders/:id/comments`
 
 ### Produits
 
-- Recherche (connecté) : `GET /products/search?q=...`
-- CRUD (ADMIN/BUREAU) : `GET/POST/PATCH/DELETE /products`
+- `GET /products/search?q=...` (connecté)
+- CRUD (ADMIN/BUREAU) :
+  - `GET /products`
+  - `POST /products`
+  - `PATCH /products/:id`
+  - `DELETE /products/:id`
 
 ### Admin utilisateurs (ADMIN)
 
