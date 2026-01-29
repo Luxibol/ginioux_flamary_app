@@ -7,12 +7,14 @@ import { getToken, setToken } from "../../../services/auth.storage.js";
  * - écoute /events/production?access_token=...
  * - si auth_error => tente /auth/refresh (cookie httpOnly) puis reconnect
  */
-export function useProductionEvents(onEvent) {
-  let sharedES = null;
-  let sharedRefCount = 0;
-  let sharedReconnectTimer = null;
-  let sharedBackoffMs = 1000;
 
+// ✅ shared state (persistant entre renders / montages)
+let sharedES = null;
+let sharedRefCount = 0;
+let sharedReconnectTimer = null;
+let sharedBackoffMs = 1000;
+
+export function useProductionEvents(onEvent) {
   const onEventRef = useRef(onEvent);
   useEffect(() => {
     onEventRef.current = onEvent;
@@ -50,7 +52,9 @@ export function useProductionEvents(onEvent) {
       if (sharedES) {
         try {
           sharedES.close();
-        } catch {}
+        } catch {
+          // ignore
+        }
         sharedES = null;
       }
     };
@@ -89,7 +93,9 @@ export function useProductionEvents(onEvent) {
         try {
           const payload = JSON.parse(e.data || "{}");
           onEventRef.current?.(payload);
-        } catch {}
+        } catch {
+          // ignore (payload invalide)
+        }
       });
 
       es.addEventListener("auth_error", async () => {

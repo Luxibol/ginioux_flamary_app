@@ -4,7 +4,7 @@
  * - Mode lecture seule optionnel + ajout d'un commentaire
  * - Pliable (collapsible) : contrôlé par le parent ou en local
  */
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Plus, ChevronDown, ChevronUp } from "lucide-react";
 import {
   getOrderComments,
@@ -58,6 +58,38 @@ export default function OrderCommentsThread({
   
   const inputRef = useRef(null);
 
+  // --- Anti spam + callback stable (évite boucle onCountsChange => re-fetch => 429)
+  const onCountsChangeRef = useRef(onCountsChange);
+  useEffect(() => {
+    onCountsChangeRef.current = onCountsChange;
+  }, [onCountsChange]);
+
+  const lastCountsRef = useRef({ mc: null, uc: null });
+  const lastCountsFetchRef = useRef(0);
+
+    const applyCounts = useCallback(
+      (mc, uc) => {
+        setMessagesCount(mc);
+        setUnreadCount(uc);
+
+        if (
+          lastCountsRef.current.mc === mc &&
+          lastCountsRef.current.uc === uc
+        )
+          return;
+
+        lastCountsRef.current = { mc, uc };
+
+        onCountsChangeRef.current?.(orderId, {
+          messagesCount: mc,
+          unreadCount: uc,
+        });
+      },
+      [orderId],
+    );
+
+
+
   // État local (utilisé si le parent ne contrôle pas "collapsed")
   const [collapsedLocal, setCollapsedLocal] = useState(
     Boolean(defaultCollapsed),
@@ -88,16 +120,19 @@ export default function OrderCommentsThread({
 
     (async () => {
       try {
+
+        const now = Date.now();
+        if (now - lastCountsFetchRef.current < 500) return; // anti-spam
+        lastCountsFetchRef.current = now;
+
         const counts = await getOrderCommentCounts(orderId);
         if (cancelled) return;
 
         const mc = Number(counts?.messagesCount ?? 0);
         const uc = Number(counts?.unreadCount ?? 0);
 
-        setMessagesCount(mc);
-        setUnreadCount(uc);
+        applyCounts(mc, uc);
 
-        onCountsChange?.(orderId, { messagesCount: mc, unreadCount: uc });
       } catch {
         // silent
       }
@@ -106,7 +141,7 @@ export default function OrderCommentsThread({
     return () => {
       cancelled = true;
     };
-  }, [open, orderId, collapsed, refreshSignal]);
+  }, [open, orderId, collapsed, refreshSignal, applyCounts]);
 
   async function load() {
     if (!orderId) return;
@@ -119,10 +154,8 @@ export default function OrderCommentsThread({
       const uc = Number(res?.unreadCount ?? 0);
 
       setComments(res?.data || []);
-      setMessagesCount(mc);
-      setUnreadCount(uc);
+      applyCounts(mc, uc);
 
-      onCountsChange?.(orderId, { messagesCount: mc, unreadCount: uc });
     } catch (e) {
       setError(e?.message || "Erreur chargement commentaires.");
     } finally {
@@ -143,10 +176,7 @@ export default function OrderCommentsThread({
       const uc = Number(res?.unreadCount ?? 0);
 
       setComments(res?.data || []);
-      setMessagesCount(mc);
-      setUnreadCount(uc);
-
-      onCountsChange?.(orderId, { messagesCount: mc, unreadCount: uc });
+      applyCounts(mc, uc);
 
       setContent("");
       setCollapsed(false); // Ouvre le thread après envoi
