@@ -192,3 +192,8 @@ export async function postOrderComment(orderId, content) {
     body: JSON.stringify({ content }),
   });
 }
+
+export async function getOrderCommentCounts(orderId) {
+  const res = await apiFetch(`/orders/${orderId}/comments/counts`);
+  return res; // { messagesCount, unreadCount }
+}

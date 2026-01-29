@@ -11,6 +11,7 @@ const productsRoutes = require("./routes/products.routes");
 const authRoutes = require("./routes/auth.routes");
 const adminUsersRoutes = require("./routes/adminUsers.routes");
 const cookieParser = require("cookie-parser");
+const eventsRoutes = require("./routes/events.routes");
 
 const { applySecurity } = require("./middlewares/security.middleware");
 
@@ -18,6 +19,8 @@ const app = express();
 applySecurity(app);
 // Lecture des cookies (refresh token).
 app.use(cookieParser());
+
+app.use("/events", eventsRoutes);
 
 app.use("/admin/users", adminUsersRoutes);
 app.use("/health", healthRoutes);

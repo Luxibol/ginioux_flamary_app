@@ -4,6 +4,7 @@
  */
 
 const ordersRepository = require("../repositories/orders.repository");
+const { broadcastProductionEvent } = require("../realtime/productionEvents");
 
 function asInt(v) {
   const n = Number(v);
@@ -89,6 +90,8 @@ async function patchOrderLineReady(req, res) {
       return res.status(404).json({ error: "Commande ou ligne introuvable." });
     }
 
+    broadcastProductionEvent({ type: "order_ready_changed", orderId });
+
     return res.json(result);
   } catch (err) {
     console.error("PATCH /orders/:orderId/lines/:lineId/ready error:", err);
@@ -169,6 +172,8 @@ async function patchOrderLineLoaded(req, res) {
       return res.status(404).json({ error: "Commande ou ligne introuvable." });
     }
 
+    broadcastProductionEvent({ type: "order_loaded_changed", orderId });
+
     return res.json(result);
   } catch (err) {
     console.error("PATCH /orders/:orderId/lines/:lineId/loaded error:", err);
@@ -199,6 +204,8 @@ async function postDepartTruck(req, res) {
     if (result?.notFound) {
       return res.status(404).json({ error: "Commande introuvable." });
     }
+
+    broadcastProductionEvent({ type: "order_truck_departed", orderId });
 
     return res.json(result);
   } catch (err) {

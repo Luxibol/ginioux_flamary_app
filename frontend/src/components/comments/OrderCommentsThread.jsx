@@ -4,7 +4,7 @@
  * - Mode lecture seule optionnel + ajout d'un commentaire
  * - Pliable (collapsible) : contrôlé par le parent ou en local
  */
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Plus, ChevronDown, ChevronUp } from "lucide-react";
 import {
   getOrderComments,
@@ -32,6 +32,9 @@ export default function OrderCommentsThread({
   onCountsChange,
   className = "",
   readOnly = false,
+  refreshSignal = 0,
+  messagesCount: messagesCountProp,
+  unreadCount: unreadCountProp,
 
   // UI
   showHeader = true,
@@ -51,6 +54,8 @@ export default function OrderCommentsThread({
   const [unreadCount, setUnreadCount] = useState(0);
 
   const [content, setContent] = useState("");
+  
+  const inputRef = useRef(null);
 
   // État local (utilisé si le parent ne contrôle pas "collapsed")
   const [collapsedLocal, setCollapsedLocal] = useState(
@@ -124,13 +129,35 @@ export default function OrderCommentsThread({
   useEffect(() => {
     if (!open) return;
     if (!orderId) return;
+    if (collapsed) return; // ne marque pas "lu" tant que le thread est replié
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, orderId]);
+  }, [open, orderId, collapsed]);
+
+
+  useEffect(() => {
+    if (!open || !orderId) return;
+    if (collapsed) return; // pas de reload/markRead quand replié
+    if (posting) return;
+
+    const isTyping = String(content || "").trim().length > 0;
+    const isFocused = document.activeElement === inputRef.current;
+
+    if (isTyping || isFocused) return;
+
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refreshSignal, collapsed]);
 
   if (!open) return null;
 
   const canToggle = showHeader && collapsible;
+
+  const displayMessagesCount =
+    typeof messagesCountProp === "number" ? messagesCountProp : messagesCount;
+
+  const displayUnreadCount =
+    typeof unreadCountProp === "number" ? unreadCountProp : unreadCount;
 
   return (
     <div
@@ -147,11 +174,11 @@ export default function OrderCommentsThread({
           <div className="text-xs font-medium text-gf-title">
             Commentaires{" "}
             <span className="text-gf-subtitle font-normal">
-              ({messagesCount})
+              ({displayMessagesCount})
             </span>
             {unreadCount > 0 ? (
               <span className="ml-2 text-[11px] text-gf-subtitle">
-                • Non lus : {unreadCount}
+                • Non lus : {displayUnreadCount}
               </span>
             ) : null}
           </div>
@@ -198,6 +225,7 @@ export default function OrderCommentsThread({
           {!readOnly ? (
             <div className="mt-3 flex items-center gap-2">
               <input
+                ref={inputRef}
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
                 onKeyDown={(e) => {

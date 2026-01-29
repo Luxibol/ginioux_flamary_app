@@ -29,6 +29,12 @@ router.get(
   orderCommentsController.getOrderComments,
 );
 
+router.get(
+  "/:id/comments/counts",
+  requireAuth,
+  orderCommentsController.getOrderCommentsCounts,
+);
+
 router.post(
   "/:id/comments",
   requireRole("ADMIN", "BUREAU", "PRODUCTION"),

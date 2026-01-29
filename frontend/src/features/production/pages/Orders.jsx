@@ -9,11 +9,13 @@
  */
 import { useEffect, useRef, useState, useCallback } from "react";
 import ProductionOrderCard from "../components/ProductionOrderCard.jsx";
+import { useProductionEvents } from "../hooks/useProductionEvents.js";
 import {
   getProductionOrders,
   getOrderDetails,
   patchOrderLineReady,
   postProductionValidate,
+  getOrderCommentCounts,
 } from "../../../services/orders.api.js";
 import {
   mapProductionOrdersList,
@@ -47,10 +49,53 @@ function Orders() {
 
   const [bulkByOrderId, setBulkByOrderId] = useState({});
 
+  // --- SSE: refresh 1-shot + refresh commentaires (sans casser la saisie) ---
+  const [commentsRefreshTick, setCommentsRefreshTick] = useState({});
+  const pendingOrderIdsRef = useRef(new Set());
+  const flushTimerRef = useRef(null);
+
+  const expandedIdRef = useRef(null);
+  useEffect(() => {
+    expandedIdRef.current = expandedId;
+  }, [expandedId]);
+
+  const busyUntilRef = useRef(0);
+  function isUserEditing() {
+    const el = document.activeElement;
+    if (!el) return false;
+    const tag = el.tagName?.toLowerCase();
+    return tag === "input" || tag === "textarea" || el.isContentEditable;
+  }
+  function markBusy(ms = 5000) {
+    busyUntilRef.current = Math.max(busyUntilRef.current, Date.now() + ms);
+  }
+  function isBusy() {
+    return Date.now() < busyUntilRef.current || isUserEditing();
+  }
+
   const ordersRef = useRef([]);
   useEffect(() => {
     ordersRef.current = orders;
   }, [orders]);
+
+  const countsTimersRef = useRef({});
+  function queueCountsRefresh(orderId) {
+    if (!orderId) return;
+
+    // debounce par commande (1 seule requête même si 10 events arrivent)
+    if (countsTimersRef.current[orderId]) return;
+
+    countsTimersRef.current[orderId] = setTimeout(async () => {
+      countsTimersRef.current[orderId] = null;
+      try {
+        const counts = await getOrderCommentCounts(orderId);
+        applyCounts(orderId, counts);
+      } catch {
+        // silent
+      }
+    }, 250);
+  }
+
 
   /**
    * Applique les compteurs messages/non-lus à une commande.
@@ -147,6 +192,123 @@ function Orders() {
     refreshList();
   }, [refreshList]);
 
+  const refreshListSilent = useCallback(async () => {
+    try {
+      const res = await getProductionOrders();
+      const fresh = mapProductionOrdersList(res?.data);
+
+      setOrders((prev) => {
+        const prevById = new Map(prev.map((o) => [o.id, o]));
+        return fresh.map((f) => {
+          const cur = prevById.get(f.id);
+          if (!cur) return f;
+
+          // merge: on garde groups/summary déjà chargés, on met à jour les champs “vivants”
+          return {
+            ...cur,
+            company: f.company,
+            arc: f.arc,
+            pickupDate: f.pickupDate,
+            priority: f.priority,
+            priorityLabel: f.priorityLabel,
+            status: f.status,
+            messagesCount: Number(f.messagesCount ?? cur.messagesCount ?? 0),
+            unreadCount: Number(f.unreadCount ?? cur.unreadCount ?? 0),
+            bigbagTotal: Number(f.bigbagTotal ?? cur.bigbagTotal ?? 0),
+            rocheTotal: Number(f.rocheTotal ?? cur.rocheTotal ?? 0),
+            summary: cur.groups?.length ? cur.summary : f.summary,
+          };
+        });
+      });
+
+      // si commande ouverte disparue (validée), on ferme proprement
+      const openId = expandedIdRef.current;
+      if (openId && !fresh.some((o) => o.id === openId)) {
+        setExpandedId(null);
+      }
+    } catch {
+      // silent
+    }
+  }, []);
+
+  const refreshExpandedDetails = useCallback(async (orderId) => {
+    try {
+      const { lines } = await getOrderDetails(orderId);
+      applyDetailsFromLines(orderId, lines);
+      syncReadyMapFromApiLines(Array.isArray(lines) ? lines : []);
+    } catch {
+      // silent
+    }
+  }, []);
+
+  function requestRefresh(orderId, { comments = false, skipList = false } = {}) {
+    if (!orderId) return;
+
+    pendingOrderIdsRef.current.add(orderId);
+
+    // Si l'event concerne les commentaires: on déclenche 1 reload du thread
+    if (comments) {
+      setCommentsRefreshTick((p) => ({
+        ...p,
+        [orderId]: (p[orderId] || 0) + 1,
+      }));
+    }
+
+    // Déjà un flush programmé ? On ne reprogramme pas.
+    if (flushTimerRef.current) return;
+
+    flushTimerRef.current = setTimeout(async () => {
+      flushTimerRef.current = null;
+
+      const busy = isBusy();
+
+      const ids = Array.from(pendingOrderIdsRef.current);
+      pendingOrderIdsRef.current.clear();
+
+      // 1) On refresh TOUJOURS la liste (merge => pas de repli)
+      if (!skipList) {
+        await refreshListSilent();
+      }
+
+
+      // 2) Détails : uniquement si pas busy (évite d'écraser une saisie)
+      const openId = expandedIdRef.current;
+      if (!busy && openId && ids.includes(openId)) {
+        await refreshExpandedDetails(openId);
+        return;
+      }
+
+      // 3) Si busy et la commande ouverte est concernée : retry plus tard
+      if (busy && openId && ids.includes(openId)) {
+        pendingOrderIdsRef.current.add(openId);
+
+        // IMPORTANT : on ne réutilise pas flushTimerRef ici, sinon on bloque
+        setTimeout(() => {
+          requestRefresh(openId, { comments: false });
+        }, 800);
+      }
+    }, 120);
+  }
+
+  useProductionEvents((evt) => {
+    const orderId = Number(evt?.orderId || 0);
+    if (!orderId) return;
+
+    const exists = ordersRef.current.some((o) => o.id === orderId);
+    if (!exists) return;
+
+    // 1) Pour les commentaires : MAJ badge via endpoint léger (pas de refresh list)
+    if (evt?.type === "order_comment_created" || evt?.type === "order_comment_reads") {
+      queueCountsRefresh(orderId);
+    }
+
+    // 2) On refresh le thread commentaires UNIQUEMENT si "created"
+    requestRefresh(orderId, {
+      comments: evt?.type === "order_comment_created",
+      skipList: evt?.type === "order_comment_created" || evt?.type === "order_comment_reads",
+    });
+  });
+
   /**
    * Assure le chargement des détails d'une commande (1 seule fois).
    * @param {number} orderId
@@ -194,6 +356,7 @@ function Orders() {
               order={order}
               expanded={expandedId === order.id}
               onCountsChange={applyCounts}
+              commentsRefreshSignal={commentsRefreshTick[order.id] || 0}
               onToggle={() => {
                 setExpandedId((cur) => {
                   const next = cur === order.id ? null : order.id;
@@ -203,12 +366,13 @@ function Orders() {
               }}
               readyByLineId={readyByLineId}
               onChangeReady={async (lineId, next) => {
+                markBusy(3000); // bloque refresh entrants pendant l'action
+
                 // optimistic
                 setReadyByLineId((prev) => ({ ...prev, [lineId]: next }));
 
                 try {
                   const res = await patchOrderLineReady(order.id, lineId, next);
-
                   const lines = Array.isArray(res?.lines) ? res.lines : [];
                   applyDetailsFromLines(order.id, lines);
 
@@ -218,8 +382,7 @@ function Orders() {
                         ? {
                             ...o,
                             status: statusFromProductionStatus(
-                              res?.productionStatus ??
-                                res?.order?.production_status,
+                              res?.productionStatus ?? res?.order?.production_status,
                             ),
                           }
                         : o,
@@ -230,6 +393,8 @@ function Orders() {
                 } catch {
                   detailsLoadedRef.current.delete(order.id);
                   await ensureDetails(order.id);
+                } finally {
+                  markBusy(1500); // petit buffer après action
                 }
               }}
               onMarkAllReady={async () => {
@@ -238,6 +403,7 @@ function Orders() {
                 setBulkByOrderId((p) => ({ ...p, [order.id]: true }));
 
                 try {
+                  markBusy(12000);
                   await ensureDetails(order.id);
 
                   const current = ordersRef.current.find(
@@ -300,15 +466,21 @@ function Orders() {
                 } catch (e) {
                   console.error(e);
                 } finally {
+                  markBusy(1500);
                   setBulkByOrderId((p) => ({ ...p, [order.id]: false }));
                 }
               }}
               markAllDisabled={!!bulkByOrderId[order.id]}
               primaryLabel="Production terminée"
               onPrimaryAction={async () => {
-                await postProductionValidate(order.id);
-                await refreshList();
-                setExpandedId(null);
+                markBusy(8000);
+                try {
+                  await postProductionValidate(order.id);
+                  await refreshList();
+                  setExpandedId(null);
+                } finally {
+                  markBusy(1500);
+                }
               }}
             />
           ))}

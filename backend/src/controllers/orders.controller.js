@@ -3,6 +3,7 @@
  * @description Contrôleur commandes : liste des commandes actives + validation production.
  */
 const ordersRepository = require("../repositories/orders.repository");
+const { broadcastProductionEvent } = require("../realtime/productionEvents");
 
 const ALLOWED_PRIORITIES = ["URGENT", "INTERMEDIAIRE", "NORMAL"];
 const ALLOWED_STATES = [
@@ -88,6 +89,12 @@ async function postProductionValidate(req, res) {
     }
 
     const order = await ordersRepository.findOrderById(id);
+
+    broadcastProductionEvent({
+      type: "order_production_validated",
+      orderId: id,
+    });
+
     return res.json({ status: "validated", order });
   } catch (err) {
     console.error("POST /orders/:id/production-validate error:", err);

@@ -61,6 +61,7 @@ export default function ProductionOrderCard({
   onMarkAllReady,
 
   onCountsChange,
+  commentsRefreshSignal = 0,
 
   statusLabelOverride = null,
   statusKeyOverride = null,
@@ -275,6 +276,9 @@ export default function ProductionOrderCard({
               collapsed={!commentsOpen}
               onCollapsedChange={(isCollapsed) => setCommentsOpen(!isCollapsed)}
               showHeader={true}
+              refreshSignal={commentsRefreshSignal}
+              messagesCount={messagesCount}
+              unreadCount={unreadCount}
             />
           </div>
 
