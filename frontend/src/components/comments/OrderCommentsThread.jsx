@@ -9,6 +9,7 @@ import { Plus, ChevronDown, ChevronUp } from "lucide-react";
 import {
   getOrderComments,
   postOrderComment,
+  getOrderCommentCounts,
 } from "../../services/orders.api.js";
 
 /**
@@ -76,6 +77,36 @@ export default function OrderCommentsThread({
       onCollapsedChange?.(v);
     }
   };
+
+  useEffect(() => {
+    if (!open || !orderId) return;
+
+    // Thread replié : on met à jour UNIQUEMENT les compteurs (sans markRead)
+    if (!collapsed) return;
+
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const counts = await getOrderCommentCounts(orderId);
+        if (cancelled) return;
+
+        const mc = Number(counts?.messagesCount ?? 0);
+        const uc = Number(counts?.unreadCount ?? 0);
+
+        setMessagesCount(mc);
+        setUnreadCount(uc);
+
+        onCountsChange?.(orderId, { messagesCount: mc, unreadCount: uc });
+      } catch {
+        // silent
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [open, orderId, collapsed, refreshSignal]);
 
   async function load() {
     if (!orderId) return;

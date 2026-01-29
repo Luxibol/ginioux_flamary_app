@@ -9,11 +9,13 @@
  */
 import { useEffect, useRef, useState } from "react";
 import ProductionOrderCard from "../components/ProductionOrderCard.jsx";
+import { useProductionEvents } from "../hooks/useProductionEvents.js";
 import {
   getProductionShipments,
   getOrderDetails,
   patchOrderLineLoaded,
   postDepartTruck,
+  getOrderCommentCounts,
 } from "../../../services/orders.api.js";
 import { mapOrderDetailsToGroups } from "../mappers/productionOrders.mappers.js";
 import {
@@ -50,6 +52,21 @@ function Shipments() {
 
   const [commentsOpenByOrderId, setCommentsOpenByOrderId] = useState({});
 
+  // --- SSE: refresh 1-shot + refresh commentaires (sans casser l'UX) ---
+  const [commentsRefreshTick, setCommentsRefreshTick] = useState({});
+  const pendingOrderIdsRef = useRef(new Set());
+  const flushTimerRef = useRef(null);
+
+  const expandedIdRef = useRef(null);
+  useEffect(() => {
+    expandedIdRef.current = expandedId;
+  }, [expandedId]);
+
+  const ordersRef = useRef([]);
+  useEffect(() => {
+    ordersRef.current = orders;
+  }, [orders]);
+
   /**
    * Applique les compteurs messages/non-lus à une commande.
    * @param {number} orderId
@@ -69,6 +86,25 @@ function Shipments() {
       ),
     );
   };
+
+  const countsTimersRef = useRef({});
+
+  function queueCountsRefresh(orderId) {
+    if (!orderId) return;
+
+    // debounce par commande
+    if (countsTimersRef.current[orderId]) return;
+
+    countsTimersRef.current[orderId] = setTimeout(async () => {
+      countsTimersRef.current[orderId] = null;
+      try {
+        const counts = await getOrderCommentCounts(orderId);
+        applyCounts(orderId, counts);
+      } catch {
+        // silent
+      }
+    }, 250);
+  }
 
   /**
    * Réinitialise le cache des détails et les steppers.
@@ -177,6 +213,107 @@ function Shipments() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  async function refreshListSilent() {
+    try {
+      const res = await getProductionShipments();
+      const data = Array.isArray(res?.data) ? res.data : [];
+
+      const fresh = data.map((o) => {
+        const loadedTotal = Number(o.loaded_total ?? 0);
+        const chargeableTotal = Number(o.chargeable_total ?? 0);
+
+        return {
+          id: o.id,
+          company: o.client_name ?? "—",
+          arc: o.arc ?? "—",
+          pickupDate: formatDateFR(o.pickup_date),
+          priority: o.priority ?? "NORMAL",
+          priorityLabel: priorityLabel(o.priority),
+
+          loadedTotal,
+          chargeableTotal,
+
+          messagesCount: Number(o.messagesCount ?? 0),
+          unreadCount: Number(o.unreadCount ?? 0),
+
+          groups: [],
+          comments: [],
+          summary: `Chargés ${loadedTotal}/${chargeableTotal}`,
+        };
+      });
+
+      setOrders((prev) => {
+        const prevById = new Map(prev.map((o) => [o.id, o]));
+        return fresh.map((f) => {
+          const cur = prevById.get(f.id);
+          if (!cur) return f;
+
+          return {
+            ...cur,
+            company: f.company,
+            arc: f.arc,
+            pickupDate: f.pickupDate,
+            priority: f.priority,
+            priorityLabel: f.priorityLabel,
+            loadedTotal: f.loadedTotal,
+            chargeableTotal: f.chargeableTotal,
+            messagesCount: Number(f.messagesCount ?? cur.messagesCount ?? 0),
+            unreadCount: Number(f.unreadCount ?? cur.unreadCount ?? 0),
+            summary: cur.groups?.length ? cur.summary : f.summary,
+          };
+        });
+      });
+
+      // si commande ouverte disparue (départ camion), on ferme proprement
+      const openId = expandedIdRef.current;
+      if (openId && !fresh.some((o) => o.id === openId)) {
+        setExpandedId(null);
+      }
+    } catch {
+      // silent
+    }
+  }
+
+  async function refreshExpandedDetails(orderId) {
+    try {
+      const { lines } = await getOrderDetails(orderId);
+      applyOrderUiFromLines(orderId, lines);
+    } catch {
+      // silent
+    }
+  }
+
+  function requestRefresh(orderId, { comments = false, skipList = false } = {}) {
+    if (!orderId) return;
+
+    pendingOrderIdsRef.current.add(orderId);
+
+    if (comments) {
+      setCommentsRefreshTick((p) => ({
+        ...p,
+        [orderId]: (p[orderId] || 0) + 1,
+      }));
+    }
+
+    if (flushTimerRef.current) return;
+
+    flushTimerRef.current = setTimeout(async () => {
+      flushTimerRef.current = null;
+
+      const ids = Array.from(pendingOrderIdsRef.current);
+      pendingOrderIdsRef.current.clear();
+
+      if (!skipList) {
+        await refreshListSilent();
+      }
+
+      const openId = expandedIdRef.current;
+      if (openId && ids.includes(openId)) {
+        await refreshExpandedDetails(openId);
+      }
+    }, 120);
+  }
+
   /**
    * Charge les détails 1 seule fois par orderId (lazy).
    * @param {number} orderId
@@ -209,6 +346,30 @@ function Shipments() {
     return freshLines;
   }
 
+  useProductionEvents((evt) => {
+    const orderId = Number(evt?.orderId || 0);
+    if (!orderId) return;
+
+    const exists = ordersRef.current.some((o) => o.id === orderId);
+    if (!exists) return;
+
+    // 1) Badge enveloppe : endpoint léger
+    if (
+      evt?.type === "order_comment_created" ||
+      evt?.type === "order_comment_reads"
+    ) {
+      queueCountsRefresh(orderId);
+    }
+
+    // 2) Thread commentaires : uniquement sur "created"
+    requestRefresh(orderId, {
+      comments: evt?.type === "order_comment_created",
+      skipList:
+        evt?.type === "order_comment_created" ||
+        evt?.type === "order_comment_reads",
+    });
+  });
+
   return (
     <div className="p-4">
       <h1 className="gf-h1 text-center mb-1">Expéditions à charger</h1>
@@ -233,6 +394,7 @@ function Shipments() {
                 key={order.id}
                 order={order}
                 expanded={expandedId === order.id}
+                commentsRefreshSignal={commentsRefreshTick[order.id] || 0}
                 onToggle={() => {
                   setExpandedId((cur) => {
                     const next = cur === order.id ? null : order.id;
