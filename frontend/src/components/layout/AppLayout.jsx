@@ -4,7 +4,7 @@
  * - Mobile : Header sticky + menu + contenu plein écran
  */
 import { Outlet, useLocation } from "react-router-dom";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 
 import Header from "./Header.jsx";
 import Sidebar from "./Sidebar.jsx";
@@ -12,6 +12,11 @@ import MobileHeader from "./MobileHeader.jsx";
 import MobileMenu from "./MobileMenu.jsx";
 import { LayoutDashboard, ClipboardList, Truck, Users } from "lucide-react";
 import { getUser } from "../../services/auth.storage.js";
+
+import {
+  PullToRefreshMobileProvider,
+  PullToRefreshIndicator,
+} from "../../utils/pullToRefreshMobile.jsx";
 
 /**
  * Formate un rôle pour l'affichage.
@@ -25,15 +30,22 @@ function formatRole(role) {
   return role || "—";
 }
 
-function AppLayout() {
+export default function AppLayout() {
   const location = useLocation();
   const user = getUser();
   const who = `${user?.first_name || "—"} - ${formatRole(user?.role)}`;
 
+  // hooks toujours en haut (jamais dans un if)
+  const mainRef = useRef(null);
+
+  const getScrollTop = useCallback(() => {
+    return mainRef.current?.scrollTop ?? 0;
+  }, []);
+
   // Détection responsive (<= lg)
   const [isSmallScreen, setIsSmallScreen] = useState(() => {
     if (typeof window === "undefined") return false;
-    return window.matchMedia("(max-width: 1024px)").matches; // <= lg
+    return window.matchMedia("(max-width: 1024px)").matches;
   });
 
   useEffect(() => {
@@ -42,7 +54,6 @@ function AppLayout() {
     const mq = window.matchMedia("(max-width: 1024px)");
     const onChange = () => setIsSmallScreen(mq.matches);
 
-    // Init + écoute des changements
     onChange();
     mq.addEventListener?.("change", onChange);
     return () => mq.removeEventListener?.("change", onChange);
@@ -83,32 +94,12 @@ function AppLayout() {
         label: who,
         items: [
           { kind: "section", label: "Administration" },
-          {
-            to: "/admin",
-            label: "Dashboard admin",
-            end: true,
-            icon: LayoutDashboard,
-          },
-          {
-            to: "/admin/employes",
-            label: "Gestion des employés",
-            end: false,
-            icon: Users,
-          },
+          { to: "/admin", label: "Dashboard admin", end: true, icon: LayoutDashboard },
+          { to: "/admin/employes", label: "Gestion des employés", end: false, icon: Users },
 
           { kind: "section", label: "Production" },
-          {
-            to: "/production/commandes",
-            label: "Commandes à produire",
-            end: false,
-            icon: ClipboardList,
-          },
-          {
-            to: "/production/expeditions",
-            label: "Expéditions à charger",
-            end: false,
-            icon: Truck,
-          },
+          { to: "/production/commandes", label: "Commandes à produire", end: false, icon: ClipboardList },
+          { to: "/production/expeditions", label: "Expéditions à charger", end: false, icon: Truck },
         ],
       };
     }
@@ -117,24 +108,9 @@ function AppLayout() {
       return {
         label: who,
         items: [
-          {
-            to: "/production",
-            label: "Tableau de bord",
-            end: true,
-            icon: LayoutDashboard,
-          },
-          {
-            to: "/production/commandes",
-            label: "Commandes à produire",
-            end: false,
-            icon: ClipboardList,
-          },
-          {
-            to: "/production/expeditions",
-            label: "Expéditions à charger",
-            end: false,
-            icon: Truck,
-          },
+          { to: "/production", label: "Tableau de bord", end: true, icon: LayoutDashboard },
+          { to: "/production/commandes", label: "Commandes à produire", end: false, icon: ClipboardList },
+          { to: "/production/expeditions", label: "Expéditions à charger", end: false, icon: Truck },
         ],
       };
     }
@@ -144,11 +120,15 @@ function AppLayout() {
 
   const isMobileLayout = mode === "admin_mobile" || mode === "production";
 
+  // pull-to-refresh UNIQUEMENT sur /production (dashboard) et /admin (dashboard mobile)
+  const enabledPull = useMemo(() => {
+    if (!isMobileLayout) return false;
+    const p = location.pathname.replace(/\/+$/, "");
+    return p === "/production" || p === "/admin";
+  }, [isMobileLayout, location.pathname]);
+
   // Garde-fou : produits indisponibles sur mobile
-  if (
-    mode === "admin_mobile" &&
-    location.pathname.startsWith("/admin/produits")
-  ) {
+  if (mode === "admin_mobile" && location.pathname.startsWith("/admin/produits")) {
     return (
       <div className="min-h-dvh bg-gf-bg text-gf-text overflow-hidden">
         <MobileHeader
@@ -161,11 +141,15 @@ function AppLayout() {
           onClose={() => setMenuOpen(false)}
           items={mobileConfig?.items || []}
         />
-        <main className="h-[calc(100dvh-4rem)] overflow-y-auto p-6">
+        <main ref={mainRef}
+          className={
+            mobileConfig
+              ? "h-[calc(100dvh-4rem)] overflow-y-auto overscroll-y-contain touch-pan-y"
+              : "min-h-dvh overflow-y-auto overscroll-y-contain touch-pan-y"
+          }
+        >
           <div className="rounded-2xl border border-gf-border bg-gf-surface p-6">
-            <div className="text-sm font-semibold text-gf-title">
-              Disponible sur PC
-            </div>
+            <div className="text-sm font-semibold text-gf-title">Disponible sur PC</div>
             <div className="text-xs text-gf-subtitle mt-2">
               La gestion des produits est uniquement disponible sur ordinateur.
             </div>
@@ -175,37 +159,39 @@ function AppLayout() {
     );
   }
 
+  // Mobile (Admin mobile + Production)
   if (isMobileLayout) {
-    if (!mobileConfig) {
-      return (
-        <div className="min-h-dvh bg-gf-bg text-gf-text overflow-hidden">
-          <main className="min-h-dvh overflow-y-auto">
-            <Outlet />
-          </main>
-        </div>
-      );
-    }
-
     return (
       <div className="min-h-dvh bg-gf-bg text-gf-text overflow-hidden">
-        <MobileHeader
-          label={mobileConfig.label}
-          isOpen={menuOpen}
-          onToggle={() => setMenuOpen((v) => !v)}
-        />
-        <MobileMenu
-          open={menuOpen}
-          onClose={() => setMenuOpen(false)}
-          items={mobileConfig.items}
-        />
-        <main className="h-[calc(100dvh-4rem)] overflow-y-auto">
-          <Outlet />
-        </main>
+        {mobileConfig ? (
+          <>
+            <MobileHeader
+              label={mobileConfig.label}
+              isOpen={menuOpen}
+              onToggle={() => setMenuOpen((v) => !v)}
+            />
+            <MobileMenu
+              open={menuOpen}
+              onClose={() => setMenuOpen(false)}
+              items={mobileConfig.items}
+            />
+          </>
+        ) : null}
+
+        <PullToRefreshMobileProvider enabled={enabledPull} getScrollTop={getScrollTop}>
+          <PullToRefreshIndicator top={64} />
+          <main
+            ref={mainRef}
+            className={mobileConfig ? "h-[calc(100dvh-4rem)] overflow-y-auto" : "min-h-dvh overflow-y-auto"}
+          >
+            <Outlet />
+          </main>
+        </PullToRefreshMobileProvider>
       </div>
     );
   }
 
-  // Desktop (Bureau + Admin)
+  // Desktop (Bureau + Admin desktop)
   return (
     <div className="min-h-dvh bg-gf-bg text-gf-text overflow-hidden">
       <Header />
@@ -220,5 +206,3 @@ function AppLayout() {
     </div>
   );
 }
-
-export default AppLayout;

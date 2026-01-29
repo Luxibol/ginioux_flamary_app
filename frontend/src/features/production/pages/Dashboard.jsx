@@ -2,7 +2,8 @@
  * Production - Dashboard
  * - KPI (à produire / à charger) + stats expéditions (semaine/mois)
  */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef, useCallback } from "react";
+import { usePullToRefreshMobile } from "../../../utils/pullToRefreshMobile.hook.js";
 import { useNavigate } from "react-router-dom";
 
 import {
@@ -101,6 +102,7 @@ function Card({ title, children }) {
  */
 export default function Dashboard() {
   const navigate = useNavigate();
+  const { registerRefresh } = usePullToRefreshMobile();
 
   const firstName = useMemo(() => {
     const user = getUser();
@@ -110,7 +112,6 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // Cards
   const [produceCount, setProduceCount] = useState(0);
   const [shipmentsToLoadCount, setShipmentsToLoadCount] = useState(0);
 
@@ -122,84 +123,87 @@ export default function Dashboard() {
     month: { orders: 0, totals: { bigbag: 0, roche: 0 } },
   });
 
+  const [, setRefreshing] = useState(false); // pull-to-refresh (pas de flash)
+
+  // remplace "alive" par un ref (plus fiable avec async)
+  const aliveRef = useRef(true);
   useEffect(() => {
-    let alive = true;
-
-    /**
-     * Charge les KPI et stats du dashboard production.
-     * @returns {Promise<void>}
-     */
-    async function run() {
-      setLoading(true);
-      setError("");
-
-      try {
-        const [prodRes, shipRes, statsRes] = await Promise.all([
-          getProductionOrders({ limit: 200, offset: 0 }),
-          getProductionShipments({ limit: 200, offset: 0 }),
-          getProductionShipmentsStats(),
-        ]);
-
-        if (!alive) return;
-
-        const prodList = Array.isArray(prodRes?.data) ? prodRes.data : [];
-        const shipList = Array.isArray(shipRes?.data) ? shipRes.data : [];
-
-        setProduceCount(prodList.length);
-        setShipmentsToLoadCount(shipList.length);
-
-        // Totaux à produire (quantity_ordered)
-        (async () => {
-          const ids = prodList.map((o) => o.id).filter(Boolean);
-          const totals = await computeTotalsFromOrders(ids, {
-            limit: 25,
-            mode: "ORDERED",
-          });
-          if (alive) setProduceTotals(totals);
-        })();
-
-        // Totaux à charger (reste prêt = ready - shipped)
-        (async () => {
-          const ids = shipList.map((o) => o.id).filter(Boolean);
-          const totals = await computeTotalsFromOrders(ids, {
-            limit: 25,
-            mode: "READY",
-          });
-          if (alive) setToLoadTotals(totals);
-        })();
-
-        // Stats expéditions
-        setStats({
-          week: {
-            orders: Number(statsRes?.week?.orders ?? 0),
-            totals: {
-              bigbag: Number(statsRes?.week?.totals?.bigbag ?? 0),
-              roche: Number(statsRes?.week?.totals?.roche ?? 0),
-            },
-          },
-          month: {
-            orders: Number(statsRes?.month?.orders ?? 0),
-            totals: {
-              bigbag: Number(statsRes?.month?.totals?.bigbag ?? 0),
-              roche: Number(statsRes?.month?.totals?.roche ?? 0),
-            },
-          },
-        });
-      } catch (e) {
-        if (!alive) return;
-        setError(
-          e?.message || "Erreur lors du chargement du dashboard production.",
-        );
-      } finally {
-        if (alive) setLoading(false);
-      }
-    }
-
-    run();
+    aliveRef.current = true;
     return () => {
-      alive = false;
+      aliveRef.current = false;
     };
   }, []);
+
+  const run = useCallback(async ({ silent = false } = {}) => {
+    if (silent) setRefreshing(true);
+    else setLoading(true);
+
+    setError("");
+
+    try {
+      const [prodRes, shipRes, statsRes] = await Promise.all([
+        getProductionOrders({ limit: 200, offset: 0 }),
+        getProductionShipments({ limit: 200, offset: 0 }),
+        getProductionShipmentsStats(),
+      ]);
+
+      if (!aliveRef.current) return;
+
+      const prodList = Array.isArray(prodRes?.data) ? prodRes.data : [];
+      const shipList = Array.isArray(shipRes?.data) ? shipRes.data : [];
+
+      setProduceCount(prodList.length);
+      setShipmentsToLoadCount(shipList.length);
+
+      (async () => {
+        const ids = prodList.map((o) => o.id).filter(Boolean);
+        const totals = await computeTotalsFromOrders(ids, { limit: 25, mode: "ORDERED" });
+        if (aliveRef.current) setProduceTotals(totals);
+      })();
+
+      (async () => {
+        const ids = shipList.map((o) => o.id).filter(Boolean);
+        const totals = await computeTotalsFromOrders(ids, { limit: 25, mode: "READY" });
+        if (aliveRef.current) setToLoadTotals(totals);
+      })();
+
+      setStats({
+        week: {
+          orders: Number(statsRes?.week?.orders ?? 0),
+          totals: {
+            bigbag: Number(statsRes?.week?.totals?.bigbag ?? 0),
+            roche: Number(statsRes?.week?.totals?.roche ?? 0),
+          },
+        },
+        month: {
+          orders: Number(statsRes?.month?.orders ?? 0),
+          totals: {
+            bigbag: Number(statsRes?.month?.totals?.bigbag ?? 0),
+            roche: Number(statsRes?.month?.totals?.roche ?? 0),
+          },
+        },
+      });
+    } catch (e) {
+      if (!aliveRef.current) return;
+      setError(e?.message || "Erreur lors du chargement du dashboard production.");
+    } finally {
+      if (aliveRef.current) {
+        if (silent) setRefreshing(false);
+        else setLoading(false);
+      }
+    }
+  }, []);
+
+
+  // chargement initial
+  useEffect(() => {
+    run({ silent: false });
+  }, [run]);
+
+  // pull-to-refresh => run()
+  useEffect(() => {
+    return registerRefresh(() => run({ silent: true }));
+  }, [registerRefresh, run]);
 
   if (loading) return <div className="p-4 gf-empty">Chargement…</div>;
   if (error) return <div className="p-4 gf-error">{error}</div>;
