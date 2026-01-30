@@ -5,6 +5,7 @@
 const ordersRepository = require("../repositories/orders.repository");
 const { broadcastProductionEvent } = require("../realtime/productionEvents");
 
+// Whitelist des valeurs acceptées en query (évite des filtres inattendus / injection logique côté repo).
 const ALLOWED_PRIORITIES = ["URGENT", "INTERMEDIAIRE", "NORMAL"];
 const ALLOWED_STATES = [
   "EN_PREPARATION",
@@ -15,9 +16,8 @@ const ALLOWED_STATES = [
 
 /**
  * Liste des commandes actives avec filtres et pagination.
- * Route: GET /orders/active
- * Query: q, priority, state, limit, offset
- * Response: { count, total, filters, data }
+ * GET /orders/active
+ * Query: q, priority, state, limit, offset (valeurs normalisées + whitelist pour priority/state).
  *
  * @param {import("express").Request} req
  * @param {import("express").Response} res
@@ -67,6 +67,7 @@ async function getActiveOrders(req, res) {
 /**
  * Valide la production d'une commande si elle est éligible.
  * Route: POST /orders/:id/production-validate
+ * Déclenche un event temps réel pour rafraîchir les écrans Production connectés.
  *
  * @param {import("express").Request} req
  * @param {import("express").Response} res
@@ -81,7 +82,7 @@ async function postProductionValidate(req, res) {
 
     const ok = await ordersRepository.validateProduction(id);
     if (!ok) {
-      // soit commande inexistante, soit pas PROD_COMPLETE, soit déjà validée
+      // Repo renvoie false si la commande n'est pas éligible (inexistante / pas complète / déjà validée).
       return res.status(400).json({
         error:
           "Validation impossible (commande inexistante, non complète ou déjà validée).",

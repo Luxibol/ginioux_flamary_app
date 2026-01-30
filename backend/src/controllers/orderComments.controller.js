@@ -9,7 +9,9 @@ const { asInt } = require("../utils/parse");
 
 /**
  * Liste les commentaires d'une commande et marque comme lus pour l'utilisateur courant.
- * Route: GET /orders/:id/comments
+ * Marque les commentaires comme lus pour l'utilisateur courant afin de synchroniser les compteurs.
+ * Émet un event temps réel pour rafraîchir les badges/compteurs côté Production.
+ * GET /orders/:id/comments
  *
  * @param {import("express").Request} req
  * @param {import("express").Response} res
@@ -48,7 +50,9 @@ async function getOrderComments(req, res) {
 
 /**
  * Ajoute un commentaire à une commande, marque comme lu pour l'auteur, renvoie liste + compteurs.
- * Route: POST /orders/:id/comments
+ * L'auteur est automatiquement marqué "lu" pour éviter un non-lu sur son propre message.
+ * Émet un event temps réel pour rafraîchir le thread et les compteurs.
+ * POST /orders/:id/comments
  * Body: { content }
  *
  * @param {import("express").Request} req
@@ -92,8 +96,11 @@ async function postOrderComment(req, res) {
 }
 
 /**
- * Renvoie uniquement les compteurs (messages / non-lus) pour l'utilisateur courant.
- * Route: GET /orders/:id/comments/counts
+ * GET /orders/:id/comments/counts
+ * Renvoie les compteurs (total + non-lus) pour l'utilisateur courant.
+ * @param {import("express").Request} req
+ * @param {import("express").Response} res
+ * @returns {Promise<void>}
  */
 async function getOrderCommentsCounts(req, res) {
   try {

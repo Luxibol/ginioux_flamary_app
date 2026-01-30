@@ -7,6 +7,12 @@ const cors = require("cors");
 const rateLimit = require("express-rate-limit");
 const hpp = require("hpp");
 
+/**
+ * Construit les options CORS à partir de CORS_ORIGINS.
+ * - Dev : si CORS_ORIGINS est vide, autorise toutes les origins (pratique en local).
+ * - Prod : si CORS_ORIGINS est vide, refuse (config obligatoire).
+ * @returns {import("cors").CorsOptions}
+ */
 function buildCorsOptions() {
   const raw = String(process.env.CORS_ORIGINS || "");
   const allowList = raw
@@ -35,7 +41,7 @@ function buildCorsOptions() {
 
     credentials: true,
 
-    // Preflight (OPTIONS) + méthodes autorisées.
+    // Préflight OPTIONS + liste explicite des méthodes/headers acceptés.
     methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
 
@@ -45,7 +51,7 @@ function buildCorsOptions() {
 }
 
 /**
- * Applique un ensemble de middlewares de sécurité à l'application Express.
+ * Enregistre les middlewares de sécurité globaux sur l'app Express.
  * @param {import("express").Express} app
  * @returns {void}
  */
@@ -74,7 +80,7 @@ function applySecurity(app) {
   app.use(
     rateLimit({
       windowMs: 15 * 60 * 1000,
-      max: 3000, //à ajuster si besoin
+      max: 3000, // Valeur volontairement large (API interne) : ajuster si besoin.
       standardHeaders: true,
       legacyHeaders: false,
       skip: (req) => req.method === "OPTIONS",

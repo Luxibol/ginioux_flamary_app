@@ -16,10 +16,12 @@ const eventsRoutes = require("./routes/events.routes");
 const { applySecurity } = require("./middlewares/security.middleware");
 
 const app = express();
+// Middlewares de sécurité globaux (CORS, headers, rate-limit, etc.).
 applySecurity(app);
-// Lecture des cookies (refresh token).
+// Lecture des cookies (auth via cookies httpOnly, ex: refresh token).
 app.use(cookieParser());
 
+// Routes API
 app.use("/events", eventsRoutes);
 
 app.use("/admin/users", adminUsersRoutes);
@@ -29,7 +31,9 @@ app.use("/pdf", pdfRoutes);
 app.use("/orders", ordersRoutes);
 app.use("/products", productsRoutes);
 
-// Traduit les erreurs CORS (origin non autorisée / non configuré) en 403 JSON.
+/**
+ * Normalise les erreurs CORS en réponse JSON 403 (plutôt qu'une erreur générique).
+ */
 app.use((err, req, res, next) => {
   const msg = String(err?.message || "");
   if (
@@ -41,6 +45,9 @@ app.use((err, req, res, next) => {
   return next(err);
 });
 
+/**
+ * Handler d'erreur global : log serveur + 500 JSON.
+ */
 app.use((err, req, res, next) => {
   console.error(err);
   res.status(500).json({ error: "Erreur serveur." });

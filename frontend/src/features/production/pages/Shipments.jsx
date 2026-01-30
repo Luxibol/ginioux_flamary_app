@@ -1,12 +1,8 @@
 /**
- * Production - Expéditions à charger (mobile)
- * - Liste des commandes à charger (cards) via API
- * - Accordéons (détails lazy au clic)
- * - Stepper "Chargés" branché sur PATCH loaded
- * - Bouton "Tout charger" : met loaded = (ready - shipped) sur chaque ligne
- * - Bouton "Départ du camion" : valide le départ et refresh la liste
- *   Note : commentaires non branchés (comments: []).
+ * @file frontend/src/features/production/pages/Shipments.jsx
+ * @description Page Production (mobile) : expéditions à charger, détails lazy, MAJ "chargés", bulk et départ camion.
  */
+
 import { useEffect, useRef, useState } from "react";
 import ProductionOrderCard from "../components/ProductionOrderCard.jsx";
 import { useProductionEvents } from "../hooks/useProductionEvents.js";
@@ -32,9 +28,7 @@ import {
 } from "../utils/productionUi.utils.js";
 
 /**
- * Shipments Production (page).
- * - Liste + accordéon (détails lazy)
- * - MAJ "chargés" (PATCH) + départ camion
+ * Page Production : expéditions à charger (loaded), bulk et départ camion.
  * @returns {import("react").JSX.Element}
  */
 function Shipments() {
@@ -54,12 +48,12 @@ function Shipments() {
 
   const [commentsOpenByOrderId, setCommentsOpenByOrderId] = useState({});
 
-  // --- PATCH debounce + anti double ---
+  // PATCH : debouncé par ligne + anti double-envoi.
   const patchTimersRef = useRef(new Map());
   const patchLastValueRef = useRef(new Map());
   const patchInFlightRef = useRef(new Set());
 
-  // --- Anti refresh SSE après actions locales ---
+  // Anti-rebond SSE : ignore temporairement les events après action locale.
   const muteSseUntilRef = useRef(new Map());
   function muteSse(orderId, ms = 1500) {
     muteSseUntilRef.current.set(orderId, Date.now() + ms);
@@ -68,7 +62,7 @@ function Shipments() {
     return (muteSseUntilRef.current.get(orderId) || 0) > Date.now();
   }
 
-  // --- Busy : évite que refresh écrase l'accordéon / la saisie ---
+  // Empêche les refresh auto pendant une interaction utilisateur (saisie/focus) pour préserver l'UX.
   const busyUntilRef = useRef(0);
   function isUserEditing() {
     const el = document.activeElement;
@@ -83,11 +77,10 @@ function Shipments() {
     return Date.now() < busyUntilRef.current || isUserEditing();
   }
 
-  // --- Retry timer quand busy ---
+  // Retry différé quand l'utilisateur est occupé.
   const retryTimerRef = useRef(null);
 
-
-  // --- SSE: refresh 1-shot + refresh commentaires (sans casser l'UX) ---
+  // SSE : regroupe les events et rafraîchit sans perturber l'accordéon/saisie.
   const [commentsRefreshTick, setCommentsRefreshTick] = useState({});
   const pendingOrderIdsRef = useRef(new Set());
   const flushTimerRef = useRef(null);
@@ -104,6 +97,7 @@ function Shipments() {
 
   /**
    * Applique les compteurs messages/non-lus à une commande.
+   * Conserve les badges commentaires au niveau de la liste.
    * @param {number} orderId
    * @param {{ messagesCount?: number, unreadCount?: number }} counts
    * @returns {void}
@@ -127,7 +121,7 @@ function Shipments() {
   function queueCountsRefresh(orderId) {
     if (!orderId) return;
 
-    // debounce par commande
+    // Debounce par commande : évite des rafales réseau en cas de burst d'events.
     if (countsTimersRef.current[orderId]) return;
 
     countsTimersRef.current[orderId] = setTimeout(async () => {
@@ -151,10 +145,7 @@ function Shipments() {
   }
 
   /**
-   * Applique dans l'UI :
-   * - groups (avec max)
-   * - loaded map (vérité BDD)
-   * - totaux + summary (loadedTotal / chargeableTotal)
+  * Calcule et injecte dans l'UI les groupes (max chargeable), la map loaded et le résumé de chargement.
    * @param {number} orderId
    * @param {any[]} lines
    * @returns {{ list: any[], groupsWithMax: any[], totals: any }}
@@ -414,7 +405,7 @@ function Shipments() {
   });
 
   useEffect(() => {
-    // capture une fois (pour éviter warnings react-hooks/exhaustive-deps)
+    // Capture des refs une seule fois : nettoyage fiable au unmount sans dépendances.
     const patchTimers = patchTimersRef.current;
     const patchLastValue = patchLastValueRef.current;
     const patchInFlight = patchInFlightRef.current;
@@ -506,7 +497,7 @@ function Shipments() {
                 onChangeReady={(lineId, next) => {
                   markBusy(3000);
 
-                  // optimistic
+                  // MAJ optimiste + PATCH debouncé par ligne (évite rafales réseau).
                   setLoadedByLineId((prev) => ({ ...prev, [lineId]: next }));
 
                   const timers = patchTimersRef.current;
@@ -524,10 +515,9 @@ function Shipments() {
 
                       const value = last.get(key);
 
-                      // on mute SSE après action locale
+                      // Ignore temporairement les events SSE consécutifs au PATCH (évite re-fetch immédiat).
                       muteSse(order.id, 2500);
 
-                      // anti double PATCH
                       if (patchInFlightRef.current.has(key)) return;
                       patchInFlightRef.current.add(key);
 

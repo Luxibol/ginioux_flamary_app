@@ -1,9 +1,8 @@
 /**
- * Dashboard — Admin
- * - KPIs : à produire, expéditions du jour
- * - Urgences (top 3) + activité récente
- * - Mini stats pilotées par période (bas de page)
+ * @file frontend/src/features/admin/pages/Dashboard.jsx
+ * @description Dashboard Admin : KPIs (production/expéditions), urgences, activité récente, mini-stats par période.
  */
+
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -30,17 +29,15 @@ import { getUser } from "../../../services/auth.storage.js";
  * @returns {"BIGBAG"|"ROCHE"|"OTHER"}
  */
 function normalizeFamily(line) {
-  // Priorité : category
+
   const cat = String(line?.category ?? "")
     .toUpperCase()
     .trim();
 
   if (cat === "ROCHE") return "ROCHE";
 
-  // BIGBAG : BigBag/SmallBag regroupés
   if (cat === "BIGBAG") return "BIGBAG";
 
-  // Fallback : analyse du label si category manquante
   const label = String(line?.label ?? "").toLowerCase();
   if (label.includes("roche")) return "ROCHE";
   if (label.includes("big") || label.includes("bag")) return "BIGBAG";
@@ -50,6 +47,7 @@ function normalizeFamily(line) {
 
 /**
  * Calcule les totaux BigBag/Roche à partir d'une liste d'IDs commandes.
+ * Détaille un nombre limité de commandes pour éviter un coût réseau trop élevé.
  * @param {Array<number|string>} orderIds Identifiants de commandes
  * @param {object} [options]
  * @param {number} [options.limit=30] Limite du nombre de commandes détaillées (perf)
@@ -109,7 +107,7 @@ export default function Dashboard() {
 
   const { registerRefresh } = usePullToRefreshMobile();
 
-  const [, setRefreshing] = useState(false); // pull-to-refresh (pas de flash)
+  const [, setRefreshing] = useState(false); // État silencieux utilisé par le pull-to-refresh (sans spinner visible).
 
   const aliveRef = useRef(true);
   useEffect(() => {
@@ -127,7 +125,7 @@ export default function Dashboard() {
 
   const [producedTotals, setProducedTotals] = useState({ bigbag: 0, roche: 0 });
 
-  // La période ne concerne QUE le bloc du bas (mini stats)
+  // La période pilote uniquement les mini-stats (bloc bas).
   const [periodBottom, setPeriodBottom] = useState("7D");
 
   const [loading, setLoading] = useState(true);
@@ -177,10 +175,9 @@ export default function Dashboard() {
     return items;
   }, [urgentRows, archived7dRows]);
 
-  /**
-   * Chargement initial (haut de page).
-   * - À produire, urgences, expéditions du jour (depuis archived 7D)
-   */
+/**
+ * Charge les données du haut de page (KPIs + urgences + activité récente).
+ */
   const runTop = useCallback(async ({ silent = false } = {}) => {
     if (silent) setRefreshing(true);
     else setLoading(true);
@@ -236,10 +233,9 @@ export default function Dashboard() {
   runTop({ silent: false });
 }, [runTop]);
 
-  /**
-   * Chargement du bas de page (dépend de la période).
-   * - Expéditions sur période + commandes produites (stats)
-   */
+/**
+ * Charge les mini-stats dépendantes de la période (expéditions + produits).
+ */
   const runBottom = useCallback(async () => {
     try {
       const [archivedRes, producedRes] = await Promise.all([

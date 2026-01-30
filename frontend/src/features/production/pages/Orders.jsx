@@ -1,12 +1,8 @@
 /**
- * Production - Commandes à produire (mobile)
- * - Liste des commandes (cards) via API
- * - Accordéons (détails lazy au clic)
- * - Stepper "Prêts" branché sur PATCH ready
- * - Bouton "Production terminée" : valide manuellement (production_validated_at)
- *   pour sortir la commande de la liste "à produire" même si PROD_COMPLETE.
- *   Note : commentaires non branchés (comments: []).
+ * @file frontend/src/features/production/pages/Orders.jsx
+ * @description Page Production (mobile) : liste des commandes à produire, détails lazy, MAJ "prêts" et validation production.
  */
+
 import { useEffect, useRef, useState, useCallback } from "react";
 import ProductionOrderCard from "../components/ProductionOrderCard.jsx";
 import { useProductionEvents } from "../hooks/useProductionEvents.js";
@@ -32,9 +28,7 @@ import {
 } from "../utils/productionUi.utils.js";
 
 /**
- * Orders Production (page).
- * - Liste + accordéon (détails lazy)
- * - MAJ "prêts" (PATCH) + validation production
+ * Page Production : liste + détails lazy + actions (ready / validation).
  * @returns {import("react").JSX.Element}
  */
 function Orders() {
@@ -54,7 +48,7 @@ function Orders() {
 
   const [bulkByOrderId, setBulkByOrderId] = useState({});
 
-  // --- SSE: refresh 1-shot + refresh commentaires (sans casser la saisie) ---
+  // SSE : regroupe les events et rafraîchit sans perturber la saisie utilisateur.
   const [commentsRefreshTick, setCommentsRefreshTick] = useState({});
   const pendingOrderIdsRef = useRef(new Set());
   const flushTimerRef = useRef(null);
@@ -62,7 +56,7 @@ function Orders() {
 
   const patchInFlightRef = useRef(new Set());
 
-  // --- Anti refresh SSE après actions locales (évite GET /orders/production + GET /orders/:id) ---
+  // Anti-rebond SSE : ignore temporairement certains events après une action locale.
   const muteSseUntilRef = useRef(new Map());
 
   function muteSse(orderId, ms = 1500) {
@@ -79,6 +73,8 @@ function Orders() {
   }, [expandedId]);
 
   const busyUntilRef = useRef(0);
+
+  // Empêche les refresh auto quand l'utilisateur est en train d'interagir (focus/saisie).
   function isUserEditing() {
     const el = document.activeElement;
     if (!el) return false;
@@ -102,7 +98,7 @@ function Orders() {
   function queueCountsRefresh(orderId) {
     if (!orderId) return;
 
-    // debounce par commande (1 seule requête même si 10 events arrivent)
+    // Debounce par commande : 1 seule requête même si plusieurs events arrivent.
     if (countsTimersRef.current[orderId]) return;
 
     countsTimersRef.current[orderId] = setTimeout(async () => {
@@ -118,9 +114,9 @@ function Orders() {
 
   /**
    * Applique les compteurs messages/non-lus à une commande.
+   * Conserve les compteurs au niveau de la liste (badges + header du thread).
    * @param {number} orderId
    * @param {{ messagesCount?: number, unreadCount?: number }} counts
-   * @returns {void}
    */
   const applyCounts = (orderId, counts) => {
     setOrders((prev) =>
@@ -203,7 +199,7 @@ function Orders() {
           const cur = prevById.get(f.id);
           if (!cur) return f;
 
-          // si on garde l'accordéon, on conserve les détails déjà chargés
+          // Option keepExpanded : préserve les détails déjà chargés pour éviter un clignotement.
           if (keepExpanded) {
             return {
               ...cur, // garde groups/summary + tout ce qui n'est pas dans f
@@ -217,7 +213,7 @@ function Orders() {
         });
       });
 
-      // reset uniquement si on ne garde pas l'accordéon
+      // Reset du cache uniquement si on referme l'accordéon.
       if (!keepExpanded) {
         resetDetailsCache();
         setExpandedId(null);
@@ -382,7 +378,7 @@ function Orders() {
   }
 
   useEffect(() => {
-    //  capture une fois (pour éviter warnings react-hooks/exhaustive-deps)
+    // Capture des refs une seule fois : nettoyage fiable au unmount sans dépendances.
     const patchTimers = patchTimersRef.current;
     const patchLastValue = patchLastValueRef.current;
     const patchInFlight = patchInFlightRef.current;
@@ -447,20 +443,16 @@ function Orders() {
               onChangeReady={(lineId, next) => {
                 markBusy(3000);
 
-                // optimistic direct
+                // MAJ optimiste + PATCH debouncé par ligne (évite rafales réseau).
                 setReadyByLineId((prev) => ({ ...prev, [lineId]: next }));
 
-                // debounce PATCH par ligne
                 const timers = patchTimersRef.current;
                 const last = patchLastValueRef.current;
 
-                //  clé unique par commande + ligne
                 const key = `${order.id}:${lineId}`;
 
-                //  on stocke la dernière valeur avec la MÊME clé
                 last.set(key, next);
 
-                // debounce avec la MÊME clé
                 if (timers.has(key)) clearTimeout(timers.get(key));
 
                 timers.set(
@@ -470,10 +462,9 @@ function Orders() {
 
                     const value = last.get(key);
 
-                    // on mute les SSE après action locale
+                    // Ignore temporairement les events SSE consécutifs au PATCH (évite re-fetch immédiat).
                     muteSse(order.id, 4000);
 
-                    // anti double PATCH en même temps
                     if (patchInFlightRef.current.has(key)) return;
                     patchInFlightRef.current.add(key);
 
@@ -530,7 +521,7 @@ function Orders() {
 
                   const { errors } = await runWithConcurrency(tasks, 5);
 
-                  // vérité BDD : 1 seul fetch
+                  // Re-synchronise depuis l'API après bulk (évite dérive en cas d'erreurs partielles).
                   const { order: freshOrder, lines: freshLines } =
                     await getOrderDetails(order.id);
                   const lines = Array.isArray(freshLines) ? freshLines : [];
@@ -572,7 +563,7 @@ function Orders() {
                   if (freshOrder?.production_status === "PROD_COMPLETE") {
                     await refreshList({ keepExpanded: true });
                     setExpandedId(order.id);
-                    await refreshExpandedDetails(order.id); // <-- force la vérité BDD sans dépendre du cache
+                    await refreshExpandedDetails(order.id); 
                   }
                 } catch (e) {
                   console.error(e);

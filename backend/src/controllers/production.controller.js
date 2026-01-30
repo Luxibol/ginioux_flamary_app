@@ -6,12 +6,22 @@
 const ordersRepository = require("../repositories/orders.repository");
 const { broadcastProductionEvent } = require("../realtime/productionEvents");
 
+/**
+ * Convertit une valeur en entier (ou null si non numérique).
+ * @param {unknown} v
+ * @returns {number|null}
+ */
 function asInt(v) {
   const n = Number(v);
   if (!Number.isFinite(n)) return null;
   return Math.trunc(n);
 }
 
+/**
+ * Mappe une période (7D/30D/90D) vers un nombre de jours.
+ * @param {string} period
+ * @returns {number|null}
+ */
 function periodToDays(period) {
   if (period === "7D") return 7;
   if (period === "30D") return 30;
@@ -21,7 +31,7 @@ function periodToDays(period) {
 
 /**
  * Liste les commandes à produire (filtres + pagination).
- * Route: GET /orders/production
+ * GET /orders/production
  *
  * @param {import("express").Request} req
  * @param {import("express").Response} res
@@ -60,6 +70,7 @@ async function getProductionOrders(req, res) {
 /**
  * Met à jour la quantité "prête" d'une ligne de commande.
  * Route: PATCH /orders/:orderId/lines/:lineId/ready
+ * Émet un event temps réel pour rafraîchir les écrans Production connectés.
  *
  * @param {import("express").Request} req
  * @param {import("express").Response} res
@@ -142,6 +153,7 @@ async function getProductionShipments(req, res) {
 /**
  * Met à jour la quantité "chargée" d'une ligne (expédition).
  * Route: PATCH /orders/:orderId/lines/:lineId/loaded
+ * Émet un event temps réel pour rafraîchir les écrans Production connectés.
  *
  * @param {import("express").Request} req
  * @param {import("express").Response} res
@@ -186,6 +198,7 @@ async function patchOrderLineLoaded(req, res) {
 /**
  * Déclare un départ camion pour une commande.
  * Route: POST /orders/:orderId/shipments/depart
+ * Émet un event temps réel pour rafraîchir les écrans Production connectés.
  *
  * @param {import("express").Request} req
  * @param {import("express").Response} res
@@ -198,6 +211,7 @@ async function postDepartTruck(req, res) {
       return res.status(400).json({ error: "Paramètres invalides." });
     }
 
+    // Pas de tracking utilisateur côté API pour l'instant (action attribuée côté session si besoin plus tard).
     const result = await ordersRepository.departTruck(orderId, {
       createdByUserId: null,
     });
@@ -240,7 +254,6 @@ async function getProducedCount(req, res) {
   }
 }
 
-// puis export :
 module.exports = {
   getProductionOrders,
   patchOrderLineReady,

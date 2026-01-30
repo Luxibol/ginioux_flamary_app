@@ -1,8 +1,8 @@
 /**
- * Layout global
- * - Desktop : Header + Sidebar + contenu
- * - Mobile : Header sticky + menu + contenu plein écran
+ * @file frontend/src/components/layout/AppLayout.jsx
+ * @description Layout global : choisit le mode (Bureau desktop / Admin desktop / Admin mobile / Production mobile) selon route + écran.
  */
+
 import { Outlet, useLocation } from "react-router-dom";
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 
@@ -20,6 +20,7 @@ import {
 
 /**
  * Formate un rôle pour l'affichage.
+ * Objectif : affichage user-friendly dans l'en-tête.
  * @param {string} role Rôle brut
  * @returns {string}
  */
@@ -35,14 +36,13 @@ export default function AppLayout() {
   const user = getUser();
   const who = `${user?.first_name || "—"} - ${formatRole(user?.role)}`;
 
-  // hooks toujours en haut (jamais dans un if)
   const mainRef = useRef(null);
 
   const getScrollTop = useCallback(() => {
     return mainRef.current?.scrollTop ?? 0;
   }, []);
 
-  // Détection responsive (<= lg)
+  // Détection responsive : bascule mobile si largeur <= 1024px.
   const [isSmallScreen, setIsSmallScreen] = useState(() => {
     if (typeof window === "undefined") return false;
     return window.matchMedia("(max-width: 1024px)").matches;
@@ -59,14 +59,13 @@ export default function AppLayout() {
     return () => mq.removeEventListener?.("change", onChange);
   }, []);
 
+  // Détermine le layout à rendre (priorités : produits admin desktop-only, puis admin, puis production, sinon bureau).
   const mode = useMemo(() => {
     const p = location.pathname;
     const role = user?.role;
 
-    // Produits admin : desktop uniquement
     if (p.startsWith("/admin/produits")) return "admin_desktop";
 
-    // Admin sur petit écran : conserve le mode admin
     if (
       role === "ADMIN" &&
       isSmallScreen &&
@@ -75,14 +74,11 @@ export default function AppLayout() {
       return "admin_mobile";
     }
 
-    // Admin : mobile ou desktop selon taille écran
     if (p.startsWith("/admin"))
       return isSmallScreen ? "admin_mobile" : "admin_desktop";
 
-    // Production : mobile
     if (p.startsWith("/production")) return "production";
 
-    // Bureau : desktop
     return "bureau";
   }, [location.pathname, isSmallScreen, user?.role]);
 
@@ -120,14 +116,14 @@ export default function AppLayout() {
 
   const isMobileLayout = mode === "admin_mobile" || mode === "production";
 
-  // pull-to-refresh UNIQUEMENT sur /production (dashboard) et /admin (dashboard mobile)
+  // Pull-to-refresh : activé uniquement sur les dashboards mobiles (évite refresh involontaire sur les listes).
   const enabledPull = useMemo(() => {
     if (!isMobileLayout) return false;
     const p = location.pathname.replace(/\/+$/, "");
     return p === "/production" || p === "/admin";
   }, [isMobileLayout, location.pathname]);
 
-  // Garde-fou : produits indisponibles sur mobile
+  // Garde-fou UX : la gestion des produits est desktop-only (évite un écran inutilisable sur mobile).
   if (mode === "admin_mobile" && location.pathname.startsWith("/admin/produits")) {
     return (
       <div className="min-h-dvh bg-gf-bg text-gf-text overflow-hidden">

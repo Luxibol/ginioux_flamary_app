@@ -1,10 +1,8 @@
 /**
- * Card commande (Production mobile)
- * - Accordéon (collapse/expand)
- * - Lignes produits + stepper "Chargés"
- * - Actions : tout charger, départ camion, etc.
- * - Commentaires contrôlés (parent) + enveloppe stable
+ * @file frontend/src/features/production/components/ProductionOrderCard.jsx
+ * @description Carte accordéon Production (mobile) : lignes + stepper, actions, et thread commentaires contrôlé.
  */
+
 import { useMemo, useRef, useState } from "react";
 import { Mail, ChevronDown, ChevronUp } from "lucide-react";
 import QtyStepper from "./QtyStepper.jsx";
@@ -12,6 +10,7 @@ import OrderCommentsThread from "../../../components/comments/OrderCommentsThrea
 
 /**
  * Classe du dot UI selon le statut.
+ * Mapping UI (couleur) pour garder un rendu cohérent entre pages.
  * @param {string} status
  * @returns {string}
  */
@@ -23,6 +22,7 @@ function dotClassByStatus(status) {
 
 /**
  * Libellé UI selon le statut.
+ * Mapping UI (libellé) pour éviter la duplication dans les pages.
  * @param {string} status
  * @returns {string}
  */
@@ -34,6 +34,7 @@ function labelByStatus(status) {
 
 /**
  * Classe UI selon la priorité.
+ * Mapping UI (couleur) basé sur la priorité métier.
  * @param {string} priority
  * @returns {string}
  */
@@ -48,7 +49,11 @@ function priorityClass(priority) {
  * ProductionOrderCard (UI).
  * - Card accordéon (production / expéditions)
  * - Stepper + actions + commentaires
- * @param {any} props
+ * @param {object} props
+ * @param {object} props.order Données commande + groupes + compteurs commentaires.
+ * @param {boolean} props.expanded
+ * @param {() => void} props.onToggle
+ * @returns {import("react").JSX.Element}
  * @returns {import("react").JSX.Element}
  */
 export default function ProductionOrderCard({
@@ -74,7 +79,7 @@ export default function ProductionOrderCard({
   primaryDisabled = null,
   onPrimaryAction = null,
 
-  // NEW (contrôle depuis Shipment.jsx)
+  // Contrôle optionnel de l'ouverture des commentaires (mode contrôlé vs local).
   commentsOpen: commentsOpenProp,
   onCommentsOpenChange,
 }) {
@@ -102,6 +107,7 @@ export default function ProductionOrderCard({
 
   /**
    * Ouvre la card si besoin et scroll jusqu'au thread commentaires.
+   * Objectif : accès rapide au thread depuis l'icône enveloppe, sans perdre le contexte.
    * @returns {void}
    */
   function openCardAndScrollToComments() {
@@ -203,7 +209,7 @@ export default function ProductionOrderCard({
                 ) : null}
               </button>
             ) : (
-              // place réservée (invisible)
+              // Placeholder invisible : évite un décalage du layout quand il n'y a pas de commentaires.
               <span className="pointer-events-none opacity-0">
                 <Mail className="h-5 w-5" />
               </span>
@@ -267,7 +273,7 @@ export default function ProductionOrderCard({
             {markAllLabel}
           </button>
 
-          {/* Commentaires : UN SEUL header (celui du thread) */}
+          {/* Commentaires : le header est géré par le composant thread */}
           <div ref={commentsRef} className="pt-1">
             <OrderCommentsThread
               orderId={order?.id}

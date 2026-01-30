@@ -1,9 +1,8 @@
 /**
- * Commentaires — Thread commande
- * - Charge / affiche les commentaires d'une commande
- * - Mode lecture seule optionnel + ajout d'un commentaire
- * - Pliable (collapsible) : contrôlé par le parent ou en local
+ * @file frontend/src/components/comments/OrderCommentsThread.jsx
+ * @description Thread de commentaires d'une commande : affichage, ajout (optionnel) et gestion plié/déplié.
  */
+
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Plus, ChevronDown, ChevronUp } from "lucide-react";
 import {
@@ -20,6 +19,9 @@ import {
  * @param {(orderId: any, counts: {messagesCount:number, unreadCount:number}) => void} [props.onCountsChange]
  * @param {string} [props.className=""] Classe CSS additionnelle
  * @param {boolean} [props.readOnly=false] Désactive l'ajout de commentaire
+ * @param {number} [props.refreshSignal=0] Incrémente pour déclencher un rechargement externe.
+ * @param {number} [props.messagesCount] Compteur total fourni par le parent (mode contrôlé).
+ * @param {number} [props.unreadCount] Compteur non-lus fourni par le parent (mode contrôlé).
  * @param {boolean} [props.showHeader=true] Affiche l'en-tête
  * @param {boolean} [props.collapsible=true] Autorise le repli/dépli
  * @param {boolean} [props.defaultCollapsed=true] État initial (si non contrôlé)
@@ -62,7 +64,7 @@ export default function OrderCommentsThread({
     typeof messagesCountProp === "number" && 
     typeof unreadCountProp === "number";
 
-  // --- Anti spam + callback stable (évite boucle onCountsChange => re-fetch => 429)
+  // Stabilise le callback + anti-spam : évite des rafales de fetch quand le parent réagit aux compteurs.
   const onCountsChangeRef = useRef(onCountsChange);
   useEffect(() => {
     onCountsChangeRef.current = onCountsChange;
@@ -119,7 +121,7 @@ export default function OrderCommentsThread({
 
     if (parentProvidesCounts) return;
 
-    // Thread replié : on met à jour UNIQUEMENT les compteurs (sans markRead)
+    // Thread replié : ne fetch que les compteurs (pas de chargement complet / markRead).
     if (!collapsed) return;
 
     let cancelled = false;
@@ -207,6 +209,7 @@ export default function OrderCommentsThread({
     if (collapsed) return; // pas de reload/markRead quand replié
     if (posting) return;
 
+    // On évite de recharger pendant la saisie/focus pour ne pas perturber l'utilisateur.
     const isTyping = String(content || "").trim().length > 0;
     const isFocused = document.activeElement === inputRef.current;
 
