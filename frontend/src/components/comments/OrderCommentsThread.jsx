@@ -58,6 +58,10 @@ export default function OrderCommentsThread({
   
   const inputRef = useRef(null);
 
+  const parentProvidesCounts =
+    typeof messagesCountProp === "number" && 
+    typeof unreadCountProp === "number";
+
   // --- Anti spam + callback stable (évite boucle onCountsChange => re-fetch => 429)
   const onCountsChangeRef = useRef(onCountsChange);
   useEffect(() => {
@@ -113,6 +117,8 @@ export default function OrderCommentsThread({
   useEffect(() => {
     if (!open || !orderId) return;
 
+    if (parentProvidesCounts) return;
+
     // Thread replié : on met à jour UNIQUEMENT les compteurs (sans markRead)
     if (!collapsed) return;
 
@@ -141,7 +147,7 @@ export default function OrderCommentsThread({
     return () => {
       cancelled = true;
     };
-  }, [open, orderId, collapsed, refreshSignal, applyCounts]);
+  }, [open, orderId, collapsed, refreshSignal, applyCounts, parentProvidesCounts]);
 
   async function load() {
     if (!orderId) return;
@@ -208,7 +214,7 @@ export default function OrderCommentsThread({
 
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [refreshSignal, collapsed]);
+  }, [refreshSignal]);
 
   if (!open) return null;
 
@@ -237,7 +243,7 @@ export default function OrderCommentsThread({
             <span className="text-gf-subtitle font-normal">
               ({displayMessagesCount})
             </span>
-            {unreadCount > 0 ? (
+            {displayUnreadCount > 0 ? (
               <span className="ml-2 text-[11px] text-gf-subtitle">
                 • Non lus : {displayUnreadCount}
               </span>

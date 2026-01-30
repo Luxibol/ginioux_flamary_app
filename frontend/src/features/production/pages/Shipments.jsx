@@ -38,6 +38,8 @@ import {
  * @returns {import("react").JSX.Element}
  */
 function Shipments() {
+  const PATCH_DEBOUNCE_MS = 350;
+
   const [orders, setOrders] = useState([]);
   const [expandedId, setExpandedId] = useState(null);
 
@@ -51,6 +53,39 @@ function Shipments() {
   const [departByOrderId, setDepartByOrderId] = useState({});
 
   const [commentsOpenByOrderId, setCommentsOpenByOrderId] = useState({});
+
+  // --- PATCH debounce + anti double ---
+  const patchTimersRef = useRef(new Map());
+  const patchLastValueRef = useRef(new Map());
+  const patchInFlightRef = useRef(new Set());
+
+  // --- Anti refresh SSE après actions locales ---
+  const muteSseUntilRef = useRef(new Map());
+  function muteSse(orderId, ms = 1500) {
+    muteSseUntilRef.current.set(orderId, Date.now() + ms);
+  }
+  function isMuted(orderId) {
+    return (muteSseUntilRef.current.get(orderId) || 0) > Date.now();
+  }
+
+  // --- Busy : évite que refresh écrase l'accordéon / la saisie ---
+  const busyUntilRef = useRef(0);
+  function isUserEditing() {
+    const el = document.activeElement;
+    if (!el) return false;
+    const tag = el.tagName?.toLowerCase();
+    return tag === "input" || tag === "textarea" || el.isContentEditable;
+  }
+  function markBusy(ms = 5000) {
+    busyUntilRef.current = Math.max(busyUntilRef.current, Date.now() + ms);
+  }
+  function isBusy() {
+    return Date.now() < busyUntilRef.current || isUserEditing();
+  }
+
+  // --- Retry timer quand busy ---
+  const retryTimerRef = useRef(null);
+
 
   // --- SSE: refresh 1-shot + refresh commentaires (sans casser l'UX) ---
   const [commentsRefreshTick, setCommentsRefreshTick] = useState({});
@@ -250,21 +285,15 @@ function Shipments() {
 
           return {
             ...cur,
-            company: f.company,
-            arc: f.arc,
-            pickupDate: f.pickupDate,
-            priority: f.priority,
-            priorityLabel: f.priorityLabel,
-            loadedTotal: f.loadedTotal,
-            chargeableTotal: f.chargeableTotal,
-            messagesCount: Number(f.messagesCount ?? cur.messagesCount ?? 0),
-            unreadCount: Number(f.unreadCount ?? cur.unreadCount ?? 0),
+            ...f,
+            // garde les détails si déjà chargés
+            groups: cur.groups?.length ? cur.groups : f.groups,
             summary: cur.groups?.length ? cur.summary : f.summary,
           };
         });
       });
 
-      // si commande ouverte disparue (départ camion), on ferme proprement
+      // si commande ouverte disparue => on ferme
       const openId = expandedIdRef.current;
       if (openId && !fresh.some((o) => o.id === openId)) {
         setExpandedId(null);
@@ -300,19 +329,35 @@ function Shipments() {
     flushTimerRef.current = setTimeout(async () => {
       flushTimerRef.current = null;
 
+      const busy = isBusy();
       const ids = Array.from(pendingOrderIdsRef.current);
       pendingOrderIdsRef.current.clear();
 
-      if (!skipList) {
+      // 1) Liste uniquement si pas busy
+      if (!skipList && !busy) {
         await refreshListSilent();
       }
 
+      // 2) Détails uniquement si pas busy
       const openId = expandedIdRef.current;
-      if (openId && ids.includes(openId)) {
+      if (!busy && openId && ids.includes(openId)) {
         await refreshExpandedDetails(openId);
+        return;
+      }
+
+      // 3) Si busy -> retry détails plus tard (SANS relancer la liste)
+      if (busy && openId && ids.includes(openId)) {
+        pendingOrderIdsRef.current.add(openId);
+
+        if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
+        retryTimerRef.current = setTimeout(() => {
+          retryTimerRef.current = null;
+          requestRefresh(openId, { comments: false, skipList: true });
+        }, 800);
       }
     }, 120);
   }
+
 
   /**
    * Charge les détails 1 seule fois par orderId (lazy).
@@ -353,22 +398,58 @@ function Shipments() {
     const exists = ordersRef.current.some((o) => o.id === orderId);
     if (!exists) return;
 
-    // 1) Badge enveloppe : endpoint léger
-    if (
-      evt?.type === "order_comment_created" ||
-      evt?.type === "order_comment_reads"
-    ) {
-      queueCountsRefresh(orderId);
-    }
+    const isCommentEvt =
+      evt?.type === "order_comment_created" || evt?.type === "order_comment_reads";
 
-    // 2) Thread commentaires : uniquement sur "created"
+    // si event data et on vient de faire une action locale => ignore
+    if (!isCommentEvt && isMuted(orderId)) return;
+
+    // Badge enveloppe : endpoint léger
+    if (isCommentEvt) queueCountsRefresh(orderId);
+
     requestRefresh(orderId, {
       comments: evt?.type === "order_comment_created",
-      skipList:
-        evt?.type === "order_comment_created" ||
-        evt?.type === "order_comment_reads",
+      skipList: isCommentEvt,
     });
   });
+
+  useEffect(() => {
+    // capture une fois (pour éviter warnings react-hooks/exhaustive-deps)
+    const patchTimers = patchTimersRef.current;
+    const patchLastValue = patchLastValueRef.current;
+    const patchInFlight = patchInFlightRef.current;
+    const muteSseUntil = muteSseUntilRef.current;
+
+    return () => {
+      // 1) flush timer (SSE batch)
+      if (flushTimerRef.current) {
+        clearTimeout(flushTimerRef.current);
+        flushTimerRef.current = null;
+      }
+
+      // 2) retry timer
+      if (retryTimerRef.current) {
+        clearTimeout(retryTimerRef.current);
+        retryTimerRef.current = null;
+      }
+
+      // 3) timers counts (debounce par commande)
+      const timers = countsTimersRef.current || {};
+      Object.values(timers).forEach((t) => t && clearTimeout(t));
+      countsTimersRef.current = {};
+
+      // 4) patch debounce timers
+      for (const t of patchTimers.values()) {
+        if (t) clearTimeout(t);
+      }
+
+      // 5) clear maps/sets (via variables capturées)
+      patchTimers.clear();
+      patchLastValue.clear();
+      patchInFlight.clear();
+      muteSseUntil.clear();
+    };
+  }, []);
 
   return (
     <div className="p-4">
@@ -422,24 +503,53 @@ function Shipments() {
                   }))
                 }
                 onCountsChange={applyCounts}
-                onChangeReady={async (lineId, next) => {
+                onChangeReady={(lineId, next) => {
+                  markBusy(3000);
+
+                  // optimistic
                   setLoadedByLineId((prev) => ({ ...prev, [lineId]: next }));
 
-                  try {
-                    const res = await patchOrderLineLoaded(
-                      order.id,
-                      lineId,
-                      next,
-                    );
-                    const apiLines = Array.isArray(res?.lines) ? res.lines : [];
-                    applyOrderUiFromLines(order.id, apiLines);
-                  } catch {
-                    await refreshOrderFromServer(order.id);
-                  }
+                  const timers = patchTimersRef.current;
+                  const last = patchLastValueRef.current;
+
+                  const key = `${order.id}:${lineId}`;
+                  last.set(key, next);
+
+                  if (timers.has(key)) clearTimeout(timers.get(key));
+
+                  timers.set(
+                    key,
+                    setTimeout(async () => {
+                      timers.delete(key);
+
+                      const value = last.get(key);
+
+                      // on mute SSE après action locale
+                      muteSse(order.id, 2500);
+
+                      // anti double PATCH
+                      if (patchInFlightRef.current.has(key)) return;
+                      patchInFlightRef.current.add(key);
+
+                      try {
+                        const res = await patchOrderLineLoaded(order.id, lineId, value);
+                        const apiLines = Array.isArray(res?.lines) ? res.lines : [];
+                        applyOrderUiFromLines(order.id, apiLines);
+                      } catch {
+                        await refreshOrderFromServer(order.id);
+                      } finally {
+                        patchInFlightRef.current.delete(key);
+                        markBusy(1500);
+                      }
+                    }, PATCH_DEBOUNCE_MS),
+                  );
                 }}
                 onMarkAllReady={async () => {
                   if (bulkByOrderId[order.id]) return;
                   setBulkByOrderId((p) => ({ ...p, [order.id]: true }));
+
+                  markBusy(12000);
+                  muteSse(order.id, 5000);
 
                   try {
                     const cached = await ensureDetails(order.id);
@@ -486,6 +596,9 @@ function Shipments() {
                   setDepartByOrderId((p) => ({ ...p, [order.id]: true }));
 
                   try {
+                    markBusy(8000);
+                    muteSse(order.id, 4000);
+
                     await postDepartTruck(order.id);
                     await refreshList();
                     setExpandedId(null);

@@ -38,6 +38,11 @@ import {
  * @returns {import("react").JSX.Element}
  */
 function Orders() {
+  const PATCH_DEBOUNCE_MS = 350;
+
+  const patchTimersRef = useRef(new Map());
+  const patchLastValueRef = useRef(new Map());
+
   const [orders, setOrders] = useState([]);
   const [expandedId, setExpandedId] = useState(null);
 
@@ -53,6 +58,20 @@ function Orders() {
   const [commentsRefreshTick, setCommentsRefreshTick] = useState({});
   const pendingOrderIdsRef = useRef(new Set());
   const flushTimerRef = useRef(null);
+  const retryTimerRef = useRef(null);
+
+  const patchInFlightRef = useRef(new Set());
+
+  // --- Anti refresh SSE après actions locales (évite GET /orders/production + GET /orders/:id) ---
+  const muteSseUntilRef = useRef(new Map());
+
+  function muteSse(orderId, ms = 1500) {
+    muteSseUntilRef.current.set(orderId, Date.now() + ms);
+  }
+
+  function isMuted(orderId) {
+    return (muteSseUntilRef.current.get(orderId) || 0) > Date.now();
+  }
 
   const expandedIdRef = useRef(null);
   useEffect(() => {
@@ -72,6 +91,7 @@ function Orders() {
   function isBusy() {
     return Date.now() < busyUntilRef.current || isUserEditing();
   }
+  
 
   const ordersRef = useRef([]);
   useEffect(() => {
@@ -95,7 +115,6 @@ function Orders() {
       }
     }, 250);
   }
-
 
   /**
    * Applique les compteurs messages/non-lus à une commande.
@@ -169,24 +188,48 @@ function Orders() {
    * @param {{ keepExpanded?: boolean }} [options]
    * @returns {Promise<void>}
    */
-  const refreshList = useCallback(async ({ keepExpanded = false } = {}) => {
+    const refreshList = useCallback(async ({ keepExpanded = false } = {}) => {
     setLoading(true);
     setError("");
 
     try {
       const res = await getProductionOrders();
-      const mapped = mapProductionOrdersList(res?.data);
+      const fresh = mapProductionOrdersList(res?.data);
 
-      setOrders(mapped);
-      resetDetailsCache();
+      setOrders((prev) => {
+        const prevById = new Map(prev.map((o) => [o.id, o]));
 
-      if (!keepExpanded) setExpandedId(null);
+        return fresh.map((f) => {
+          const cur = prevById.get(f.id);
+          if (!cur) return f;
+
+          // si on garde l'accordéon, on conserve les détails déjà chargés
+          if (keepExpanded) {
+            return {
+              ...cur, // garde groups/summary + tout ce qui n'est pas dans f
+              ...f,   // met à jour les champs "vivants" de la liste
+              groups: cur.groups ?? f.groups,
+              summary: cur.summary ?? f.summary,
+            };
+          }
+
+          return f;
+        });
+      });
+
+      // reset uniquement si on ne garde pas l'accordéon
+      if (!keepExpanded) {
+        resetDetailsCache();
+        setExpandedId(null);
+      }
     } catch {
       setError("Impossible de charger les commandes production.");
     } finally {
       setLoading(false);
     }
   }, []);
+
+
 
   useEffect(() => {
     refreshList();
@@ -198,28 +241,19 @@ function Orders() {
       const fresh = mapProductionOrdersList(res?.data);
 
       setOrders((prev) => {
-        const prevById = new Map(prev.map((o) => [o.id, o]));
-        return fresh.map((f) => {
-          const cur = prevById.get(f.id);
-          if (!cur) return f;
+      const prevById = new Map(prev.map((o) => [o.id, o]));
+      return fresh.map((f) => {
+        const cur = prevById.get(f.id);
+        if (!cur) return f;
 
-          // merge: on garde groups/summary déjà chargés, on met à jour les champs “vivants”
-          return {
-            ...cur,
-            company: f.company,
-            arc: f.arc,
-            pickupDate: f.pickupDate,
-            priority: f.priority,
-            priorityLabel: f.priorityLabel,
-            status: f.status,
-            messagesCount: Number(f.messagesCount ?? cur.messagesCount ?? 0),
-            unreadCount: Number(f.unreadCount ?? cur.unreadCount ?? 0),
-            bigbagTotal: Number(f.bigbagTotal ?? cur.bigbagTotal ?? 0),
-            rocheTotal: Number(f.rocheTotal ?? cur.rocheTotal ?? 0),
-            summary: cur.groups?.length ? cur.summary : f.summary,
-          };
-        });
+        return {
+          ...cur,
+          ...f,
+          groups: cur.groups,
+          summary: cur.summary,
+        };
       });
+    });
 
       // si commande ouverte disparue (validée), on ferme proprement
       const openId = expandedIdRef.current;
@@ -265,11 +299,10 @@ function Orders() {
       const ids = Array.from(pendingOrderIdsRef.current);
       pendingOrderIdsRef.current.clear();
 
-      // 1) On refresh TOUJOURS la liste (merge => pas de repli)
-      if (!skipList) {
+      // 1) On refresh la liste uniquement si PAS busy
+      if (!skipList && !busy) {
         await refreshListSilent();
       }
-
 
       // 2) Détails : uniquement si pas busy (évite d'écraser une saisie)
       const openId = expandedIdRef.current;
@@ -283,7 +316,9 @@ function Orders() {
         pendingOrderIdsRef.current.add(openId);
 
         // IMPORTANT : on ne réutilise pas flushTimerRef ici, sinon on bloque
-        setTimeout(() => {
+        if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
+        retryTimerRef.current = setTimeout(() => {
+          retryTimerRef.current = null;
           requestRefresh(openId, { comments: false });
         }, 800);
       }
@@ -297,17 +332,25 @@ function Orders() {
     const exists = ordersRef.current.some((o) => o.id === orderId);
     if (!exists) return;
 
+    const isCommentEvt =
+      evt?.type === "order_comment_created" ||
+      evt?.type === "order_comment_reads";
+
+    // si c'est un event "data" (pas commentaire) et qu'on vient de patch local => on ignore
+    if (!isCommentEvt && isMuted(orderId)) return;
+
     // 1) Pour les commentaires : MAJ badge via endpoint léger (pas de refresh list)
-    if (evt?.type === "order_comment_created" || evt?.type === "order_comment_reads") {
+    if (isCommentEvt) {
       queueCountsRefresh(orderId);
     }
 
-    // 2) On refresh le thread commentaires UNIQUEMENT si "created"
+    // 2) Thread commentaires : refresh uniquement si "created"
     requestRefresh(orderId, {
       comments: evt?.type === "order_comment_created",
-      skipList: evt?.type === "order_comment_created" || evt?.type === "order_comment_reads",
+      skipList: isCommentEvt,
     });
   });
+
 
   /**
    * Assure le chargement des détails d'une commande (1 seule fois).
@@ -338,6 +381,42 @@ function Orders() {
     }
   }
 
+  useEffect(() => {
+    //  capture une fois (pour éviter warnings react-hooks/exhaustive-deps)
+    const patchTimers = patchTimersRef.current;
+    const patchLastValue = patchLastValueRef.current;
+    const patchInFlight = patchInFlightRef.current;
+    const muteSseUntil = muteSseUntilRef.current;
+
+    return () => {
+      // --- SSE batch / retry ---
+      if (flushTimerRef.current) {
+        clearTimeout(flushTimerRef.current);
+        flushTimerRef.current = null;
+      }
+      if (retryTimerRef.current) {
+        clearTimeout(retryTimerRef.current);
+        retryTimerRef.current = null;
+      }
+
+      // --- timers counts (debounce par commande) ---
+      const countsTimers = countsTimersRef.current || {};
+      Object.values(countsTimers).forEach((t) => t && clearTimeout(t));
+      countsTimersRef.current = {};
+
+      // --- patch debounce timers ---
+      for (const t of patchTimers.values()) {
+        if (t) clearTimeout(t);
+      }
+
+      // --- clear maps/sets ---
+      patchTimers.clear();
+      patchLastValue.clear();
+      patchInFlight.clear();
+      muteSseUntil.clear();
+    };
+  }, []);
+
   return (
     <div className="p-4">
       <h1 className="gf-h1 text-center mb-1">Commandes à produire</h1>
@@ -365,37 +444,68 @@ function Orders() {
                 });
               }}
               readyByLineId={readyByLineId}
-              onChangeReady={async (lineId, next) => {
-                markBusy(3000); // bloque refresh entrants pendant l'action
+              onChangeReady={(lineId, next) => {
+                markBusy(3000);
 
-                // optimistic
+                // optimistic direct
                 setReadyByLineId((prev) => ({ ...prev, [lineId]: next }));
 
-                try {
-                  const res = await patchOrderLineReady(order.id, lineId, next);
-                  const lines = Array.isArray(res?.lines) ? res.lines : [];
-                  applyDetailsFromLines(order.id, lines);
+                // debounce PATCH par ligne
+                const timers = patchTimersRef.current;
+                const last = patchLastValueRef.current;
 
-                  setOrders((prev) =>
-                    prev.map((o) =>
-                      o.id === order.id
-                        ? {
-                            ...o,
-                            status: statusFromProductionStatus(
-                              res?.productionStatus ?? res?.order?.production_status,
-                            ),
-                          }
-                        : o,
-                    ),
-                  );
+                //  clé unique par commande + ligne
+                const key = `${order.id}:${lineId}`;
 
-                  syncReadyMapFromApiLines(lines);
-                } catch {
-                  detailsLoadedRef.current.delete(order.id);
-                  await ensureDetails(order.id);
-                } finally {
-                  markBusy(1500); // petit buffer après action
-                }
+                //  on stocke la dernière valeur avec la MÊME clé
+                last.set(key, next);
+
+                // debounce avec la MÊME clé
+                if (timers.has(key)) clearTimeout(timers.get(key));
+
+                timers.set(
+                  key,
+                  setTimeout(async () => {
+                    timers.delete(key);
+
+                    const value = last.get(key);
+
+                    // on mute les SSE après action locale
+                    muteSse(order.id, 4000);
+
+                    // anti double PATCH en même temps
+                    if (patchInFlightRef.current.has(key)) return;
+                    patchInFlightRef.current.add(key);
+
+                    try {
+                      const res = await patchOrderLineReady(order.id, lineId, value);
+                      const lines = Array.isArray(res?.lines) ? res.lines : [];
+                      applyDetailsFromLines(order.id, lines);
+
+                      setOrders((prev) =>
+                        prev.map((o) =>
+                          o.id === order.id
+                            ? {
+                                ...o,
+                                status: statusFromProductionStatus(
+                                  res?.productionStatus ?? res?.order?.production_status,
+                                ),
+                              }
+                            : o,
+                        ),
+                      );
+
+                      syncReadyMapFromApiLines(lines);
+                    } catch (e) {
+                      if (e?.status === 429) return;
+                      detailsLoadedRef.current.delete(order.id);
+                      await ensureDetails(order.id);
+                    } finally {
+                      patchInFlightRef.current.delete(key);
+                      markBusy(1500);
+                    }
+                  }, PATCH_DEBOUNCE_MS),
+                );
               }}
               onMarkAllReady={async () => {
                 // anti double-clic + disable
@@ -404,6 +514,7 @@ function Orders() {
 
                 try {
                   markBusy(12000);
+                  muteSse(order.id, 5000);
                   await ensureDetails(order.id);
 
                   const current = ordersRef.current.find(
@@ -461,7 +572,7 @@ function Orders() {
                   if (freshOrder?.production_status === "PROD_COMPLETE") {
                     await refreshList({ keepExpanded: true });
                     setExpandedId(order.id);
-                    await ensureDetails(order.id);
+                    await refreshExpandedDetails(order.id); // <-- force la vérité BDD sans dépendre du cache
                   }
                 } catch (e) {
                   console.error(e);
@@ -474,6 +585,7 @@ function Orders() {
               primaryLabel="Production terminée"
               onPrimaryAction={async () => {
                 markBusy(8000);
+                muteSse(order.id, 4000);
                 try {
                   await postProductionValidate(order.id);
                   await refreshList();

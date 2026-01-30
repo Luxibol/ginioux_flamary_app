@@ -74,9 +74,10 @@ function applySecurity(app) {
   app.use(
     rateLimit({
       windowMs: 15 * 60 * 1000,
-      max: 600, // à ajuster si besoin
+      max: 3000, //à ajuster si besoin
       standardHeaders: true,
       legacyHeaders: false,
+      skip: (req) => req.method === "OPTIONS",
     }),
   );
 

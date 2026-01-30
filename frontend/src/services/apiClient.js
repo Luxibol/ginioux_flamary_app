@@ -57,12 +57,14 @@ async function doFetch(path, options = {}) {
   if (!isFormData && !headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
   }
+  console.log("[API]", options?.method || "GET", path);
 
   const res = await fetch(apiUrl(path), {
     ...options,
     headers,
     // IMPORTANT: nécessaire pour envoyer/recevoir le cookie refresh_token
     credentials: "include",
+    signal: options.signal,
   });
 
   const data = await res.json().catch(() => ({}));

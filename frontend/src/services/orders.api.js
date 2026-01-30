@@ -66,14 +66,17 @@ export async function deleteOrder(id) {
  * @param {{q?:string, limit?:number, offset?:number}} [filters]
  * @returns {Promise<{count:number, filters:object, data:any[]}>}
  */
-export async function getProductionOrders({ q, limit, offset } = {}) {
+export async function getProductionOrders(
+  { q, limit, offset } = {},
+  fetchOptions = {},
+) {
   const params = new URLSearchParams();
   if (q) params.set("q", q);
   if (Number.isFinite(limit)) params.set("limit", String(limit));
   if (Number.isFinite(offset)) params.set("offset", String(offset));
 
   const qs = params.toString();
-  return apiFetch(`/orders/production${qs ? `?${qs}` : ""}`);
+  return apiFetch(`/orders/production${qs ? `?${qs}` : ""}`, fetchOptions);
 }
 
 /**
@@ -106,14 +109,17 @@ export async function postProductionValidate(orderId) {
  * @param {{q?:string, limit?:number, offset?:number}} [filters]
  * @returns {Promise<{count:number, filters:object, data:any[]}>}
  */
-export async function getProductionShipments({ q, limit, offset } = {}) {
+export async function getProductionShipments(
+  { q, limit, offset } = {},
+  fetchOptions = {},
+) {
   const params = new URLSearchParams();
   if (q) params.set("q", q);
   if (Number.isFinite(limit)) params.set("limit", String(limit));
   if (Number.isFinite(offset)) params.set("offset", String(offset));
 
   const qs = params.toString();
-  return apiFetch(`/orders/shipments${qs ? `?${qs}` : ""}`);
+  return apiFetch(`/orders/shipments${qs ? `?${qs}` : ""}`, fetchOptions);
 }
 
 /**
@@ -166,8 +172,8 @@ export async function getProducedOrdersCount({ period } = {}) {
  * Statistiques production liées aux expéditions.
  * @returns {Promise<any>}
  */
-export async function getProductionShipmentsStats() {
-  return apiFetch(`/orders/shipments/stats`);
+export async function getProductionShipmentsStats(fetchOptions = {}) {
+  return apiFetch(`/orders/shipments/stats`, fetchOptions);
 }
 
 /**
