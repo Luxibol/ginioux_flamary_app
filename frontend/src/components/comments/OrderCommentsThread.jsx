@@ -1,14 +1,14 @@
 /**
- * Commentaires — Thread commande
- * - Charge / affiche les commentaires d'une commande
- * - Mode lecture seule optionnel + ajout d'un commentaire
- * - Pliable (collapsible) : contrôlé par le parent ou en local
+ * @file frontend/src/components/comments/OrderCommentsThread.jsx
+ * @description Thread de commentaires d'une commande : affichage, ajout (optionnel) et gestion plié/déplié.
  */
-import { useEffect, useState } from "react";
+
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Plus, ChevronDown, ChevronUp } from "lucide-react";
 import {
   getOrderComments,
   postOrderComment,
+  getOrderCommentCounts,
 } from "../../services/orders.api.js";
 
 /**
@@ -19,6 +19,9 @@ import {
  * @param {(orderId: any, counts: {messagesCount:number, unreadCount:number}) => void} [props.onCountsChange]
  * @param {string} [props.className=""] Classe CSS additionnelle
  * @param {boolean} [props.readOnly=false] Désactive l'ajout de commentaire
+ * @param {number} [props.refreshSignal=0] Incrémente pour déclencher un rechargement externe.
+ * @param {number} [props.messagesCount] Compteur total fourni par le parent (mode contrôlé).
+ * @param {number} [props.unreadCount] Compteur non-lus fourni par le parent (mode contrôlé).
  * @param {boolean} [props.showHeader=true] Affiche l'en-tête
  * @param {boolean} [props.collapsible=true] Autorise le repli/dépli
  * @param {boolean} [props.defaultCollapsed=true] État initial (si non contrôlé)
@@ -32,6 +35,9 @@ export default function OrderCommentsThread({
   onCountsChange,
   className = "",
   readOnly = false,
+  refreshSignal = 0,
+  messagesCount: messagesCountProp,
+  unreadCount: unreadCountProp,
 
   // UI
   showHeader = true,
@@ -51,6 +57,44 @@ export default function OrderCommentsThread({
   const [unreadCount, setUnreadCount] = useState(0);
 
   const [content, setContent] = useState("");
+  
+  const inputRef = useRef(null);
+
+  const parentProvidesCounts =
+    typeof messagesCountProp === "number" && 
+    typeof unreadCountProp === "number";
+
+  // Stabilise le callback + anti-spam : évite des rafales de fetch quand le parent réagit aux compteurs.
+  const onCountsChangeRef = useRef(onCountsChange);
+  useEffect(() => {
+    onCountsChangeRef.current = onCountsChange;
+  }, [onCountsChange]);
+
+  const lastCountsRef = useRef({ mc: null, uc: null });
+  const lastCountsFetchRef = useRef(0);
+
+    const applyCounts = useCallback(
+      (mc, uc) => {
+        setMessagesCount(mc);
+        setUnreadCount(uc);
+
+        if (
+          lastCountsRef.current.mc === mc &&
+          lastCountsRef.current.uc === uc
+        )
+          return;
+
+        lastCountsRef.current = { mc, uc };
+
+        onCountsChangeRef.current?.(orderId, {
+          messagesCount: mc,
+          unreadCount: uc,
+        });
+      },
+      [orderId],
+    );
+
+
 
   // État local (utilisé si le parent ne contrôle pas "collapsed")
   const [collapsedLocal, setCollapsedLocal] = useState(
@@ -72,6 +116,41 @@ export default function OrderCommentsThread({
     }
   };
 
+  useEffect(() => {
+    if (!open || !orderId) return;
+
+    if (parentProvidesCounts) return;
+
+    // Thread replié : ne fetch que les compteurs (pas de chargement complet / markRead).
+    if (!collapsed) return;
+
+    let cancelled = false;
+
+    (async () => {
+      try {
+
+        const now = Date.now();
+        if (now - lastCountsFetchRef.current < 500) return; // anti-spam
+        lastCountsFetchRef.current = now;
+
+        const counts = await getOrderCommentCounts(orderId);
+        if (cancelled) return;
+
+        const mc = Number(counts?.messagesCount ?? 0);
+        const uc = Number(counts?.unreadCount ?? 0);
+
+        applyCounts(mc, uc);
+
+      } catch {
+        // silent
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [open, orderId, collapsed, refreshSignal, applyCounts, parentProvidesCounts]);
+
   async function load() {
     if (!orderId) return;
 
@@ -83,10 +162,8 @@ export default function OrderCommentsThread({
       const uc = Number(res?.unreadCount ?? 0);
 
       setComments(res?.data || []);
-      setMessagesCount(mc);
-      setUnreadCount(uc);
+      applyCounts(mc, uc);
 
-      onCountsChange?.(orderId, { messagesCount: mc, unreadCount: uc });
     } catch (e) {
       setError(e?.message || "Erreur chargement commentaires.");
     } finally {
@@ -107,10 +184,7 @@ export default function OrderCommentsThread({
       const uc = Number(res?.unreadCount ?? 0);
 
       setComments(res?.data || []);
-      setMessagesCount(mc);
-      setUnreadCount(uc);
-
-      onCountsChange?.(orderId, { messagesCount: mc, unreadCount: uc });
+      applyCounts(mc, uc);
 
       setContent("");
       setCollapsed(false); // Ouvre le thread après envoi
@@ -124,13 +198,36 @@ export default function OrderCommentsThread({
   useEffect(() => {
     if (!open) return;
     if (!orderId) return;
+    if (collapsed) return; // ne marque pas "lu" tant que le thread est replié
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, orderId]);
+  }, [open, orderId, collapsed]);
+
+
+  useEffect(() => {
+    if (!open || !orderId) return;
+    if (collapsed) return; // pas de reload/markRead quand replié
+    if (posting) return;
+
+    // On évite de recharger pendant la saisie/focus pour ne pas perturber l'utilisateur.
+    const isTyping = String(content || "").trim().length > 0;
+    const isFocused = document.activeElement === inputRef.current;
+
+    if (isTyping || isFocused) return;
+
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refreshSignal]);
 
   if (!open) return null;
 
   const canToggle = showHeader && collapsible;
+
+  const displayMessagesCount =
+    typeof messagesCountProp === "number" ? messagesCountProp : messagesCount;
+
+  const displayUnreadCount =
+    typeof unreadCountProp === "number" ? unreadCountProp : unreadCount;
 
   return (
     <div
@@ -147,11 +244,11 @@ export default function OrderCommentsThread({
           <div className="text-xs font-medium text-gf-title">
             Commentaires{" "}
             <span className="text-gf-subtitle font-normal">
-              ({messagesCount})
+              ({displayMessagesCount})
             </span>
-            {unreadCount > 0 ? (
+            {displayUnreadCount > 0 ? (
               <span className="ml-2 text-[11px] text-gf-subtitle">
-                • Non lus : {unreadCount}
+                • Non lus : {displayUnreadCount}
               </span>
             ) : null}
           </div>
@@ -198,6 +295,7 @@ export default function OrderCommentsThread({
           {!readOnly ? (
             <div className="mt-3 flex items-center gap-2">
               <input
+                ref={inputRef}
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
                 onKeyDown={(e) => {

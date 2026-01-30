@@ -1,19 +1,17 @@
 /**
- * Production - Commandes à produire (mobile)
- * - Liste des commandes (cards) via API
- * - Accordéons (détails lazy au clic)
- * - Stepper "Prêts" branché sur PATCH ready
- * - Bouton "Production terminée" : valide manuellement (production_validated_at)
- *   pour sortir la commande de la liste "à produire" même si PROD_COMPLETE.
- *   Note : commentaires non branchés (comments: []).
+ * @file frontend/src/features/production/pages/Orders.jsx
+ * @description Page Production (mobile) : liste des commandes à produire, détails lazy, MAJ "prêts" et validation production.
  */
+
 import { useEffect, useRef, useState, useCallback } from "react";
 import ProductionOrderCard from "../components/ProductionOrderCard.jsx";
+import { useProductionEvents } from "../hooks/useProductionEvents.js";
 import {
   getProductionOrders,
   getOrderDetails,
   patchOrderLineReady,
   postProductionValidate,
+  getOrderCommentCounts,
 } from "../../../services/orders.api.js";
 import {
   mapProductionOrdersList,
@@ -30,12 +28,15 @@ import {
 } from "../utils/productionUi.utils.js";
 
 /**
- * Orders Production (page).
- * - Liste + accordéon (détails lazy)
- * - MAJ "prêts" (PATCH) + validation production
+ * Page Production : liste + détails lazy + actions (ready / validation).
  * @returns {import("react").JSX.Element}
  */
 function Orders() {
+  const PATCH_DEBOUNCE_MS = 350;
+
+  const patchTimersRef = useRef(new Map());
+  const patchLastValueRef = useRef(new Map());
+
   const [orders, setOrders] = useState([]);
   const [expandedId, setExpandedId] = useState(null);
 
@@ -47,16 +48,75 @@ function Orders() {
 
   const [bulkByOrderId, setBulkByOrderId] = useState({});
 
+  // SSE : regroupe les events et rafraîchit sans perturber la saisie utilisateur.
+  const [commentsRefreshTick, setCommentsRefreshTick] = useState({});
+  const pendingOrderIdsRef = useRef(new Set());
+  const flushTimerRef = useRef(null);
+  const retryTimerRef = useRef(null);
+
+  const patchInFlightRef = useRef(new Set());
+
+  // Anti-rebond SSE : ignore temporairement certains events après une action locale.
+  const muteSseUntilRef = useRef(new Map());
+
+  function muteSse(orderId, ms = 1500) {
+    muteSseUntilRef.current.set(orderId, Date.now() + ms);
+  }
+
+  function isMuted(orderId) {
+    return (muteSseUntilRef.current.get(orderId) || 0) > Date.now();
+  }
+
+  const expandedIdRef = useRef(null);
+  useEffect(() => {
+    expandedIdRef.current = expandedId;
+  }, [expandedId]);
+
+  const busyUntilRef = useRef(0);
+
+  // Empêche les refresh auto quand l'utilisateur est en train d'interagir (focus/saisie).
+  function isUserEditing() {
+    const el = document.activeElement;
+    if (!el) return false;
+    const tag = el.tagName?.toLowerCase();
+    return tag === "input" || tag === "textarea" || el.isContentEditable;
+  }
+  function markBusy(ms = 5000) {
+    busyUntilRef.current = Math.max(busyUntilRef.current, Date.now() + ms);
+  }
+  function isBusy() {
+    return Date.now() < busyUntilRef.current || isUserEditing();
+  }
+  
+
   const ordersRef = useRef([]);
   useEffect(() => {
     ordersRef.current = orders;
   }, [orders]);
 
+  const countsTimersRef = useRef({});
+  function queueCountsRefresh(orderId) {
+    if (!orderId) return;
+
+    // Debounce par commande : 1 seule requête même si plusieurs events arrivent.
+    if (countsTimersRef.current[orderId]) return;
+
+    countsTimersRef.current[orderId] = setTimeout(async () => {
+      countsTimersRef.current[orderId] = null;
+      try {
+        const counts = await getOrderCommentCounts(orderId);
+        applyCounts(orderId, counts);
+      } catch {
+        // silent
+      }
+    }, 250);
+  }
+
   /**
    * Applique les compteurs messages/non-lus à une commande.
+   * Conserve les compteurs au niveau de la liste (badges + header du thread).
    * @param {number} orderId
    * @param {{ messagesCount?: number, unreadCount?: number }} counts
-   * @returns {void}
    */
   const applyCounts = (orderId, counts) => {
     setOrders((prev) =>
@@ -124,18 +184,40 @@ function Orders() {
    * @param {{ keepExpanded?: boolean }} [options]
    * @returns {Promise<void>}
    */
-  const refreshList = useCallback(async ({ keepExpanded = false } = {}) => {
+    const refreshList = useCallback(async ({ keepExpanded = false } = {}) => {
     setLoading(true);
     setError("");
 
     try {
       const res = await getProductionOrders();
-      const mapped = mapProductionOrdersList(res?.data);
+      const fresh = mapProductionOrdersList(res?.data);
 
-      setOrders(mapped);
-      resetDetailsCache();
+      setOrders((prev) => {
+        const prevById = new Map(prev.map((o) => [o.id, o]));
 
-      if (!keepExpanded) setExpandedId(null);
+        return fresh.map((f) => {
+          const cur = prevById.get(f.id);
+          if (!cur) return f;
+
+          // Option keepExpanded : préserve les détails déjà chargés pour éviter un clignotement.
+          if (keepExpanded) {
+            return {
+              ...cur, // garde groups/summary + tout ce qui n'est pas dans f
+              ...f,   // met à jour les champs "vivants" de la liste
+              groups: cur.groups ?? f.groups,
+              summary: cur.summary ?? f.summary,
+            };
+          }
+
+          return f;
+        });
+      });
+
+      // Reset du cache uniquement si on referme l'accordéon.
+      if (!keepExpanded) {
+        resetDetailsCache();
+        setExpandedId(null);
+      }
     } catch {
       setError("Impossible de charger les commandes production.");
     } finally {
@@ -143,9 +225,128 @@ function Orders() {
     }
   }, []);
 
+
+
   useEffect(() => {
     refreshList();
   }, [refreshList]);
+
+  const refreshListSilent = useCallback(async () => {
+    try {
+      const res = await getProductionOrders();
+      const fresh = mapProductionOrdersList(res?.data);
+
+      setOrders((prev) => {
+      const prevById = new Map(prev.map((o) => [o.id, o]));
+      return fresh.map((f) => {
+        const cur = prevById.get(f.id);
+        if (!cur) return f;
+
+        return {
+          ...cur,
+          ...f,
+          groups: cur.groups,
+          summary: cur.summary,
+        };
+      });
+    });
+
+      // si commande ouverte disparue (validée), on ferme proprement
+      const openId = expandedIdRef.current;
+      if (openId && !fresh.some((o) => o.id === openId)) {
+        setExpandedId(null);
+      }
+    } catch {
+      // silent
+    }
+  }, []);
+
+  const refreshExpandedDetails = useCallback(async (orderId) => {
+    try {
+      const { lines } = await getOrderDetails(orderId);
+      applyDetailsFromLines(orderId, lines);
+      syncReadyMapFromApiLines(Array.isArray(lines) ? lines : []);
+    } catch {
+      // silent
+    }
+  }, []);
+
+  function requestRefresh(orderId, { comments = false, skipList = false } = {}) {
+    if (!orderId) return;
+
+    pendingOrderIdsRef.current.add(orderId);
+
+    // Si l'event concerne les commentaires: on déclenche 1 reload du thread
+    if (comments) {
+      setCommentsRefreshTick((p) => ({
+        ...p,
+        [orderId]: (p[orderId] || 0) + 1,
+      }));
+    }
+
+    // Déjà un flush programmé ? On ne reprogramme pas.
+    if (flushTimerRef.current) return;
+
+    flushTimerRef.current = setTimeout(async () => {
+      flushTimerRef.current = null;
+
+      const busy = isBusy();
+
+      const ids = Array.from(pendingOrderIdsRef.current);
+      pendingOrderIdsRef.current.clear();
+
+      // 1) On refresh la liste uniquement si PAS busy
+      if (!skipList && !busy) {
+        await refreshListSilent();
+      }
+
+      // 2) Détails : uniquement si pas busy (évite d'écraser une saisie)
+      const openId = expandedIdRef.current;
+      if (!busy && openId && ids.includes(openId)) {
+        await refreshExpandedDetails(openId);
+        return;
+      }
+
+      // 3) Si busy et la commande ouverte est concernée : retry plus tard
+      if (busy && openId && ids.includes(openId)) {
+        pendingOrderIdsRef.current.add(openId);
+
+        // IMPORTANT : on ne réutilise pas flushTimerRef ici, sinon on bloque
+        if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
+        retryTimerRef.current = setTimeout(() => {
+          retryTimerRef.current = null;
+          requestRefresh(openId, { comments: false });
+        }, 800);
+      }
+    }, 120);
+  }
+
+  useProductionEvents((evt) => {
+    const orderId = Number(evt?.orderId || 0);
+    if (!orderId) return;
+
+    const exists = ordersRef.current.some((o) => o.id === orderId);
+    if (!exists) return;
+
+    const isCommentEvt =
+      evt?.type === "order_comment_created" ||
+      evt?.type === "order_comment_reads";
+
+    // si c'est un event "data" (pas commentaire) et qu'on vient de patch local => on ignore
+    if (!isCommentEvt && isMuted(orderId)) return;
+
+    // 1) Pour les commentaires : MAJ badge via endpoint léger (pas de refresh list)
+    if (isCommentEvt) {
+      queueCountsRefresh(orderId);
+    }
+
+    // 2) Thread commentaires : refresh uniquement si "created"
+    requestRefresh(orderId, {
+      comments: evt?.type === "order_comment_created",
+      skipList: isCommentEvt,
+    });
+  });
+
 
   /**
    * Assure le chargement des détails d'une commande (1 seule fois).
@@ -176,6 +377,42 @@ function Orders() {
     }
   }
 
+  useEffect(() => {
+    // Capture des refs une seule fois : nettoyage fiable au unmount sans dépendances.
+    const patchTimers = patchTimersRef.current;
+    const patchLastValue = patchLastValueRef.current;
+    const patchInFlight = patchInFlightRef.current;
+    const muteSseUntil = muteSseUntilRef.current;
+
+    return () => {
+      // --- SSE batch / retry ---
+      if (flushTimerRef.current) {
+        clearTimeout(flushTimerRef.current);
+        flushTimerRef.current = null;
+      }
+      if (retryTimerRef.current) {
+        clearTimeout(retryTimerRef.current);
+        retryTimerRef.current = null;
+      }
+
+      // --- timers counts (debounce par commande) ---
+      const countsTimers = countsTimersRef.current || {};
+      Object.values(countsTimers).forEach((t) => t && clearTimeout(t));
+      countsTimersRef.current = {};
+
+      // --- patch debounce timers ---
+      for (const t of patchTimers.values()) {
+        if (t) clearTimeout(t);
+      }
+
+      // --- clear maps/sets ---
+      patchTimers.clear();
+      patchLastValue.clear();
+      patchInFlight.clear();
+      muteSseUntil.clear();
+    };
+  }, []);
+
   return (
     <div className="p-4">
       <h1 className="gf-h1 text-center mb-1">Commandes à produire</h1>
@@ -194,6 +431,7 @@ function Orders() {
               order={order}
               expanded={expandedId === order.id}
               onCountsChange={applyCounts}
+              commentsRefreshSignal={commentsRefreshTick[order.id] || 0}
               onToggle={() => {
                 setExpandedId((cur) => {
                   const next = cur === order.id ? null : order.id;
@@ -202,35 +440,63 @@ function Orders() {
                 });
               }}
               readyByLineId={readyByLineId}
-              onChangeReady={async (lineId, next) => {
-                // optimistic
+              onChangeReady={(lineId, next) => {
+                markBusy(3000);
+
+                // MAJ optimiste + PATCH debouncé par ligne (évite rafales réseau).
                 setReadyByLineId((prev) => ({ ...prev, [lineId]: next }));
 
-                try {
-                  const res = await patchOrderLineReady(order.id, lineId, next);
+                const timers = patchTimersRef.current;
+                const last = patchLastValueRef.current;
 
-                  const lines = Array.isArray(res?.lines) ? res.lines : [];
-                  applyDetailsFromLines(order.id, lines);
+                const key = `${order.id}:${lineId}`;
 
-                  setOrders((prev) =>
-                    prev.map((o) =>
-                      o.id === order.id
-                        ? {
-                            ...o,
-                            status: statusFromProductionStatus(
-                              res?.productionStatus ??
-                                res?.order?.production_status,
-                            ),
-                          }
-                        : o,
-                    ),
-                  );
+                last.set(key, next);
 
-                  syncReadyMapFromApiLines(lines);
-                } catch {
-                  detailsLoadedRef.current.delete(order.id);
-                  await ensureDetails(order.id);
-                }
+                if (timers.has(key)) clearTimeout(timers.get(key));
+
+                timers.set(
+                  key,
+                  setTimeout(async () => {
+                    timers.delete(key);
+
+                    const value = last.get(key);
+
+                    // Ignore temporairement les events SSE consécutifs au PATCH (évite re-fetch immédiat).
+                    muteSse(order.id, 4000);
+
+                    if (patchInFlightRef.current.has(key)) return;
+                    patchInFlightRef.current.add(key);
+
+                    try {
+                      const res = await patchOrderLineReady(order.id, lineId, value);
+                      const lines = Array.isArray(res?.lines) ? res.lines : [];
+                      applyDetailsFromLines(order.id, lines);
+
+                      setOrders((prev) =>
+                        prev.map((o) =>
+                          o.id === order.id
+                            ? {
+                                ...o,
+                                status: statusFromProductionStatus(
+                                  res?.productionStatus ?? res?.order?.production_status,
+                                ),
+                              }
+                            : o,
+                        ),
+                      );
+
+                      syncReadyMapFromApiLines(lines);
+                    } catch (e) {
+                      if (e?.status === 429) return;
+                      detailsLoadedRef.current.delete(order.id);
+                      await ensureDetails(order.id);
+                    } finally {
+                      patchInFlightRef.current.delete(key);
+                      markBusy(1500);
+                    }
+                  }, PATCH_DEBOUNCE_MS),
+                );
               }}
               onMarkAllReady={async () => {
                 // anti double-clic + disable
@@ -238,6 +504,8 @@ function Orders() {
                 setBulkByOrderId((p) => ({ ...p, [order.id]: true }));
 
                 try {
+                  markBusy(12000);
+                  muteSse(order.id, 5000);
                   await ensureDetails(order.id);
 
                   const current = ordersRef.current.find(
@@ -253,7 +521,7 @@ function Orders() {
 
                   const { errors } = await runWithConcurrency(tasks, 5);
 
-                  // vérité BDD : 1 seul fetch
+                  // Re-synchronise depuis l'API après bulk (évite dérive en cas d'erreurs partielles).
                   const { order: freshOrder, lines: freshLines } =
                     await getOrderDetails(order.id);
                   const lines = Array.isArray(freshLines) ? freshLines : [];
@@ -295,20 +563,27 @@ function Orders() {
                   if (freshOrder?.production_status === "PROD_COMPLETE") {
                     await refreshList({ keepExpanded: true });
                     setExpandedId(order.id);
-                    await ensureDetails(order.id);
+                    await refreshExpandedDetails(order.id); 
                   }
                 } catch (e) {
                   console.error(e);
                 } finally {
+                  markBusy(1500);
                   setBulkByOrderId((p) => ({ ...p, [order.id]: false }));
                 }
               }}
               markAllDisabled={!!bulkByOrderId[order.id]}
               primaryLabel="Production terminée"
               onPrimaryAction={async () => {
-                await postProductionValidate(order.id);
-                await refreshList();
-                setExpandedId(null);
+                markBusy(8000);
+                muteSse(order.id, 4000);
+                try {
+                  await postProductionValidate(order.id);
+                  await refreshList();
+                  setExpandedId(null);
+                } finally {
+                  markBusy(1500);
+                }
               }}
             />
           ))}

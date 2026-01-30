@@ -1,11 +1,12 @@
 /**
- * Dashboard — Admin
- * - KPIs : à produire, expéditions du jour
- * - Urgences (top 3) + activité récente
- * - Mini stats pilotées par période (bas de page)
+ * @file frontend/src/features/admin/pages/Dashboard.jsx
+ * @description Dashboard Admin : KPIs (production/expéditions), urgences, activité récente, mini-stats par période.
  */
-import { useEffect, useMemo, useState } from "react";
+
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+
+import { usePullToRefreshMobile } from "../../../utils/pullToRefreshMobile.hook.js";
 
 import {
   getActiveOrders,
@@ -28,17 +29,15 @@ import { getUser } from "../../../services/auth.storage.js";
  * @returns {"BIGBAG"|"ROCHE"|"OTHER"}
  */
 function normalizeFamily(line) {
-  // Priorité : category
+
   const cat = String(line?.category ?? "")
     .toUpperCase()
     .trim();
 
   if (cat === "ROCHE") return "ROCHE";
 
-  // BIGBAG : BigBag/SmallBag regroupés
   if (cat === "BIGBAG") return "BIGBAG";
 
-  // Fallback : analyse du label si category manquante
   const label = String(line?.label ?? "").toLowerCase();
   if (label.includes("roche")) return "ROCHE";
   if (label.includes("big") || label.includes("bag")) return "BIGBAG";
@@ -48,6 +47,7 @@ function normalizeFamily(line) {
 
 /**
  * Calcule les totaux BigBag/Roche à partir d'une liste d'IDs commandes.
+ * Détaille un nombre limité de commandes pour éviter un coût réseau trop élevé.
  * @param {Array<number|string>} orderIds Identifiants de commandes
  * @param {object} [options]
  * @param {number} [options.limit=30] Limite du nombre de commandes détaillées (perf)
@@ -104,6 +104,19 @@ const PERIODS = [
 ];
 
 export default function Dashboard() {
+
+  const { registerRefresh } = usePullToRefreshMobile();
+
+  const [, setRefreshing] = useState(false); // État silencieux utilisé par le pull-to-refresh (sans spinner visible).
+
+  const aliveRef = useRef(true);
+  useEffect(() => {
+    aliveRef.current = true;
+    return () => {
+      aliveRef.current = false;
+    };
+  }, []);
+
   const navigate = useNavigate();
   const firstName = useMemo(() => {
     const user = getUser();
@@ -112,7 +125,7 @@ export default function Dashboard() {
 
   const [producedTotals, setProducedTotals] = useState({ bigbag: 0, roche: 0 });
 
-  // La période ne concerne QUE le bloc du bas (mini stats)
+  // La période pilote uniquement les mini-stats (bloc bas).
   const [periodBottom, setPeriodBottom] = useState("7D");
 
   const [loading, setLoading] = useState(true);
@@ -162,137 +175,117 @@ export default function Dashboard() {
     return items;
   }, [urgentRows, archived7dRows]);
 
-  /**
-   * Chargement initial (haut de page).
-   * - À produire, urgences, expéditions du jour (depuis archived 7D)
-   */
-  useEffect(() => {
-    let alive = true;
+/**
+ * Charge les données du haut de page (KPIs + urgences + activité récente).
+ */
+  const runTop = useCallback(async ({ silent = false } = {}) => {
+    if (silent) setRefreshing(true);
+    else setLoading(true);
 
-    async function runTop() {
-      setLoading(true);
-      setError("");
+    setError("");
 
-      try {
-        const [prodRes, urgentRes, archived7dRes] = await Promise.all([
-          getProductionOrders({ limit: 200, offset: 0 }),
-          getActiveOrders({ priority: "URGENT" }),
-          getArchivedOrders({ period: "7D" }),
-        ]);
+    try {
+      const [prodRes, urgentRes, archived7dRes] = await Promise.all([
+        getProductionOrders({ limit: 200, offset: 0 }),
+        getActiveOrders({ priority: "URGENT" }),
+        getArchivedOrders({ period: "7D" }),
+      ]);
 
-        if (!alive) return;
+      if (!aliveRef.current) return;
 
-        // commandes à produire
-        const prodList = Array.isArray(prodRes?.data) ? prodRes.data : [];
-        setProduceCount(prodList.length);
-        setProduceUrgentCount(
-          prodList.filter((o) => o.priority === "URGENT").length,
-        );
+      const prodList = Array.isArray(prodRes?.data) ? prodRes.data : [];
+      setProduceCount(prodList.length);
+      setProduceUrgentCount(prodList.filter((o) => o.priority === "URGENT").length);
 
-        // totaux à produire (quantity_ordered)
-        (async () => {
-          const ids = prodList.map((o) => o.id).filter(Boolean);
-          const totals = await computeTotalsFromOrders(ids, {
-            limit: 30,
-            mode: "ORDERED",
-          });
-          if (alive) setTopProduceTotals(totals);
-        })();
+      (async () => {
+        const ids = prodList.map((o) => o.id).filter(Boolean);
+        const totals = await computeTotalsFromOrders(ids, { limit: 30, mode: "ORDERED" });
+        if (aliveRef.current) setTopProduceTotals(totals);
+      })();
 
-        // urgentes (table 3 lignes)
-        const urgList = Array.isArray(urgentRes?.data) ? urgentRes.data : [];
-        setUrgentRows(urgList.slice(0, 3));
+      const urgList = Array.isArray(urgentRes?.data) ? urgentRes.data : [];
+      setUrgentRows(urgList.slice(0, 3));
 
-        // archived 7D + today
-        const arch7 = Array.isArray(archived7dRes?.data)
-          ? archived7dRes.data
-          : [];
-        setArchived7dRows(arch7);
+      const arch7 = Array.isArray(archived7dRes?.data) ? archived7dRes.data : [];
+      setArchived7dRows(arch7);
 
-        const today = new Date();
-        const todayOrders = arch7.filter((o) =>
-          sameDay(o.last_departed_at, today),
-        );
-        setTodayArchivedCount(todayOrders.length);
+      const today = new Date();
+      const todayOrders = arch7.filter((o) => sameDay(o.last_departed_at, today));
+      setTodayArchivedCount(todayOrders.length);
 
-        // totaux expédiés aujourd’hui (quantity_shipped)
-        (async () => {
-          const ids = todayOrders.map((o) => o.id).filter(Boolean);
-          const totals = await computeTotalsFromOrders(ids, {
-            limit: 30,
-            mode: "SHIPPED",
-          });
-          if (alive) setTopTodayShipTotals(totals);
-        })();
-      } catch (e) {
-        if (!alive) return;
-        setError(e?.message || "Erreur lors du chargement du dashboard admin.");
-      } finally {
-        if (alive) setLoading(false);
+      (async () => {
+        const ids = todayOrders.map((o) => o.id).filter(Boolean);
+        const totals = await computeTotalsFromOrders(ids, { limit: 30, mode: "SHIPPED" });
+        if (aliveRef.current) setTopTodayShipTotals(totals);
+      })();
+    } catch (e) {
+      if (!aliveRef.current) return;
+      setError(e?.message || "Erreur lors du chargement du dashboard admin.");
+    } finally {
+      if (aliveRef.current) {
+        if (silent) setRefreshing(false);
+        else setLoading(false);
       }
     }
-
-    runTop();
-    return () => {
-      alive = false;
-    };
   }, []);
 
-  /**
-   * Chargement du bas de page (dépend de la période).
-   * - Expéditions sur période + commandes produites (stats)
-   */
   useEffect(() => {
-    let alive = true;
+  runTop({ silent: false });
+}, [runTop]);
 
-    async function runBottom() {
-      try {
-        const [archivedRes, producedRes] = await Promise.all([
-          getArchivedOrders({ period: periodBottom }),
-          getProducedOrdersCount({ period: periodBottom }),
-        ]);
+/**
+ * Charge les mini-stats dépendantes de la période (expéditions + produits).
+ */
+  const runBottom = useCallback(async () => {
+    try {
+      const [archivedRes, producedRes] = await Promise.all([
+        getArchivedOrders({ period: periodBottom }),
+        getProducedOrdersCount({ period: periodBottom }),
+      ]);
 
-        if (!alive) return;
+      if (!aliveRef.current) return;
 
-        // Expéditions effectuées (comme avant)
-        const archList = Array.isArray(archivedRes?.data)
-          ? archivedRes.data
-          : [];
-        setBottomArchivedCount(archList.length);
+      const archList = Array.isArray(archivedRes?.data) ? archivedRes.data : [];
+      setBottomArchivedCount(archList.length);
 
-        // Totaux expédiés sur période (comme avant)
-        (async () => {
-          const ids = archList.map((o) => o.id).filter(Boolean);
-          const totals = await computeTotalsFromOrders(ids, {
-            limit: 30,
-            mode: "SHIPPED",
-          });
-          if (alive) setBottomShipTotals(totals);
-        })();
+      (async () => {
+        const ids = archList.map((o) => o.id).filter(Boolean);
+        const totals = await computeTotalsFromOrders(ids, { limit: 30, mode: "SHIPPED" });
+        if (aliveRef.current) setBottomShipTotals(totals);
+      })();
 
-        // Commandes produites : back renvoie count + totals
-        setProducedCount(Number(producedRes?.count ?? 0));
-
-        const t = producedRes?.totals;
-        setProducedTotals({
-          bigbag: Number(t?.bigbag ?? 0),
-          roche: Number(t?.roche ?? 0),
-        });
-      } catch {
-        if (!alive) return;
-        setBottomArchivedCount(0);
-        setBottomShipTotals({ bigbag: 0, roche: 0 });
-
-        setProducedCount(0);
-        setProducedTotals({ bigbag: 0, roche: 0 });
-      }
+      setProducedCount(Number(producedRes?.count ?? 0));
+      const t = producedRes?.totals;
+      setProducedTotals({
+        bigbag: Number(t?.bigbag ?? 0),
+        roche: Number(t?.roche ?? 0),
+      });
+    } catch {
+      if (!aliveRef.current) return;
+      setBottomArchivedCount(0);
+      setBottomShipTotals({ bigbag: 0, roche: 0 });
+      setProducedCount(0);
+      setProducedTotals({ bigbag: 0, roche: 0 });
     }
-
-    runBottom();
-    return () => {
-      alive = false;
-    };
   }, [periodBottom]);
+
+  useEffect(() => {
+    runBottom();
+  }, [runBottom]);
+
+  const refreshAll = useCallback(async ({ silent = false } = {}) => {
+    await Promise.all([
+      runTop({ silent }),
+      runBottom(), // pas besoin de silent ici
+    ]);
+  }, [runTop, runBottom]);
+
+  const refreshAllSilent = useCallback(() => refreshAll({ silent: true }), [refreshAll]);
+
+  useEffect(() => {
+    return registerRefresh(refreshAllSilent);
+  }, [registerRefresh, refreshAllSilent]);
+
 
   if (loading)
     return <div className="p-6 text-xs text-gf-subtitle">Chargement…</div>;

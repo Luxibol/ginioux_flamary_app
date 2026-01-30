@@ -1,12 +1,9 @@
 /**
- * Client HTTP (API)
- * - Construit l'URL à partir de VITE_API_BASE_URL
- * - Ajoute le token Bearer si présent
- * - Normalise les erreurs (status + data)
- * - Auto-refresh sur 401 (1 retry) via /auth/refresh (cookie httpOnly)
- *
- * Note : ne force pas Content-Type si FormData (uploads).
+ * @file frontend/src/services/apiClient.js
+ * @description Client HTTP : base URL, Bearer token, normalisation erreurs, auto-refresh 401 (1 retry).
  */
+// Ne force pas Content-Type quand body est un FormData (upload).
+
 const base = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
 
 import { getToken, setToken, clearToken } from "./auth.storage.js";
@@ -22,6 +19,7 @@ export function apiUrl(path) {
 
 /**
  * Construit une erreur enrichie (status + data).
+ * Centralise le format d'erreur pour simplifier la gestion côté UI.
  * @param {Response} res Réponse fetch
  * @param {any} data Corps JSON parsé (si disponible)
  * @returns {Error}
@@ -33,9 +31,14 @@ function buildHttpError(res, data) {
   return err;
 }
 
-// Verrou : si plusieurs requêtes prennent 401 en même temps, un seul refresh est déclenché.
+// Lock refresh : mutualise le refresh si plusieurs requêtes tombent en 401.
 let refreshInFlight = null;
 
+/**
+ * Identifie les endpoints d'auth (à exclure du mécanisme refresh/retry).
+ * @param {string} path
+ * @returns {boolean}
+ */
 function isAuthEndpoint(path) {
   return (
     path.startsWith("/auth/login") ||
@@ -44,6 +47,12 @@ function isAuthEndpoint(path) {
   );
 }
 
+/**
+ * Exécute un fetch JSON (sauf FormData) avec Bearer token + cookies (refresh).
+ * @param {string} path
+ * @param {RequestInit} [options]
+ * @returns {Promise<any>}
+ */
 async function doFetch(path, options = {}) {
   const token = getToken();
 
@@ -61,8 +70,9 @@ async function doFetch(path, options = {}) {
   const res = await fetch(apiUrl(path), {
     ...options,
     headers,
-    // IMPORTANT: nécessaire pour envoyer/recevoir le cookie refresh_token
+    // Nécessaire pour envoyer/recevoir le cookie de refresh.
     credentials: "include",
+    signal: options.signal,
   });
 
   const data = await res.json().catch(() => ({}));
@@ -71,6 +81,11 @@ async function doFetch(path, options = {}) {
   return data;
 }
 
+/**
+ * Rafraîchit le token d'accès via /auth/refresh (cookie httpOnly).
+ * Mutualisé via refreshInFlight.
+ * @returns {Promise<string>} nouveau token d'accès
+ */
 async function refreshAccessToken() {
   if (refreshInFlight) return refreshInFlight;
 
@@ -93,10 +108,7 @@ async function refreshAccessToken() {
 }
 
 /**
- * Exécute une requête API (JSON) avec gestion d'erreurs.
- * - Parse JSON
- * - Throw enrichi si non-OK
- * - Auto-refresh sur 401 (1 retry) hors endpoints auth
+ * Exécute une requête API avec normalisation des erreurs et auto-refresh sur 401 (1 retry) hors endpoints d'auth.
  * @param {string} path Chemin API
  * @param {object} [options] Options fetch
  * @returns {Promise<any>}

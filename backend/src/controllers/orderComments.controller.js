@@ -4,11 +4,14 @@
  */
 const ordersRepository = require("../repositories/orders.repository");
 const orderCommentsRepository = require("../repositories/orderComments.repository");
+const { broadcastProductionEvent } = require("../realtime/productionEvents");
 const { asInt } = require("../utils/parse");
 
 /**
  * Liste les commentaires d'une commande et marque comme lus pour l'utilisateur courant.
- * Route: GET /orders/:id/comments
+ * Marque les commentaires comme lus pour l'utilisateur courant afin de synchroniser les compteurs.
+ * Émet un event temps réel pour rafraîchir les badges/compteurs côté Production.
+ * GET /orders/:id/comments
  *
  * @param {import("express").Request} req
  * @param {import("express").Response} res
@@ -32,6 +35,8 @@ async function getOrderComments(req, res) {
       }),
     ]);
 
+    broadcastProductionEvent({ type: "order_comment_reads", orderId });
+
     return res.json({
       order: { id: order.id, arc: order.arc },
       ...counts,
@@ -45,7 +50,9 @@ async function getOrderComments(req, res) {
 
 /**
  * Ajoute un commentaire à une commande, marque comme lu pour l'auteur, renvoie liste + compteurs.
- * Route: POST /orders/:id/comments
+ * L'auteur est automatiquement marqué "lu" pour éviter un non-lu sur son propre message.
+ * Émet un event temps réel pour rafraîchir le thread et les compteurs.
+ * POST /orders/:id/comments
  * Body: { content }
  *
  * @param {import("express").Request} req
@@ -79,6 +86,8 @@ async function postOrderComment(req, res) {
       }),
     ]);
 
+    broadcastProductionEvent({ type: "order_comment_created", orderId });
+
     return res.status(201).json({ ...counts, data });
   } catch (err) {
     console.error("POST /orders/:id/comments error:", err);
@@ -86,4 +95,31 @@ async function postOrderComment(req, res) {
   }
 }
 
-module.exports = { getOrderComments, postOrderComment };
+/**
+ * GET /orders/:id/comments/counts
+ * Renvoie les compteurs (total + non-lus) pour l'utilisateur courant.
+ * @param {import("express").Request} req
+ * @param {import("express").Response} res
+ * @returns {Promise<void>}
+ */
+async function getOrderCommentsCounts(req, res) {
+  try {
+    const orderId = asInt(req.params.id);
+    if (!orderId) return res.status(400).json({ error: "ID invalide." });
+
+    const order = await ordersRepository.findOrderById(orderId);
+    if (!order) return res.status(404).json({ error: "Commande introuvable." });
+
+    const counts = await orderCommentsRepository.getCountsForOrder({
+      orderId,
+      userId: req.user.id,
+    });
+
+    return res.json(counts);
+  } catch (err) {
+    console.error("GET /orders/:id/comments/counts error:", err);
+    return res.status(500).json({ error: "Erreur chargement compteurs." });
+  }
+}
+
+module.exports = { getOrderComments, postOrderComment, getOrderCommentsCounts };

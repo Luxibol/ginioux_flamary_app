@@ -95,7 +95,7 @@ export default function ChangePasswordPage() {
               onChange={(e) => setP1(e.target.value)}
               type="password"
               className="h-10 w-full rounded-md border border-gf-border bg-gf-bg px-3 text-xs outline-none focus:border-gf-orange"
-              placeholder="Au moins 6 caractères"
+              placeholder="Au moins 8 caractères"
               autoComplete="new-password"
               minLength={6}
               required

@@ -1,9 +1,8 @@
 /**
- * Commandes (API)
- * - Bureau : commandes actives (liste, détail, édition, suppression)
- * - Production : commandes à produire + expéditions à charger
- * - Commentaires et statistiques (produit / expéditions)
+ * @file frontend/src/services/orders.api.js
+ * @description API Orders : Bureau (actives + CRUD), Production (production + shipments), commentaires + stats.
  */
+
 import { apiFetch } from "./apiClient.js";
 
 /**
@@ -63,17 +62,21 @@ export async function deleteOrder(id) {
 
 /**
  * Récupère les commandes à produire (Production).
+ * @param {RequestInit} [fetchOptions] Options fetch (ex: AbortController.signal)
  * @param {{q?:string, limit?:number, offset?:number}} [filters]
  * @returns {Promise<{count:number, filters:object, data:any[]}>}
  */
-export async function getProductionOrders({ q, limit, offset } = {}) {
+export async function getProductionOrders(
+  { q, limit, offset } = {},
+  fetchOptions = {},
+) {
   const params = new URLSearchParams();
   if (q) params.set("q", q);
   if (Number.isFinite(limit)) params.set("limit", String(limit));
   if (Number.isFinite(offset)) params.set("offset", String(offset));
 
   const qs = params.toString();
-  return apiFetch(`/orders/production${qs ? `?${qs}` : ""}`);
+  return apiFetch(`/orders/production${qs ? `?${qs}` : ""}`, fetchOptions);
 }
 
 /**
@@ -92,8 +95,7 @@ export async function patchOrderLineReady(orderId, lineId, ready) {
 }
 
 /**
- * Valide manuellement la production d'une commande (bouton "Production terminée").
- * Côté backend : ne valide que si PROD_COMPLETE et pas déjà validée.
+ * Déclenche la validation de production d'une commande (si éligible côté API).
  * @param {number|string} orderId
  * @returns {Promise<{status:string, order:object}>}
  */
@@ -103,17 +105,21 @@ export async function postProductionValidate(orderId) {
 
 /**
  * Récupère les expéditions à charger (Production).
+ * @param {RequestInit} [fetchOptions] Options fetch (ex: AbortController.signal)
  * @param {{q?:string, limit?:number, offset?:number}} [filters]
  * @returns {Promise<{count:number, filters:object, data:any[]}>}
  */
-export async function getProductionShipments({ q, limit, offset } = {}) {
+export async function getProductionShipments(
+  { q, limit, offset } = {},
+  fetchOptions = {},
+) {
   const params = new URLSearchParams();
   if (q) params.set("q", q);
   if (Number.isFinite(limit)) params.set("limit", String(limit));
   if (Number.isFinite(offset)) params.set("offset", String(offset));
 
   const qs = params.toString();
-  return apiFetch(`/orders/shipments${qs ? `?${qs}` : ""}`);
+  return apiFetch(`/orders/shipments${qs ? `?${qs}` : ""}`, fetchOptions);
 }
 
 /**
@@ -152,7 +158,7 @@ export async function getOrderShipments(orderId) {
 /**
  * Retourne le total de commandes produites (période optionnelle).
  * @param {object} [options]
- * @param {string} [options.period] Période (selon le contrat API)
+ * @param {"7D"|"30D"|"90D"} [options.period] Période (par défaut 7D).
  * @returns {Promise<any>}
  */
 export async function getProducedOrdersCount({ period } = {}) {
@@ -164,10 +170,11 @@ export async function getProducedOrdersCount({ period } = {}) {
 
 /**
  * Statistiques production liées aux expéditions.
+ * @param {RequestInit} [fetchOptions] Options fetch (ex: AbortController.signal)
  * @returns {Promise<any>}
  */
-export async function getProductionShipmentsStats() {
-  return apiFetch(`/orders/shipments/stats`);
+export async function getProductionShipmentsStats(fetchOptions = {}) {
+  return apiFetch(`/orders/shipments/stats`, fetchOptions);
 }
 
 /**
@@ -191,4 +198,14 @@ export async function postOrderComment(orderId, content) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ content }),
   });
+}
+
+/**
+ * Récupère les compteurs de commentaires pour une commande (total + non-lus).
+ * @param {number|string} orderId
+ * @returns {Promise<{ messagesCount: number, unreadCount: number }>}
+ */
+export async function getOrderCommentCounts(orderId) {
+  const res = await apiFetch(`/orders/${orderId}/comments/counts`);
+  return res;
 }

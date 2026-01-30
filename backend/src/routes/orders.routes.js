@@ -20,13 +20,20 @@ const orderCommentsController = require("../controllers/orderComments.controller
 
 const router = express.Router();
 
-// Toutes les routes /orders nécessitent une authentification.
+// Auth requise pour tout le scope /orders (RBAC ensuite selon les endpoints).
 router.use(requireAuth);
 
+/* === COMMENTAIRES (ADMIN, BUREAU, PRODUCTION) === */
 router.get(
   "/:id/comments",
   requireRole("ADMIN", "BUREAU", "PRODUCTION"),
   orderCommentsController.getOrderComments,
+);
+
+router.get(
+  "/:id/comments/counts",
+  requireRole("ADMIN", "BUREAU", "PRODUCTION"),
+  orderCommentsController.getOrderCommentsCounts,
 );
 
 router.post(
