@@ -4,9 +4,9 @@
  * - /bureau/* : espace "Bureau"
  * - /production/* : espace "Production" (mobile)
  * - /admin/* : espace "Admin" (dashboard + produits desktop + employés pc/mobile)
- * - Redirect / -> /bureau (en attendant l’auth)
+ * - / : redirection vers la page d’accueil selon le rôle (voir RoleLandingRedirect)
  */
-import { createBrowserRouter, Navigate } from "react-router-dom";
+import { createBrowserRouter } from "react-router-dom";
 import AppLayout from "./components/layout/AppLayout.jsx";
 
 // AUTH
@@ -31,6 +31,9 @@ import AdminDashboardPage from "./pages/admin/AdminDashboardPage.jsx";
 import AdminProductsPage from "./pages/admin/AdminProductsPage.jsx";
 import AdminEmployeesPage from "./pages/admin/AdminEmployeesPage.jsx";
 
+import DownloadPage from "./pages/misc/DownloadPage.jsx";
+import RoleLandingRedirect from "./components/auth/RoleLandingRedirect.jsx";
+
 import NotFoundPage from "./pages/NotFoundPage.jsx";
 
 export const router = createBrowserRouter([
@@ -46,7 +49,9 @@ export const router = createBrowserRouter([
       </RequireAuth>
     ),
     children: [
-      { index: true, element: <Navigate to="/bureau" replace /> },
+      { index: true, element: <RoleLandingRedirect /> },
+
+      { path: "/telechargement", element: <DownloadPage /> },
 
       {
         path: "/bureau",

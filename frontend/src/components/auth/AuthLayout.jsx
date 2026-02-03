@@ -2,7 +2,7 @@
  * Layout — Auth
  * - Affiche un fond (desktop) + centre le contenu (formulaires)
  */
-import banner from "../../assets/pictures/banerlog.png";
+import banner from "../../assets/pictures/banerlog.webp";
 
 /**
  * Layout des pages d'authentification.
