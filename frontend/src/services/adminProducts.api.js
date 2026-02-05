@@ -7,15 +7,19 @@
 import { apiFetch } from "./apiClient.js";
 
 /**
- * Normalise les réponses possibles en { data, count }.
- * @param {any} res Réponse API (tableau ou objet {data,count})
- * @returns {{data:any[], count:number}}
+ * Normalise les réponses possibles en { data, count, total }.
+ * @param {any} res Réponse API (tableau ou objet {data,count,total})
+ * @returns {{data:any[], count:number, total:number}}
  */
 function normalizeList(res) {
-  if (Array.isArray(res)) return { data: res, count: res.length };
-  if (Array.isArray(res?.data))
-    return { data: res.data, count: res.count ?? res.data.length };
-  return { data: [], count: 0 };
+  if (Array.isArray(res)) {
+    return { data: res, count: res.length, total: res.length };
+  }
+  if (Array.isArray(res?.data)) {
+    const total = res.total ?? res.count ?? res.data.length;
+    return { data: res.data, count: res.count ?? res.data.length, total };
+  }
+  return { data: [], count: 0, total: 0 };
 }
 
 /**

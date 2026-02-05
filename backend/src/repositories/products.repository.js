@@ -107,6 +107,40 @@ async function listProducts({
 }
 
 /**
+ * Compte le nombre total de produits correspondant aux filtres (sans pagination).
+ * @param {{q?:string|null, category?:string|null, active?:0|1|null}} [filters]
+ * @returns {Promise<number>}
+ */
+async function countProducts({
+  q = null,
+  category = null,
+  active = null,
+} = {}) {
+  const where = ["1=1"];
+  const params = [];
+
+  if (q) {
+    where.push("pc.pdf_label_exact LIKE ?");
+    params.push(`%${q}%`);
+  }
+  if (category) {
+    where.push("pc.category = ?");
+    params.push(category);
+  }
+  if (active === 0 || active === 1) {
+    where.push("pc.is_active = ?");
+    params.push(active);
+  }
+
+  const [[row]] = await pool.query(
+    `SELECT COUNT(*) AS total FROM products_catalog pc WHERE ${where.join(" AND ")}`,
+    params,
+  );
+
+  return Number(row?.total || 0);
+}
+
+/**
  * Crée un produit dans products_catalog et retourne la ligne créée.
  * @param {{pdf_label_exact:string, category:string, weight_per_unit_kg:number|null, is_active?:0|1}} payload
  * @returns {Promise<object|null>}
@@ -227,6 +261,7 @@ module.exports = {
   getProductsByPdfLabels,
   searchProducts,
   listProducts,
+  countProducts,
   createProduct,
   patchProduct,
   deleteProductIfUnused,
