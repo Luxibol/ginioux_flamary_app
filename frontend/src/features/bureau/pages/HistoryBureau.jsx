@@ -1,6 +1,7 @@
 /**
  * Bureau — Historique
- * - Liste des commandes archivées (recherche + période)
+ * - Liste des commandes archivées (recherche + période) + pagination
+ * - Infinite scroll (chargement auto)
  * - Détails d’une commande au clic (lazy load + cache)
  */
 import { useEffect, useState } from "react";
@@ -23,6 +24,8 @@ const PERIODS = [
   { value: "30D", label: "30 jours" },
   { value: "90D", label: "90 jours" },
 ];
+
+const LIMIT = 50;
 
 /**
  * Formate une date/heure ISO pour l’UI (jj/mm/aaaa).
@@ -51,6 +54,13 @@ export default function HistoryBureau() {
   const [rows, setRows] = useState([]);
   const [count, setCount] = useState(0);
 
+  const [total, setTotal] = useState(0);
+  const [offset, setOffset] = useState(0);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [sentinelEl, setSentinelEl] = useState(null);
+
+  const hasMore = rows.length < total;
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -59,37 +69,101 @@ export default function HistoryBureau() {
   const [detailsLoadingId, setDetailsLoadingId] = useState(null);
 
   /**
-   * Charge la liste des commandes archivées selon q + period.
+   * Charge la première page (reset pagination) selon q + period.
    * Réinitialise l’expansion et le cache des détails.
    * @returns {Promise<void>}
    */
-  const load = async () => {
+  const loadFirstPage = async () => {
     try {
       setLoading(true);
       setError("");
+      setOffset(0);
+
       const res = await getArchivedOrders({
         q: q.trim() || undefined,
         period: period || undefined,
+        limit: LIMIT,
+        offset: 0,
       });
+
       setRows(res.data || []);
-      setCount(res.count || 0);
+      const t = res.total ?? (res.count ?? 0);
+      setTotal(t);
+      setCount(t);
+
       setExpandedId(null);
       setDetailsById({});
       setDetailsLoadingId(null);
     } catch (e) {
       setError(e.message || "Erreur.");
       setRows([]);
+      setTotal(0);
       setCount(0);
+      setExpandedId(null);
+      setDetailsById({});
+      setDetailsLoadingId(null);
     } finally {
       setLoading(false);
     }
   };
 
+  /**
+   * Charge la page suivante et concatène les résultats.
+   * Ne touche pas à l’expansion / cache des détails.
+   * @returns {Promise<void>}
+   */
+  const loadMore = async () => {
+    if (loading || loadingMore) return;
+    if (!hasMore) return;
+
+    try {
+      setLoadingMore(true);
+      setError("");
+
+      const nextOffset = offset + LIMIT;
+
+      const res = await getArchivedOrders({
+        q: q.trim() || undefined,
+        period: period || undefined,
+        limit: LIMIT,
+        offset: nextOffset,
+      });
+
+      const next = res.data || [];
+      setRows((prev) => [...prev, ...next]);
+      setOffset(nextOffset);
+
+      const t = res.total ?? total;
+      setTotal(t);
+      setCount(t);
+    } catch (e) {
+      setError(e.message || "Erreur.");
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+
   // Rechargement automatique quand la période change (recherche via Entrée).
   useEffect(() => {
-    load();
+    loadFirstPage();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [period]);
+
+  // Infinite scroll
+  useEffect(() => {
+    if (!sentinelEl) return;
+
+    const obs = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) loadMore();
+      },
+      { root: null, rootMargin: "250px", threshold: 0 },
+    );
+
+    obs.observe(sentinelEl);
+    return () => obs.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sentinelEl, hasMore, offset, q, period, loading, loadingMore]);
 
   /**
    * Ouvre/ferme une ligne et charge les détails au premier expand.
@@ -127,7 +201,7 @@ export default function HistoryBureau() {
 
         <button
           type="button"
-          onClick={load}
+          onClick={loadFirstPage}
           disabled={loading}
           className="gf-btn"
         >
@@ -143,7 +217,7 @@ export default function HistoryBureau() {
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && load()}
+            onKeyDown={(e) => e.key === "Enter" && loadFirstPage()}
             placeholder="N° ARC / client…"
             className="h-9 w-full rounded-md border border-gf-border bg-gf-bg px-3 text-xs text-gf-text outline-none focus:border-gf-orange"
           />
@@ -269,13 +343,8 @@ export default function HistoryBureau() {
                               </div>
 
                               <div className="text-gf-subtitle">
-                                Créée le{" "}
-                                {formatDateFr(details.order.order_date)} —
-                                Dernière expédition le{" "}
-                                {formatDateTimeFr(
-                                  details.recap?.last_departed_at,
-                                )}{" "}
-                                — Jour d’enlèvement :{" "}
+                                Créée le {formatDateFr(details.order.order_date)} — Dernière expédition le{" "}
+                                {formatDateTimeFr(details.recap?.last_departed_at)} — Jour d’enlèvement :{" "}
                                 {formatDateFr(details.order.pickup_date)}
                                 <br />
                                 Récap :{" "}
@@ -283,8 +352,7 @@ export default function HistoryBureau() {
                                   {details.recap?.shipped_total ?? 0} /{" "}
                                   {details.recap?.ordered_total ?? 0} expédiés
                                 </span>{" "}
-                                — {details.recap?.shipments_count ?? 0}{" "}
-                                expédition(s)
+                                — {details.recap?.shipments_count ?? 0} expédition(s)
                               </div>
 
                               <div>
@@ -293,12 +361,9 @@ export default function HistoryBureau() {
                                 </div>
                                 <ul className="list-disc pl-5 space-y-1 text-gf-text">
                                   {details.lines.map((l) => (
-                                    <li
-                                      key={`${details.order.id}-${l.product_id}`}
-                                    >
+                                    <li key={`${details.order.id}-${l.product_id}`}>
                                       <span className="font-medium">
-                                        {l.quantity_shipped} /{" "}
-                                        {l.quantity_ordered}
+                                        {l.quantity_shipped} / {l.quantity_ordered}
                                       </span>{" "}
                                       — {l.label}
                                     </li>
@@ -314,14 +379,11 @@ export default function HistoryBureau() {
                                   {details.shipments.map((s, idx) => (
                                     <div key={s.id} className="text-gf-text">
                                       <div className="text-gf-subtitle font-medium">
-                                        Expédition {idx + 1} —{" "}
-                                        {formatDateTimeFr(s.departed_at)}
+                                        Expédition {idx + 1} — {formatDateTimeFr(s.departed_at)}
                                       </div>
                                       <ul className="list-disc pl-5 mt-1 space-y-1">
                                         {s.lines.map((x, i) => (
-                                          <li
-                                            key={`${s.id}-${x.product_id}-${i}`}
-                                          >
+                                          <li key={`${s.id}-${x.product_id}-${i}`}>
                                             <span className="font-medium">
                                               {x.quantity_loaded}
                                             </span>{" "}
@@ -349,6 +411,16 @@ export default function HistoryBureau() {
                     </div>
                   );
                 })}
+
+                <div ref={setSentinelEl} className="h-8" />
+
+                {loadingMore ? (
+                  <div className="p-4 text-xs text-gf-subtitle">Chargement…</div>
+                ) : null}
+
+                {!hasMore && rows.length > 0 ? (
+                  <div className="p-4 text-xs text-gf-subtitle">Fin de liste.</div>
+                ) : null}
               </div>
             </div>
           </div>
