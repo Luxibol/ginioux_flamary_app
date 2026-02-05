@@ -29,8 +29,17 @@ export default function AdminProducts() {
   const [active, setActive] = useState(""); // "" | "1" | "0"
 
   // Données
+  const LIMIT = 50;
+
   const [rows, setRows] = useState([]);
   const [count, setCount] = useState(0);
+  const [total, setTotal] = useState(0);
+  const [offset, setOffset] = useState(0);
+
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [sentinelEl, setSentinelEl] = useState(null);
+
+  const hasMore = rows.length < total;
 
   // États UI
   const [loading, setLoading] = useState(false);
@@ -66,36 +75,92 @@ export default function AdminProducts() {
   }
 
   /**
-   * Charge la liste des produits selon les filtres.
-   * @returns {Promise<void>}
-   */
-  async function load() {
+ * Charge la première page (reset pagination) selon les filtres.
+ * @returns {Promise<void>}
+ */
+  async function loadFirstPage() {
     try {
       setLoading(true);
       setError("");
+      setOffset(0);
 
       const res = await listProducts({
         q: q.trim() || undefined,
         category: category || undefined,
         active: active !== "" ? active : undefined,
+        limit: LIMIT,
+        offset: 0,
       });
 
       setRows(res.data || []);
-      setCount(res.count || (res.data?.length ?? 0));
+      setTotal(res.total ?? (res.count ?? 0));
+      setCount(res.total ?? (res.count ?? 0));
     } catch (e) {
       setError(e.message || "Erreur chargement produits.");
       setRows([]);
+      setTotal(0);
       setCount(0);
     } finally {
       setLoading(false);
     }
   }
 
+  /**
+   * Charge la page suivante et concatène les résultats.
+   * @returns {Promise<void>}
+   */
+  async function loadMore() {
+    if (loading || loadingMore) return;
+    if (!hasMore) return;
+
+    try {
+      setLoadingMore(true);
+      setError("");
+
+      const nextOffset = offset + LIMIT;
+
+      const res = await listProducts({
+        q: q.trim() || undefined,
+        category: category || undefined,
+        active: active !== "" ? active : undefined,
+        limit: LIMIT,
+        offset: nextOffset,
+      });
+
+      const next = res.data || [];
+      setRows((prev) => [...prev, ...next]);
+      setOffset(nextOffset);
+
+      const t = res.total ?? total;
+      setTotal(t);
+      setCount(t);
+    } catch (e) {
+      setError(e.message || "Erreur chargement produits.");
+    } finally {
+      setLoadingMore(false);
+    }
+  }
+
   // Rechargement automatique sur filtres (category/active)
   useEffect(() => {
-    load();
+    loadFirstPage();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [category, active]);
+
+  useEffect(() => {
+    if (!sentinelEl) return;
+
+    const obs = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) loadMore();
+      },
+      { root: null, rootMargin: "250px", threshold: 0 },
+    );
+
+    obs.observe(sentinelEl);
+    return () => obs.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sentinelEl, hasMore, offset, q, category, active, loading, loadingMore]);
 
   /**
    * Crée un produit puis recharge la liste.
@@ -126,7 +191,7 @@ export default function AdminProducts() {
       setFWeight("");
       setFActive(true);
 
-      await load();
+      await loadFirstPage();
     } catch (e) {
       setError(e.message || "Erreur création produit.");
     } finally {
@@ -161,7 +226,7 @@ export default function AdminProducts() {
 
       setOpenEdit(false);
       setEditId(null);
-      await load();
+      await loadFirstPage();
     } catch (e) {
       setError(e.message || "Erreur modification produit.");
     } finally {
@@ -179,7 +244,7 @@ export default function AdminProducts() {
       setLoading(true);
       setError("");
       await patchProduct(p.id, { is_active: p.is_active ? 0 : 1 });
-      await load();
+      await loadFirstPage();
     } catch (e) {
       setError(e.message || "Erreur modification produit.");
     } finally {
@@ -199,7 +264,7 @@ export default function AdminProducts() {
       setLoading(true);
       setError("");
       await deleteProduct(p.id);
-      await load();
+      await loadFirstPage();
     } catch (e) {
       setError(e.message || "Erreur suppression produit.");
     } finally {
@@ -230,7 +295,7 @@ export default function AdminProducts() {
 
           <button
             type="button"
-            onClick={load}
+            onClick={loadFirstPage}
             disabled={loading}
             className="gf-btn h-9 px-3 text-xs rounded-md"
           >
@@ -248,7 +313,7 @@ export default function AdminProducts() {
         setCategory={setCategory}
         active={active}
         setActive={setActive}
-        onSubmit={load}
+        onSubmit={loadFirstPage}
       />
 
       {/* Table */}
@@ -344,6 +409,16 @@ export default function AdminProducts() {
                   </div>
                 </div>
               ))}
+              <div ref={setSentinelEl} className="h-8" />
+
+              {loadingMore ? (
+                <div className="p-4 text-xs text-gf-subtitle">Chargement…</div>
+              ) : null}
+
+              {!hasMore && rows.length > 0 ? (
+                <div className="p-4 text-xs text-gf-subtitle">Fin de liste.</div>
+              ) : null}
+
             </div>
           )}
         </div>
