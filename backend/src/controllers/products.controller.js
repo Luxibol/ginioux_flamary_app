@@ -42,6 +42,12 @@ async function searchProducts(req, res) {
  * Liste des produits avec filtres + pagination.
  * Route: GET /products
  *
+ * Réponse:
+ * - total : nombre total d'éléments (sans pagination)
+ * - count : nombre d'éléments renvoyés (page courante)
+ * - filters : { q, category, active, limit, offset }
+ * - data : produits (page courante)
+ *
  * @param {import("express").Request} req
  * @param {import("express").Response} res
  * @returns {Promise<void>}
@@ -65,9 +71,13 @@ async function listProducts(req, res) {
     const offset = Number.isFinite(offsetRaw) ? Math.max(offsetRaw, 0) : 0;
 
     const filters = { q, category, active, limit, offset };
-    const data = await productsRepository.listProducts(filters);
 
-    return res.json({ count: data.length, filters, data });
+    const [total, data] = await Promise.all([
+      productsRepository.countProducts({ q, category, active }),
+      productsRepository.listProducts(filters),
+    ]);
+
+    return res.json({ total, count: data.length, filters, data });
   } catch (err) {
     console.error("GET /products error:", err);
     return res.status(500).json({ error: "Erreur chargement produits" });
