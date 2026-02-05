@@ -6,6 +6,12 @@ const historyRepository = require("../repositories/history.repository");
 
 const ALLOWED_PERIODS = ["ALL", "7D", "30D", "90D"];
 
+function asInt(v) {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return null;
+  return Math.trunc(n);
+}
+
 function periodToDays(period) {
   if (period === "7D") return 7;
   if (period === "30D") return 30;
@@ -14,8 +20,16 @@ function periodToDays(period) {
 }
 
 /**
- * Liste les commandes archivées.
+ * Liste les commandes archivées (filtres + pagination).
  * Route: GET /orders/archived
+ *
+ * Query:
+ * - q? : recherche
+ * - period? : ALL | 7D | 30D | 90D
+ * - limit? : 1..200 (défaut 50)
+ * - offset? : >=0 (défaut 0)
+ *
+ * Réponse: { total, count, filters, data }
  *
  * @param {import("express").Request} req
  * @param {import("express").Response} res
@@ -29,12 +43,33 @@ async function getArchivedOrders(req, res) {
 
     const days = periodToDays(period);
 
-    const data = await historyRepository.findArchivedOrders({
-      q: q || null,
-      days,
-    });
+    const limitRaw = asInt(req.query.limit);
+    const offsetRaw = asInt(req.query.offset);
 
-    return res.json({ count: data.length, data });
+    const limit = Number.isFinite(limitRaw)
+      ? Math.min(Math.max(limitRaw, 1), 200)
+      : 50;
+    const offset = Number.isFinite(offsetRaw) ? Math.max(offsetRaw, 0) : 0;
+
+    const filters = {
+      q: q || null,
+      period,
+      days,
+      limit,
+      offset,
+    };
+
+    const [total, data] = await Promise.all([
+      historyRepository.countArchivedOrders({ q: q || null, days }),
+      historyRepository.findArchivedOrders({
+        q: q || null,
+        days,
+        limit,
+        offset,
+      }),
+    ]);
+
+    return res.json({ total, count: data.length, filters, data });
   } catch (err) {
     console.error("GET /orders/archived error:", err);
     return res

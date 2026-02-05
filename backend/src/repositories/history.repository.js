@@ -5,25 +5,18 @@
 const { pool } = require("../config/db");
 
 /**
- * Liste des commandes archivées (avec dernière date de départ).
- * @param {{q?:string|null, days?:number|null}} [filters]
- * @returns {Promise<object[]>}
+ * Construit la requête "base" des archives (groupée par commande) sous forme de sous-requête
+ * afin de filtrer proprement sur last_departed_at + paginer + compter.
+ * @param {{q?:string|null}} filters
+ * @returns {{sql:string, params:any[]}}
  */
-async function findArchivedOrders({ q = null, days = null } = {}) {
+function buildArchivedBase({ q = null } = {}) {
   const where = ["o.is_archived = 1"];
   const params = [];
 
   if (q) {
     where.push("(o.arc LIKE ? OR o.client_name LIKE ?)");
     params.push(`%${q}%`, `%${q}%`);
-  }
-
-  // Filtre période : basé sur la date de départ camion (departed_at)
-  // Si days != null => on garde les commandes dont la dernière expédition >= NOW() - INTERVAL days DAY
-  let having = "";
-  if (days) {
-    having = "HAVING last_departed_at >= (NOW() - INTERVAL ? DAY)";
-    params.push(days);
   }
 
   const sql = `
@@ -40,9 +33,81 @@ async function findArchivedOrders({ q = null, days = null } = {}) {
     LEFT JOIN shipments s ON s.order_id = o.id
     WHERE ${where.join(" AND ")}
     GROUP BY o.id
-    ${having}
-    ORDER BY last_departed_at DESC, o.order_date DESC
-    LIMIT 200
+  `;
+
+  return { sql, params };
+}
+
+/**
+ * Compte le nombre total de commandes archivées (avec filtres q + days).
+ * @param {{q?:string|null, days?:number|null}} [filters]
+ * @returns {Promise<number>}
+ */
+async function countArchivedOrders({ q = null, days = null } = {}) {
+  const base = buildArchivedBase({ q });
+
+  const params = [...base.params];
+  let where = "1=1";
+
+  // Si days est défini, on garde les commandes dont la dernière expédition >= NOW()-days
+  // On inclut aussi celles sans expédition si tu veux les garder quand ALL (days null).
+  if (days) {
+    where =
+      "(t.last_departed_at IS NOT NULL AND t.last_departed_at >= (NOW() - INTERVAL ? DAY))";
+    params.push(days);
+  }
+
+  const sql = `
+    SELECT COUNT(*) AS c
+    FROM (${base.sql}) t
+    WHERE ${where}
+  `;
+
+  const [[row]] = await pool.query(sql, params);
+  return Number(row?.c || 0);
+}
+
+/**
+ * Liste paginée des commandes archivées (avec dernière date de départ).
+ * @param {{q?:string|null, days?:number|null, limit?:number, offset?:number}} [filters]
+ * @returns {Promise<object[]>}
+ */
+async function findArchivedOrders({
+  q = null,
+  days = null,
+  limit = 50,
+  offset = 0,
+} = {}) {
+  const base = buildArchivedBase({ q });
+
+  const params = [...base.params];
+  let where = "1=1";
+
+  if (days) {
+    where =
+      "(t.last_departed_at IS NOT NULL AND t.last_departed_at >= (NOW() - INTERVAL ? DAY))";
+    params.push(days);
+  }
+
+  const lim = Math.min(Math.max(parseInt(limit, 10) || 50, 1), 200);
+  const off = Math.max(parseInt(offset, 10) || 0, 0);
+
+  params.push(lim, off);
+
+  const sql = `
+    SELECT
+      t.id,
+      t.arc,
+      t.client_name,
+      t.order_date,
+      t.pickup_date,
+      t.priority,
+      t.expedition_status,
+      t.last_departed_at
+    FROM (${base.sql}) t
+    WHERE ${where}
+    ORDER BY t.last_departed_at DESC, t.order_date DESC
+    LIMIT ? OFFSET ?
   `;
 
   const [rows] = await pool.query(sql, params);
@@ -55,7 +120,6 @@ async function findArchivedOrders({ q = null, days = null } = {}) {
  * @returns {Promise<object|null>}
  */
 async function getArchivedOrderHistory(orderId) {
-  // 1) commande (on accepte même si non archivée, mais l’écran "historique" l’appellera sur une archivée)
   const [orderRows] = await pool.query(
     `
     SELECT
@@ -70,7 +134,6 @@ async function getArchivedOrderHistory(orderId) {
   const order = orderRows[0];
   if (!order) return null;
 
-  // 2) lignes commande (ordered / shipped)
   const [lines] = await pool.query(
     `
     SELECT
@@ -87,7 +150,6 @@ async function getArchivedOrderHistory(orderId) {
     [orderId],
   );
 
-  // 3) shipments
   const [shipments] = await pool.query(
     `
     SELECT id, departed_at
@@ -98,9 +160,8 @@ async function getArchivedOrderHistory(orderId) {
     [orderId],
   );
 
-  // 4) shipment_lines (en 1 requête)
   const shipmentIds = shipments.map((s) => s.id);
-  let linesByShipment = new Map();
+  const linesByShipment = new Map();
 
   if (shipmentIds.length) {
     const [shipLines] = await pool.query(
@@ -135,7 +196,6 @@ async function getArchivedOrderHistory(orderId) {
     lines: linesByShipment.get(s.id) || [],
   }));
 
-  // 5) recap
   const orderedTotal = lines.reduce(
     (acc, l) => acc + Number(l.quantity_ordered || 0),
     0,
@@ -163,4 +223,8 @@ async function getArchivedOrderHistory(orderId) {
   };
 }
 
-module.exports = { findArchivedOrders, getArchivedOrderHistory };
+module.exports = {
+  countArchivedOrders,
+  findArchivedOrders,
+  getArchivedOrderHistory,
+};
