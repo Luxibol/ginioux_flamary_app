@@ -7,6 +7,8 @@ import { toNumber } from "../utils/orders.format.js";
 import { useEffect, useState } from "react";
 import { getOrderShipments } from "../../../services/orders.api.js";
 import OrderCommentsThread from "../../../components/comments/OrderCommentsThread.jsx";
+import { formatKg, formatTons } from "../utils/weight.format.js";
+
 
 /**
  * Panneau de détails d'une commande (accordéon).
@@ -29,6 +31,14 @@ export default function OrderExpandedPanel({
   onCommentsOpenChange,
 }) {
   const lines = details?.lines || [];
+
+  const orderedTotalKg = lines.reduce((sum, l) => {
+    const ordered = toNumber(l.quantity_ordered);
+    const w = toNumber(l.weight_per_unit_kg);
+    if (!Number.isFinite(ordered) || !Number.isFinite(w)) return sum;
+    return sum + ordered * w;
+  }, 0);
+
   const orderId = details?.order?.id;
 
   const [shipments, setShipments] = useState([]);
@@ -66,8 +76,18 @@ export default function OrderExpandedPanel({
 
   return (
     <div className="px-4 py-4">
-      <div className="gf-h3 mb-3">Détails de la commande {arc}</div>
-
+      <div className="flex items-baseline justify-between gap-4 mb-3">
+        <div>
+          <div className="gf-h3">Détails de la commande {arc}</div>
+          <div className="mt-1 text-xs text-gf-subtitle tabular-nums">
+            Poids total commandé :{" "}
+            <span className="font-semibold text-gf-subtitle">
+              {formatTons(orderedTotalKg)}
+            </span>
+            <span className="ml-2 text-gf-subtitle">({formatKg(orderedTotalKg)})</span>
+          </div>
+        </div>
+      </div>
       <div className="space-y-1 text-xs text-gf-text">
         {lines.length === 0 ? (
           <div className="gf-empty">Aucune ligne produit.</div>

@@ -367,14 +367,12 @@ export default function ShipmentsBureau() {
                                 </span>
                                 <span className="text-gf-subtitle">
                                   {" — "}
-                                  <span className="text-gf-title font-medium">
-                                    {formatKg(pendingWeightKg)}
-                                  </span>
-                                  {" ("}
-                                  <span className="text-gf-title font-medium">
-                                    {formatTons(pendingWeightKg)}
-                                  </span>
-                                  {")"}
+                                  <span className="text-gf-subtitle font-semibold">
+                                    {formatTons(pendingWeightKg)}                        
+                                  </span>                                 
+                                  <span className="ml-2 text-gf-subtitle font-normal">
+                                    ({formatKg(pendingWeightKg)})
+                                  </span>                                 
                                 </span>
                               </div>
                               <div className="mt-1">
