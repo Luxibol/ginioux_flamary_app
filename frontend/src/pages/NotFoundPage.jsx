@@ -27,10 +27,10 @@ export default function NotFoundPage() {
 
         <div className="mt-5 flex flex-wrap gap-2">
           <Link
-            to="/bureau"
+            to="/"
             className="inline-flex h-9 items-center rounded-md bg-gf-orange px-4 text-xs font-medium text-white hover:opacity-90"
           >
-            Revenir au Bureau
+            Revenir au Tableau de bord
           </Link>
           <Link
             to="/login"

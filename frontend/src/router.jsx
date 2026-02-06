@@ -41,6 +41,16 @@ export const router = createBrowserRouter([
   { path: "/login", element: <LoginPage /> },
   { path: "/change-password", element: <ChangePasswordPage /> },
 
+  // Download (hors AppLayout, mais protégé)
+  {
+    path: "/telechargement",
+    element: (
+      <RequireAuth>
+        <DownloadPage />
+      </RequireAuth>
+    ),
+  },
+
   // AppLayout (protégé)
   {
     element: (
@@ -50,8 +60,6 @@ export const router = createBrowserRouter([
     ),
     children: [
       { index: true, element: <RoleLandingRedirect /> },
-
-      { path: "/telechargement", element: <DownloadPage /> },
 
       {
         path: "/bureau",

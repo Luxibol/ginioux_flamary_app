@@ -4,6 +4,7 @@
  */
 import { useEffect, useMemo, useState } from "react";
 import { getAuth } from "../../services/auth.storage.js";
+import { useNavigate } from "react-router-dom";
 
 /**
  * Page "Téléchargement" (PWA install)
@@ -15,6 +16,8 @@ export default function DownloadPage() {
   const auth = useMemo(() => getAuth(), []);
   const [deferred, setDeferred] = useState(null);
   const [installed, setInstalled] = useState(false);
+
+  const navigate = useNavigate();
 
   const isIOS = useMemo(() => {
     if (typeof window === "undefined") return false;
@@ -110,6 +113,15 @@ export default function DownloadPage() {
             )}
           </>
         )}
+      </div>
+      <div className="flex justify-center">      
+        <button
+          type="button"
+          className="gf-btn gf-btn-primary"
+          onClick={() => navigate("/")}
+        >
+          Aller au tableau de bord
+        </button>
       </div>
     </div>
   );
