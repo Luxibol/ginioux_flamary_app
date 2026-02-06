@@ -5,6 +5,7 @@
 const { pool } = require("../config/db");
 const productsRepository = require("./products.repository");
 const orderCommentsRepository = require("./orderComments.repository");
+const { asNonNegativeIntFrStrict } = require("../utils/parse");
 
 /**
  * Cherche une commande par ARC.
@@ -94,7 +95,7 @@ async function createOrderWithLines(orderData, orderProducts) {
       const values = orderProducts.map((p) => [
         orderId,
         p.productId,
-        Math.trunc(Number(p.quantity ?? 0)),
+        asNonNegativeIntFrStrict(p.quantity) ?? 0,
         0,
         0,
       ]);
@@ -130,7 +131,12 @@ async function createOrderFromPreview(
   preview,
   { createdByUserId = null, internalComment = "" } = {},
 ) {
-  const norm = (s) => String(s ?? "").trim();
+  const norm = (s) =>
+    String(s ?? "")
+      .normalize("NFKC")
+      .replace(/[\u00A0\u202F]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
 
   if (!preview?.arc || !norm(preview.arc)) {
     const err = new Error("ARC manquant dans le preview");
@@ -174,8 +180,8 @@ async function createOrderFromPreview(
       continue;
     }
 
-    const qty = Math.trunc(Number(p.quantity ?? 0));
-    if (!Number.isFinite(qty) || qty < 0) {
+    const qty = asNonNegativeIntFrStrict(p.quantity);
+    if (qty === null) {
       const err = new Error("Quantité invalide dans le preview.");
       err.code = 422;
       throw err;

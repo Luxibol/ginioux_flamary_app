@@ -11,7 +11,7 @@ const ordersRepository = require("../repositories/orders.repository");
 const productsRepository = require("../repositories/products.repository");
 const { requireAuth } = require("../middlewares/auth.middleware");
 const { requireRole } = require("../middlewares/rbac.middleware");
-const { asInt } = require("../utils/parse");
+const { asNonNegativeIntFrStrict } = require("../utils/parse");
 
 const router = express.Router();
 
@@ -21,7 +21,12 @@ router.use(requireAuth, requireRole("ADMIN", "BUREAU"));
 const PREVIEW_TTL_MS = 15 * 60 * 1000; // 15 minutes
 const previewStore = new Map();
 
-const norm = (s) => String(s ?? "").trim();
+const norm = (s) =>
+  String(s ?? "")
+    .normalize("NFKC")
+    .replace(/[\u00A0\u202F]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 
 const ALLOWED_PRIORITIES = ["URGENT", "INTERMEDIAIRE", "NORMAL"];
 
@@ -71,14 +76,19 @@ function sanitizePreview(input) {
 
   const products = src.products.map((p) => ({
     pdfLabel: norm(p.pdfLabel),
-    quantity: asInt(p.quantity),
+    quantity: asNonNegativeIntFrStrict(p.quantity),
   }));
 
   for (const p of products) {
-    if (!p.pdfLabel)
+    if (!p.pdfLabel) {
       return { ok: false, error: "pdfLabel manquant sur une ligne" };
-    if (p.quantity === null || p.quantity < 0) {
-      return { ok: false, error: "Quantité invalide (entier >= 0 attendu)" };
+    }
+
+    if (p.quantity === null) {
+      return {
+        ok: false,
+        error: "Quantité invalide (entier >= 0 attendu : ex 3 ou 3,00)",
+      };
     }
   }
 
@@ -159,87 +169,112 @@ const upload = multer({
  * Retour : importId + preview + meta
  * Important : aucune écriture en base ici (preview uniquement).
  */
-router.post("/preview", upload.single("file"), async (req, res) => {
-  try {
-    if (!req.file) {
-      return res
-        .status(400)
-        .json({ error: 'Aucun fichier fourni (champ "file" manquant)' });
+router.post("/preview", (req, res) => {
+  upload.single("file")(req, res, async (err) => {
+    // 1) Erreurs Multer (taille, type, etc.)
+    if (err) {
+      if (err.code === "LIMIT_FILE_SIZE") {
+        return res.status(413).json({
+          error: "Fichier trop volumineux (max 10 Mo).",
+        });
+      }
+      return res.status(400).json({
+        error: err.message || "Upload invalide.",
+      });
     }
 
-    // signature simple : "%PDF"
-    const head = req.file.buffer?.subarray?.(0, 4)?.toString?.("utf8") || "";
-    if (head !== "%PDF") {
-      return res
-        .status(400)
-        .json({ error: "Fichier invalide (signature PDF absente)" });
-    }
+    // 2) Exécution normale
+    try {
+      if (!req.file) {
+        return res
+          .status(400)
+          .json({ error: 'Aucun fichier fourni (champ "file" manquant)' });
+      }
 
-    const parsedPdf = await pdfParse(req.file.buffer);
-    const text = parsedPdf.text || "";
-    const pages = parsedPdf.numpages || 0;
+      // signature simple : "%PDF"
+      const head = req.file.buffer?.subarray?.(0, 4)?.toString?.("utf8") || "";
+      if (head !== "%PDF") {
+        return res
+          .status(400)
+          .json({ error: "Fichier invalide (signature PDF absente)" });
+      }
 
-    const preview = parseOrderFromPdfText(text);
-    const labels = (preview.products || [])
-      .map((p) => norm(p.pdfLabel))
-      .filter(Boolean);
+      const parsedPdf = await pdfParse(req.file.buffer);
+      const text = parsedPdf.text || "";
+      const pages = parsedPdf.numpages || 0;
 
-    const products = await productsRepository.getProductsByPdfLabels(labels);
-    const found = new Set(products.map((p) => norm(p.pdf_label_exact)));
+      const preview = parseOrderFromPdfText(text);
 
-    const missingLabels = labels.filter((l) => !found.has(norm(l)));
+      // STOP tôt si PDF non reconnu
+      if (!preview?.arc) {
+        return res.status(422).json({
+          error: "PDF non reconnu : ARC introuvable.",
+          preview,
+        });
+      }
 
-    if (missingLabels.length > 0) {
-      return res.status(422).json({
-        error: "Produits introuvables en base pour certains libellés PDF.",
-        missingLabels,
+      // STOP si aucune ligne produit
+      if (!Array.isArray(preview.products) || preview.products.length === 0) {
+        return res.status(422).json({
+          error: "PDF non reconnu : aucune ligne produit détectée.",
+          preview,
+        });
+      }
+
+      // Ensuite seulement, check BDD
+      const labels = preview.products
+        .map((p) => norm(p.pdfLabel))
+        .filter(Boolean);
+
+      const products = await productsRepository.getProductsByPdfLabels(labels);
+      const found = new Set(products.map((p) => norm(p.pdf_label_exact)));
+
+      const missingLabels = labels.filter((l) => !found.has(norm(l)));
+
+      if (missingLabels.length > 0) {
+        return res.status(422).json({
+          error: "Produits introuvables en base pour certains libellés PDF.",
+          missingLabels,
+          preview,
+        });
+      }
+
+      // Détection de doublon
+      const existing = await ordersRepository.findOrderByArc(norm(preview.arc));
+
+      const importId = storePreview({
         preview,
+        meta: {
+          filename: req.file.originalname,
+          mimetype: req.file.mimetype,
+          size: req.file.size,
+          pages,
+          rawPreview: text.slice(0, 800),
+        },
+      });
+
+      return res.json({
+        status: "preview",
+        importId,
+        preview,
+        meta: previewStore.get(importId).meta,
+        dedupe: {
+          match: Boolean(existing),
+          existingOrderId: existing?.id ?? null,
+          message: existing
+            ? "Commande déjà présente — la validation n’ajoutera rien."
+            : null,
+        },
+        ttlMs: PREVIEW_TTL_MS,
+      });
+    } catch (e) {
+      console.error("Erreur preview PDF:", e);
+      return res.status(500).json({
+        error: "Erreur lors de la lecture du PDF",
+        details: e.message,
       });
     }
-
-    // Si le parsing ne remonte pas d'ARC, on considère le PDF non exploitable
-    if (!preview || !preview.arc) {
-      return res.status(422).json({
-        error: "Parsing impossible (ARC introuvable).",
-        parsed: preview,
-      });
-    }
-
-    // Détection de doublon : on avertit le front si une commande avec le même ARC existe déjà
-    const existing = await ordersRepository.findOrderByArc(preview.arc);
-
-    const importId = storePreview({
-      preview,
-      meta: {
-        filename: req.file.originalname,
-        mimetype: req.file.mimetype,
-        size: req.file.size,
-        pages,
-        rawPreview: text.slice(0, 800),
-      },
-    });
-
-    return res.json({
-      status: "preview",
-      importId,
-      preview,
-      meta: previewStore.get(importId).meta,
-      dedupe: {
-        match: Boolean(existing),
-        existingOrderId: existing?.id ?? null,
-        message: existing
-          ? "Commande déjà présente — la validation n’ajoutera rien."
-          : null,
-      },
-      ttlMs: PREVIEW_TTL_MS,
-    });
-  } catch (err) {
-    console.error("Erreur preview PDF:", err);
-    res.status(500).json({
-      error: "Erreur lors de la lecture du PDF",
-      details: err.message,
-    });
-  }
+  });
 });
 
 /**
