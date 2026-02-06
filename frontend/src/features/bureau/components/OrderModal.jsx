@@ -177,7 +177,7 @@ export default function OrderModal({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-6">
-      <div className="w-full max-w-5xl gf-card shadow-lg">
+      <div className="w-full max-w-5xl gf-card shadow-lg max-h-[90vh] flex flex-col">
         {/* Header */}
         <div className="flex items-start justify-between p-6 pb-3">
           <div>
@@ -202,7 +202,7 @@ export default function OrderModal({
         </div>
 
         {/* Body */}
-        <div className="px-6 pb-6">
+        <div className="px-6 pb-6 overflow-y-auto">
           {warning ? (
             <div className="mb-4 rounded-md border border-gf-border bg-gf-orange/10 p-3 text-xs text-gf-text">
               <span className="font-medium text-gf-orange">Attention :</span>{" "}

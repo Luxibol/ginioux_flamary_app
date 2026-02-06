@@ -14,4 +14,24 @@ function asInt(v) {
   return Math.trunc(n);
 }
 
-module.exports = { asInt };
+/**
+ * Quantité "métier" : entier >= 0.
+ * - Accepte "3", "3,00", "3.00"
+ * - Refuse "3,49" / "3.5" / "abc"
+ * @param {unknown} v
+ * @returns {number|null}
+ */
+function asNonNegativeIntFrStrict(v) {
+  if (v === null || v === undefined || v === "") return null;
+
+  const s = String(v).trim().replace(",", ".");
+  if (!/^\d+(?:\.00)?$/.test(s)) return null;
+
+  const n = Number(s);
+  if (!Number.isFinite(n)) return null;
+
+  const i = Math.trunc(n);
+  return i >= 0 ? i : null;
+}
+
+module.exports = { asInt, asNonNegativeIntFrStrict };
