@@ -1,10 +1,20 @@
 /**
  * @file backend/src/services/pdfParsing.service.js
- * @description Service parsing PDF : extrait {arc, clientName, orderDate, products} depuis le texte.
+ * @description Parse le texte brut d'un PDF de commande et extrait :
+ * - arc (numéro ARC)
+ * - clientName
+ * - orderDate (ISO YYYY-MM-DD)
+ * - products: [{ pdfLabel, quantity }]
+ *
+ * Particularités gérées :
+ * - lignes "chiffres collés" : "6,00374,2862,38" (QTE + MONTANT + PU)
+ * - libellé sur plusieurs lignes (retours à la ligne dans le PDF)
+ * - lignes taxe isolées ("1") ignorées
+ * - lignes à ignorer (transport/REP/TGAP/totaux...)
  */
 
 /**
- * Convertit JJ/MM/AAAA -> AAAA-MM-JJ.
+ * Convertit une date FR "JJ/MM/AAAA" en ISO "AAAA-MM-JJ".
  * @param {string} frDate
  * @returns {string|null}
  */
@@ -16,7 +26,7 @@ function toIsoDate(frDate) {
 }
 
 /**
- * Normalise un libellé PDF (espaces multiples + NBSP) pour fiabiliser les comparaisons.
+ * Normalise une chaîne issue du PDF (NBSP, espaces multiples).
  * @param {string} s
  * @returns {string}
  */
@@ -28,7 +38,7 @@ function normalizePdfLabel(s) {
 }
 
 /**
- * Indique si un libellé PDF doit être ignoré (transport/REP/TGAP...).
+ * Indique si un libellé doit être ignoré (transport / REP / TGAP / totaux...).
  * @param {string} label
  * @returns {boolean}
  */
@@ -36,8 +46,6 @@ function shouldIgnoreLabel(label) {
   if (!label) return true;
 
   const upper = normalizePdfLabel(label).toUpperCase();
-
-  // Mots-clés à ignorer
   const bannedKeywords = [
     "TRANSPORT",
     "REP ",
@@ -56,7 +64,8 @@ function shouldIgnoreLabel(label) {
 }
 
 /**
- * Détecte si une ligne ressemble à un libellé produit (ligne de libellé).
+ * Détermine si une ligne ressemble à un libellé produit.
+ * Objectif : éviter de considérer une continuation (ex: "pouzzolane)") comme un nouveau produit.
  * @param {string} label
  * @returns {boolean}
  */
@@ -64,24 +73,26 @@ function isProductLabel(label) {
   const s = normalizePdfLabel(label);
   if (!s) return false;
 
-  // Cas 1: "(7) ..."
+  // Cas "(47) ..."
   if (/^\(\d+\)\s+/.test(s)) return true;
 
-  // Cas 2: libellé texte (PIQUET..., DALLE...) -> au moins une lettre
-  // (on évite les lignes purement numériques)
-  return /[A-ZÀ-ÿ]/.test(s);
+  // Mots-clés typiques produit
+  if (/\b(BIG\s+BAG|VRAC|PALETTE|SAC|TONNE|M3|M²|M2|KG)\b/i.test(s))
+    return true;
+
+  // Sinon : au moins 3 mots et au moins un mot en MAJ (évite les lignes en minuscules seules)
+  const words = s.split(" ").filter(Boolean);
+  const hasUpperWord = words.some((w) => /[A-ZÀ-Ý]{2,}/.test(w));
+  return words.length >= 3 && hasUpperWord;
 }
 
 /**
- * Extrait la quantité depuis une ligne "libellé + colonnes" (QTE PRIX MONTANT ...).
+ * Extrait la QTE depuis une ligne "libellé ... QTE PRIX MONTANT" (format classique).
  * @param {string} line
  * @returns {number|null}
  */
 function extractQtyFromSameLine(line) {
   const s = String(line || "");
-
-  // Cherche la fin de ligne "... QTE PRIX MONTANT (T optionnel)"
-  // Exemple: "PIQUET ... 4,00 10,17 40,68 1"
   const m = s.match(/(\d+,\d{2})\s+(\d+,\d{2})\s+(\d+,\d{2})(?:\s+\d+)?\s*$/);
   if (!m) return null;
 
@@ -90,16 +101,42 @@ function extractQtyFromSameLine(line) {
 }
 
 /**
- * Extrait la quantité depuis la ligne précédente (format PDF avec chiffres collés ou "1,00").
+ * Extrait la QTE depuis la ligne précédente (format PDF avec chiffres collés ou "1,00").
  * @param {string} prevLine
  * @returns {number|null}
  */
 function extractQtyFromPrevLine(prevLine) {
-  // prevLine peut être "3,00144,0048,00" (collé) ou "1,00"
   const m = String(prevLine || "").match(/^(\d+,\d{2})/);
   if (!m) return null;
+
   const n = Number(m[1].replace(",", "."));
   return Number.isFinite(n) ? n : null;
+}
+
+/**
+ * Détecte une ligne "3 nombres collés" :
+ * ex: "6,00374,2862,38" => QTE=6,00 (puis montant, puis PU).
+ * @param {string} line
+ * @returns {{qty:number}|null}
+ */
+function extractPackedNumbersLine(line) {
+  const s = normalizePdfLabel(line);
+  const m = s.match(/^(\d+,\d{2})(\d+,\d{2})(\d+,\d{2})$/);
+  if (!m) return null;
+
+  const qty = Number(m[1].replace(",", "."));
+  if (!Number.isFinite(qty)) return null;
+
+  return { qty };
+}
+
+/**
+ * Ligne taxe isolée, ex: "1"
+ * @param {string} line
+ * @returns {boolean}
+ */
+function isTaxOnlyLine(line) {
+  return /^\d+$/.test(normalizePdfLabel(line));
 }
 
 /**
@@ -108,40 +145,30 @@ function extractQtyFromPrevLine(prevLine) {
  * @returns {{arc:string|null, clientName:string|null, orderDate:string|null, products:Array<{pdfLabel:string, quantity:number}>}}
  */
 function parseOrderFromPdfText(text) {
-  const result = {
-    arc: null,
-    clientName: null,
-    orderDate: null,
-    products: [],
-  };
-
-  if (!text || typeof text !== "string") {
-    return result;
-  }
+  const result = { arc: null, clientName: null, orderDate: null, products: [] };
+  if (!text || typeof text !== "string") return result;
 
   const normalized = text.replace(/\r\n/g, "\n");
 
+  // ARC
   const arcMatch =
     normalized.match(/ACCUSE DE RECEPTION[\s\S]*?n[°º]?\s*([0-9]{6,})/i) ||
     normalized.match(/\bn[°º]?\s*([0-9]{6,})/i);
+  if (arcMatch) result.arc = arcMatch[1];
 
-  if (arcMatch) {
-    result.arc = arcMatch[1];
-  }
-
+  // Date
   const dateMatch =
     normalized.match(/COMMANDE DU\s+(\d{2}\/\d{2}\/\d{4})/i) ||
     normalized.match(/\bdu\s+(\d{2}\/\d{2}\/\d{4})/i);
+  if (dateMatch) result.orderDate = toIsoDate(dateMatch[1]);
 
-  if (dateMatch) {
-    result.orderDate = toIsoDate(dateMatch[1]);
-  }
-
+  // Lignes
   const lines = normalized
     .split("\n")
     .map((l) => l.trim())
     .filter((l) => l.length > 0);
 
+  // Client (heuristique existante)
   for (let i = 1; i < lines.length; i++) {
     if (/\d{5}\s*\S+/i.test(lines[i])) {
       result.clientName = lines[i - 1];
@@ -152,21 +179,41 @@ function parseOrderFromPdfText(text) {
   for (let i = 0; i < lines.length; i++) {
     const label = lines[i]?.trim?.() || "";
     if (!label) continue;
-
-    // ignore titres/transport/REP/TGAP/GRATUIT/totaux...
     if (shouldIgnoreLabel(label)) continue;
 
-    // il faut un "label produit" (soit (n), soit texte)
-    if (!isProductLabel(label)) continue;
+    // --- CAS 1 : ligne "3 nombres collés" puis libellé sur 1..n lignes ---
+    const packed = extractPackedNumbersLine(label);
+    if (packed) {
+      let fullLabel = "";
+      let j = i + 1;
 
-    // 1) tente format A : quantité sur la ligne précédente (si elle commence par un nombre)
-    let quantity = extractQtyFromPrevLine(lines[i - 1] || "");
+      // Le libellé se trouve sur les lignes suivantes jusqu'à une taxe ("1") ou une nouvelle ligne chiffres collés
+      while (j < lines.length) {
+        const next = normalizePdfLabel(lines[j] || "");
+        if (!next) break;
+        if (shouldIgnoreLabel(next)) break;
+        if (isTaxOnlyLine(next)) break;
+        if (extractPackedNumbersLine(next)) break;
 
-    // 2) sinon format B : quantité dans la même ligne
-    if (quantity === null) {
-      quantity = extractQtyFromSameLine(label);
+        fullLabel = fullLabel ? `${fullLabel} ${next}` : next;
+        j++;
+      }
+
+      fullLabel = normalizePdfLabel(fullLabel)
+        .replace(/\+\s*$/g, "")
+        .trim();
+      if (fullLabel)
+        result.products.push({ pdfLabel: fullLabel, quantity: packed.qty });
+
+      i = j - 1;
+      continue;
     }
 
+    // --- CAS 2 : formats historiques (libellé + quantité) ---
+    if (!isProductLabel(label)) continue;
+
+    let quantity = extractQtyFromPrevLine(lines[i - 1] || "");
+    if (quantity === null) quantity = extractQtyFromSameLine(label);
     if (quantity === null) continue;
 
     result.products.push({ pdfLabel: normalizePdfLabel(label), quantity });
@@ -175,6 +222,4 @@ function parseOrderFromPdfText(text) {
   return result;
 }
 
-module.exports = {
-  parseOrderFromPdfText,
-};
+module.exports = { parseOrderFromPdfText };
