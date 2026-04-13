@@ -19,7 +19,7 @@ PORT=4000
 DB_HOST=localhost
 DB_PORT=3307
 DB_USER=ginioux_flamary_app
-DB_PASSWORD=TestPwd123!
+DB_PASSWORD=MotDePasseSecurise
 DB_NAME=ginioux_flamary
 
 JWT_SECRET=change_me
@@ -35,7 +35,7 @@ NODE_ENV=development
 Scripts SQL : `backend/db/`
 
 - `ginioux_flamary.sql` : **structure** (tables + contraintes)
-- `donnes_ginioux_flamary.sql` : **données de démo** (utilisateurs + catalogue produits)
+- `donnees_ginioux_flamary.sql` : **données de démo** (utilisateurs + catalogue produits)
 
 Import (exemples) :
 
@@ -44,7 +44,7 @@ Import (exemples) :
 mysql -h localhost -P 3307 -u root -p < backend/db/ginioux_flamary.sql
 
 # données (dans la base)
-mysql -h localhost -P 3307 -u root -p ginioux_flamary < backend/db/donnes_ginioux_flamary.sql
+mysql -h localhost -P 3307 -u root -p ginioux_flamary < backend/db/donnees_ginioux_flamary.sql
 ```
 
 > Si ton environnement MySQL n’autorise pas `CREATE USER` / `GRANT`, il peut être nécessaire de commenter/supprimer ces lignes dans le script.

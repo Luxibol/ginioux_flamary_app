@@ -1,7 +1,7 @@
 ## Livrables
 
-- Dossier de projet : docs/Dossier_ginioux_Flamary.pdf
-- Support de présentation : docs/Presentation.pdf
+- Dossier de projet : docs/Dossier_projet_ginioux_flamary.pdf
+- Support de présentation : docs/Dossier_projet_ginioux_flamary_Presentation.pdf
 - Dépôt : https://github.com/Luxibol/ginioux_flamary_app
 
 # Application Ginioux Flamary
@@ -68,7 +68,7 @@ DB_HOST=localhost
 DB_PORT=3307
 DB_NAME=ginioux_flamary
 DB_USER=ginioux_flamary_app
-DB_PASSWORD=TestPwd123!
+DB_PASSWORD=MotDePasseSecurise
 
 JWT_SECRET=change_me
 
