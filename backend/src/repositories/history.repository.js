@@ -223,8 +223,55 @@ async function getArchivedOrderHistory(orderId) {
   };
 }
 
+/**
+ * Retourne les totaux BigBag/Roche des commandes archivées sur une période.
+ * Base : quantity_shipped des lignes de commandes archivées filtrées par dernière expédition.
+ *
+ * @param {{q?:string|null, days?:number|null}} [filters]
+ * @returns {Promise<{bigbag:number, roche:number}>}
+ */
+async function sumArchivedShippedTotals({ q = null, days = null } = {}) {
+  const base = buildArchivedBase({ q });
+
+  const params = [...base.params];
+  let where = "1=1";
+
+  if (days) {
+    where =
+      "(t.last_departed_at IS NOT NULL AND t.last_departed_at >= (NOW() - INTERVAL ? DAY))";
+    params.push(days);
+  }
+
+  const sql = `
+    SELECT
+      pc.category AS category,
+      SUM(COALESCE(op.quantity_shipped, 0)) AS qty
+    FROM (${base.sql}) t
+    JOIN order_products op ON op.order_id = t.id
+    JOIN products_catalog pc ON pc.id = op.product_id
+    WHERE ${where}
+    GROUP BY pc.category
+  `;
+
+  const [rows] = await pool.query(sql, params);
+
+  const totals = { bigbag: 0, roche: 0 };
+
+  for (const r of rows || []) {
+    const cat = String(r.category || "").toUpperCase();
+    const qty = Number(r.qty ?? 0);
+    if (!Number.isFinite(qty)) continue;
+
+    if (cat === "BIGBAG" || cat === "SMALLBAG") totals.bigbag += qty;
+    if (cat === "ROCHE") totals.roche += qty;
+  }
+
+  return totals;
+}
+
 module.exports = {
   countArchivedOrders,
   findArchivedOrders,
   getArchivedOrderHistory,
+  sumArchivedShippedTotals,
 };

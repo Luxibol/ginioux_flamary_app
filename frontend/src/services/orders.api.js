@@ -209,3 +209,16 @@ export async function getOrderCommentCounts(orderId) {
   const res = await apiFetch(`/orders/${orderId}/comments/counts`);
   return res;
 }
+
+/**
+ * Récupère les mini-stats du bas du dashboard admin.
+ * @param {{period?: "ALL"|"7D"|"30D"|"90D"}} [options]
+ * @returns {Promise<any>}
+ */
+export async function getAdminDashboardBottomStats({ period } = {}) {
+  const params = new URLSearchParams();
+  if (period) params.set("period", period);
+
+  const qs = params.toString();
+  return apiFetch(`/orders/admin/dashboard/bottom-stats${qs ? `?${qs}` : ""}`);
+}

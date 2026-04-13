@@ -17,6 +17,7 @@ const historyController = require("../controllers/history.controller");
 const orderShipmentsController = require("../controllers/orderShipments.controller");
 const shipmentsStatsController = require("../controllers/shipmentsStats.controller");
 const orderCommentsController = require("../controllers/orderComments.controller");
+const adminDashboardController = require("../controllers/adminDashboard.controller");
 
 const router = express.Router();
 
@@ -87,6 +88,12 @@ router.get(
   "/produced",
   requireRole("ADMIN"),
   productionController.getProducedCount,
+);
+
+router.get(
+  "/admin/dashboard/bottom-stats",
+  requireRole("ADMIN"),
+  adminDashboardController.getAdminDashboardBottomStats,
 );
 
 /* === MIXTE (ADMIN, BUREAU, PRODUCTION) === */
