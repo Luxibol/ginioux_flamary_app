@@ -188,7 +188,7 @@ export default function Dashboard() {
       const [prodRes, urgentRes, archived7dRes] = await Promise.all([
         getProductionOrders({ limit: 200, offset: 0 }),
         getActiveOrders({ priority: "URGENT" }),
-        getArchivedOrders({ period: "7D" }),
+        getArchivedOrders({ period: "7D", limit: 200 }),
       ]);
 
       if (!aliveRef.current) return;
@@ -246,7 +246,7 @@ export default function Dashboard() {
       if (!aliveRef.current) return;
 
       const archList = Array.isArray(archivedRes?.data) ? archivedRes.data : [];
-      setBottomArchivedCount(archList.length);
+      setBottomArchivedCount(Number(archivedRes?.total ?? 0));
 
       (async () => {
         const ids = archList.map((o) => o.id).filter(Boolean);
