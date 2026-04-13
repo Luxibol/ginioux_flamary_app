@@ -11,8 +11,8 @@ import { usePullToRefreshMobile } from "../../../utils/pullToRefreshMobile.hook.
 import {
   getActiveOrders,
   getProductionOrders,
-  getProducedOrdersCount,
   getOrderDetails,
+  getAdminDashboardBottomStats,
 } from "../../../services/orders.api.js";
 import { getArchivedOrders } from "../../../services/history.api.js";
 
@@ -235,30 +235,26 @@ export default function Dashboard() {
 
 /**
  * Charge les mini-stats dépendantes de la période (expéditions + produits).
+ * Les KPIs du bas viennent du backend pour éviter les limites côté front.
  */
   const runBottom = useCallback(async () => {
     try {
-      const [archivedRes, producedRes] = await Promise.all([
-        getArchivedOrders({ period: periodBottom }),
-        getProducedOrdersCount({ period: periodBottom }),
-      ]);
+      const stats = await getAdminDashboardBottomStats({ period: periodBottom });
 
       if (!aliveRef.current) return;
 
-      const archList = Array.isArray(archivedRes?.data) ? archivedRes.data : [];
-      setBottomArchivedCount(Number(archivedRes?.total ?? 0));
+      setBottomArchivedCount(Number(stats?.archivedCount ?? 0));
 
-      (async () => {
-        const ids = archList.map((o) => o.id).filter(Boolean);
-        const totals = await computeTotalsFromOrders(ids, { limit: 30, mode: "SHIPPED" });
-        if (aliveRef.current) setBottomShipTotals(totals);
-      })();
+      setBottomShipTotals({
+        bigbag: Number(stats?.bottomShipTotals?.bigbag ?? 0),
+        roche: Number(stats?.bottomShipTotals?.roche ?? 0),
+      });
 
-      setProducedCount(Number(producedRes?.count ?? 0));
-      const t = producedRes?.totals;
+      setProducedCount(Number(stats?.producedCount ?? 0));
+
       setProducedTotals({
-        bigbag: Number(t?.bigbag ?? 0),
-        roche: Number(t?.roche ?? 0),
+        bigbag: Number(stats?.producedTotals?.bigbag ?? 0),
+        roche: Number(stats?.producedTotals?.roche ?? 0),
       });
     } catch {
       if (!aliveRef.current) return;
